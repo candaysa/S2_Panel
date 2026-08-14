@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Vip\App\Http\Controllers\VipController;
 use Illuminate\Support\Facades\Route;

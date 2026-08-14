@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Rank\App\Http\Controllers\RankController;
 use Illuminate\Support\Facades\Route;
