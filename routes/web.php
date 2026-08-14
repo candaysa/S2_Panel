@@ -47,6 +47,7 @@ Route::middleware('steam.auth')->group(function (): void {
     Route::view('/audit', 'audit.index')->name('audit.page');
     Route::view('/stats', 'stats.index')->name('stats.page');
     Route::view('/appeals', 'appeals.index')->name('appeals.page');
+    Route::view('/cheat-check', 'cheatcheck.index')->name('cheatcheck.page');
 
     Route::middleware('owner.only')->group(function (): void {
         Route::view('/health', 'health.index')->name('health.page');

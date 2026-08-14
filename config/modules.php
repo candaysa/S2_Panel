@@ -141,6 +141,12 @@ return [
             'provider' => App\Modules\Webhook\WebhookServiceProvider::class,
             'depends' => ['auth'],
         ],
+
+        'cheat_check' => [
+            'enabled' => env('MODULE_CHEAT_CHECK', false),
+            'provider' => App\Modules\CheatCheck\CheatCheckServiceProvider::class,
+            'depends' => ['auth'],
+        ],
     ],
 
 ];

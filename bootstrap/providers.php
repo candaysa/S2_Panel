@@ -5,6 +5,7 @@ use App\Modules\Appeal\AppealServiceProvider;
 use App\Modules\Audit\AuditServiceProvider;
 use App\Modules\Auth\AuthServiceProvider;
 use App\Modules\Ban\BanServiceProvider;
+use App\Modules\CheatCheck\CheatCheckServiceProvider;
 use App\Modules\Health\HealthServiceProvider;
 use App\Modules\I18n\I18nServiceProvider;
 use App\Modules\Install\InstallServiceProvider;
@@ -42,4 +43,5 @@ return [
     I18nServiceProvider::class,
     HealthServiceProvider::class,
     WebhookServiceProvider::class,
+    CheatCheckServiceProvider::class,
 ];

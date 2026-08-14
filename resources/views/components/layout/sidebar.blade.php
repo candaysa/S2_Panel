@@ -15,6 +15,7 @@
             ['bans.page', __('i18n::messages.nav.bans'), 'ban'],
             ['reports.page', __('i18n::messages.nav.reports'), 'flag'],
             ['appeals.page', __('i18n::messages.nav.appeals'), 'scale'],
+            ['cheatcheck.page', __('i18n::messages.nav.cheat_check'), 'shield'],
             ['rcon.page', __('i18n::messages.nav.rcon'), 'terminal'],
             ['audit.page', __('i18n::messages.nav.audit'), 'list'],
         ]],
