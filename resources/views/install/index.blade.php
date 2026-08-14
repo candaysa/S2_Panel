@@ -55,10 +55,7 @@
 
             db: {
                 panel: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
-                swiftly: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
-                ranks: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
-                weaponskins: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
-                vip: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
+                plugins: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
             },
 
             steam: { api_key: '', client_id: '', client_secret: '', callback_url: '', owner_steam_id: '' },
@@ -295,16 +292,21 @@
                 <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.step_database') }}</h2>
                 <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.db_hint') }}</p>
 
+                {{-- Two blocks, not five. Swiftly, CS2_Admin, CS2_Ranks, the
+                     weapon skins plugin and VIPCore all share one database, so
+                     they are asked for once and fanned out to the four
+                     connections server-side (InstallController::database).
+                     The panel stays separate because its own migrations create
+                     tables - users, sessions, reports - that already exist in a
+                     live Swiftly database. --}}
                 <div class="mt-4 space-y-5">
                     @foreach ([
-                        'panel' => 'Panel',
-                        'swiftly' => 'Swiftly (CS2_Admin)',
-                        'ranks' => 'CS2_Ranks',
-                        'weaponskins' => 'Weapon Skins',
-                        'vip' => 'VIPCore',
-                    ] as $connKey => $connLabel)
+                        'panel' => [__('i18n::messages.install.db_panel_label'), __('i18n::messages.install.db_panel_hint')],
+                        'plugins' => [__('i18n::messages.install.db_plugins_label'), __('i18n::messages.install.db_plugins_hint')],
+                    ] as $connKey => [$connLabel, $connHint])
                         <fieldset class="rounded-lg border border-line-soft p-4">
                             <legend class="px-1 text-sm font-medium text-ink">{{ $connLabel }}</legend>
+                            <p class="mb-3 text-xs text-ink-faint">{{ $connHint }}</p>
 
                             <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                                 <input type="text" x-model="db.{{ $connKey }}.host" placeholder="{{ __('i18n::messages.install.db_host') }}" class="col-span-2 rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none sm:col-span-1">

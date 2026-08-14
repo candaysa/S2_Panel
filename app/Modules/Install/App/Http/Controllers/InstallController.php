@@ -79,9 +79,17 @@ class InstallController
     /**
      * POST /api/install/database
      *
-     * Body: { connection: {host, port, database, username, password}, ... }
-     * Probes every connection with the submitted credentials (overrides the
-     * runtime config only) and persists them once all four succeed.
+     * Body: { panel: {host, port, database, username, password}, plugins: {...} }
+     *
+     * Two connections are asked for, not five. Swiftly and its companion
+     * plugins (CS2_Admin, CS2_Ranks, weapon skins, VIPCore) all keep their
+     * tables in one shared database, so asking for the same credentials four
+     * times only created four chances to typo them. The single "plugins"
+     * block is fanned out to all four connections below.
+     *
+     * The panel keeps its own separate database on purpose: its migrations
+     * create users, sessions, migrations, password_reset_tokens and reports,
+     * every one of which already exists in a live Swiftly database.
      */
     public function database(Request $request): JsonResponse
     {
@@ -91,39 +99,38 @@ class InstallController
             'panel.database' => 'required|string',
             'panel.username' => 'required|string',
             'panel.password' => 'nullable|string',
-            'swiftly.host' => 'required|string',
-            'swiftly.port' => 'required|integer|between:1,65535',
-            'swiftly.database' => 'required|string',
-            'swiftly.username' => 'required|string',
-            'swiftly.password' => 'nullable|string',
-            'ranks.host' => 'required|string',
-            'ranks.port' => 'required|integer|between:1,65535',
-            'ranks.database' => 'required|string',
-            'ranks.username' => 'required|string',
-            'ranks.password' => 'nullable|string',
-            'weaponskins.host' => 'required|string',
-            'weaponskins.port' => 'required|integer|between:1,65535',
-            'weaponskins.database' => 'required|string',
-            'weaponskins.username' => 'required|string',
-            'weaponskins.password' => 'nullable|string',
-            'vip.host' => 'required|string',
-            'vip.port' => 'required|integer|between:1,65535',
-            'vip.database' => 'required|string',
-            'vip.username' => 'required|string',
-            'vip.password' => 'nullable|string',
+            'plugins.host' => 'required|string',
+            'plugins.port' => 'required|integer|between:1,65535',
+            'plugins.database' => 'required|string',
+            'plugins.username' => 'required|string',
+            'plugins.password' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
             return Api::error(Api::MSG_VALIDATION_FAILED, $validator->errors()->toArray(), 422);
         }
 
+        // One submitted block per distinct database, fanned out to the
+        // connection names the rest of the app already uses.
+        $submitted = [
+            'panel' => $request->input('panel'),
+            'swiftly' => $request->input('plugins'),
+            'ranks' => $request->input('plugins'),
+            'weaponskins' => $request->input('plugins'),
+            'vip' => $request->input('plugins'),
+        ];
+
+        // Probe once per database rather than once per connection - the four
+        // plugin connections are the same server, so testing them separately
+        // would just open four identical connections and report one failure
+        // as four.
         $failures = [];
 
-        foreach (self::CONNECTIONS as $connection) {
-            $this->overrideConnection($connection, $request->input($connection));
+        foreach (['panel' => 'panel', 'plugins' => 'swiftly'] as $label => $connection) {
+            $this->overrideConnection($connection, $submitted[$connection]);
 
             if (! $this->probe->isHealthy($connection)) {
-                $failures[] = $connection;
+                $failures[] = $label;
             }
         }
 
@@ -131,10 +138,17 @@ class InstallController
             return Api::error('database_connection_failed', ['connections' => $failures], 422);
         }
 
+        // The plugin connections share credentials but are still configured
+        // individually, so a future install can point one of them somewhere
+        // else without a schema change.
+        foreach (self::CONNECTIONS as $connection) {
+            $this->overrideConnection($connection, $submitted[$connection]);
+        }
+
         $values = [];
 
         foreach (self::CONNECTIONS as $connection) {
-            $data = $request->input($connection);
+            $data = $submitted[$connection];
             $prefix = $connection === 'panel' ? 'DB_' : strtoupper($connection).'_DB_';
 
             $values[$prefix.'HOST'] = $data['host'];
