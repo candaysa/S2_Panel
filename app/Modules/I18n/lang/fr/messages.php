@@ -62,6 +62,7 @@ return [
         'kd' => 'K/D',
         'recent_bans' => 'Bannissements récents',
         'recent_mutes' => 'Muets récents',
+        'view_all' => 'Tout voir',
     ],
     'theme' => [
         'appearance' => 'Apparence',

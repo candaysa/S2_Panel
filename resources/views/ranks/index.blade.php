@@ -52,7 +52,7 @@
                                 <span class="block font-mono text-xs text-ink-faint" x-text="player.steam"></span>
                             </td>
                             <td class="px-4 py-3">
-                                <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" />
+                                <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" show-label />
                             </td>
                             <td class="px-4 py-3">
                                 <template x-if="editing !== player.steam">
@@ -99,7 +99,7 @@
                             <p class="truncate font-medium text-ink" x-text="player.name || '—'"></p>
                             <p class="truncate font-mono text-xs text-ink-faint" x-text="player.steam"></p>
                         </div>
-                        <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" compact class="shrink-0" />
+                        <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" size="sm" class="shrink-0" />
                     </div>
                     <dl class="mt-3 grid grid-cols-4 gap-2 border-t border-line-soft pt-3 text-center">
                         <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.points') }}</dt><dd class="text-sm font-medium text-ink" x-text="num(player.value)"></dd></div>

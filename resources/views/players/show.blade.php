@@ -19,7 +19,7 @@
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-3">
                                 <h1 class="truncate text-2xl font-semibold text-ink" x-text="player.name || '—'"></h1>
-                                <x-rank-badge rank="player.rank_tier" label="rankLabel()" />
+                                <x-rank-badge rank="player.rank_tier" label="rankLabel()" size="lg" show-label />
                             </div>
                             <p class="mt-1 font-mono text-xs text-ink-faint" x-text="player.steam"></p>
                         </div>

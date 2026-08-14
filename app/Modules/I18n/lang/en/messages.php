@@ -62,6 +62,7 @@ return [
         'kd' => 'K/D',
         'recent_bans' => 'Recent bans',
         'recent_mutes' => 'Recent mutes',
+        'view_all' => 'View all',
     ],
     'theme' => [
         'appearance' => 'Appearance',
