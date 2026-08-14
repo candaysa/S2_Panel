@@ -19,4 +19,5 @@ Route::prefix('api/settings')->middleware(['steam.auth', 'owner.only'])->group(f
     Route::post('logo', [SettingsController::class, 'uploadLogo'])->name('settings.logo');
     Route::post('favicon', [SettingsController::class, 'uploadFavicon'])->name('settings.favicon');
     Route::post('brand-color/reset', [SettingsController::class, 'resetBrandColor'])->name('settings.brand-color.reset');
+    Route::get('backup', [SettingsController::class, 'backup'])->name('settings.backup');
 });

@@ -5,6 +5,7 @@ namespace App\Modules\Plugins\App\Services;
 use App\Modules\Audit\App\Services\AuditService;
 use App\Modules\Plugins\App\Models\PluginInstall;
 use App\Support\ModuleServiceProvider;
+use App\Support\SafeZip;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -12,7 +13,6 @@ use Illuminate\Support\Collection;
 use InvalidArgumentException;
 use RuntimeException;
 use Throwable;
-use ZipArchive;
 
 /**
  * Installs/removes third-party plugins uploaded as a .zip (the "Plugins"
@@ -179,65 +179,10 @@ class PluginManager
 
     private function extract(UploadedFile $file, string $workDir): string
     {
-        $zip = new ZipArchive();
-        $opened = $zip->open($file->getRealPath());
-
-        if ($opened !== true) {
-            throw new InvalidArgumentException('invalid_zip_file');
-        }
-
-        $this->assertSafeZipEntries($zip);
-
         $extractTo = $workDir.'/extracted';
-        $zip->extractTo($extractTo);
-        $zip->close();
+        SafeZip::extract((string) $file->getRealPath(), $extractTo);
 
-        return $this->flattenSingleTopLevelDirectory($extractTo);
-    }
-
-    /**
-     * Rejects zip-slip attempts (entries that would extract outside the
-     * target directory via ".." traversal or an absolute path) before a
-     * single byte is written to disk.
-     */
-    private function assertSafeZipEntries(ZipArchive $zip): void
-    {
-        for ($i = 0; $i < $zip->numFiles; $i++) {
-            $entry = $zip->getNameIndex($i);
-
-            if ($entry === false) {
-                continue;
-            }
-
-            $normalized = str_replace('\\', '/', $entry);
-
-            if (
-                str_starts_with($normalized, '/')
-                || preg_match('#^[A-Za-z]:#', $normalized) === 1
-                || str_contains($normalized, '../')
-                || str_ends_with($normalized, '/..')
-                || $normalized === '..'
-            ) {
-                throw new InvalidArgumentException('unsafe_zip_entry');
-            }
-        }
-    }
-
-    /**
-     * A zip whose only top-level entry is a single directory (common when
-     * a folder was compressed directly, or downloaded as a GitHub
-     * "Source code (zip)" archive) has that directory flattened up one
-     * level, so plugin.json is expected at the zip root either way.
-     */
-    private function flattenSingleTopLevelDirectory(string $extractTo): string
-    {
-        $entries = array_values(array_diff(scandir($extractTo) ?: [], ['.', '..']));
-
-        if (count($entries) === 1 && File::isDirectory($extractTo.'/'.$entries[0])) {
-            return $extractTo.'/'.$entries[0];
-        }
-
-        return $extractTo;
+        return SafeZip::flattenSingleTopLevelDirectory($extractTo);
     }
 
     /**

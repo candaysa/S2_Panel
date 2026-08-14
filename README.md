@@ -23,7 +23,14 @@ or bridge is required on the game server.
   panel — see [docs/plugin-development.md](docs/plugin-development.md) for
   how to build one.
 - **Self-service install wizard**: language, database connections,
-  Steam/owner setup, and module selection — no manual SQL required.
+  Steam/owner setup, and module selection — no manual SQL required. A
+  previously downloaded `backup.zip` can be uploaded on the very first
+  screen to skip the wizard entirely and restore straight into a working
+  panel (see **Backup & restore** below).
+- **Backup & restore**: Settings > Backup downloads a `backup.zip` —
+  database connections, Steam credentials, the owner's SteamID, module
+  toggles, every table the panel owns, and the logo/favicon — for disaster
+  recovery or moving to a new server.
 - 6-language UI (English, Turkish, German, French, Italian, Russian),
   dark/light theme, and an owner-customizable accent color.
 
@@ -66,6 +73,12 @@ from the database instead of being compiled into the app.
 php artisan test
 ```
 
+## Contributing
+
+Issues and pull requests are welcome. There's no formal process yet — open
+an issue to discuss a change before sending a large PR.
+
 ## License
 
-Not yet decided.
+[MIT](LICENSE) — do whatever you like with it, just keep the copyright
+notice.

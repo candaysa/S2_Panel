@@ -43,6 +43,10 @@
             loading: false,
             error: null,
 
+            restoring: false,
+            restoreError: null,
+            restoreDone: null,
+
             locale: '{{ app()->getLocale() }}',
 
             db: {
@@ -148,12 +152,76 @@
                     this.loading = false;
                 }
             },
+
+            async restoreBackup(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                this.restoring = true;
+                this.restoreError = null;
+                this.restoreDone = null;
+
+                try {
+                    const data = new FormData();
+                    data.append('backup', file);
+                    const res = await fetch('/api/install/restore-backup', {
+                        method: 'POST',
+                        headers: {
+                            Accept: 'application/json',
+                            'X-CSRF-TOKEN': this.csrf(),
+                        },
+                        body: data,
+                    });
+                    const body = await res.json().catch(() => ({}));
+                    if (!res.ok) {
+                        const key = {
+                            invalid_zip_file: 'restore_invalid_zip',
+                            backup_manifest_missing: 'restore_manifest_invalid',
+                            backup_manifest_invalid: 'restore_manifest_invalid',
+                            database_connection_failed: 'restore_db_connection_failed',
+                        }[body.message] ?? 'restore_failed';
+                        throw new Error(key);
+                    }
+                    this.restoreDone = body.data;
+                    window.location.href = '/login';
+                } catch (e) {
+                    const messages = @js(collect(['restore_invalid_zip', 'restore_manifest_invalid', 'restore_db_connection_failed', 'restore_failed'])->mapWithKeys(fn ($key) => [$key => __('i18n::messages.install.'.$key)]));
+                    this.restoreError = messages[e.message] ?? messages.restore_failed;
+                } finally {
+                    this.restoring = false;
+                    event.target.value = '';
+                }
+            },
         }"
     >
         <div class="flex flex-col items-center text-center">
             <img src="{{ $siteLogo }}" alt="{{ $siteName }}" class="size-12 object-contain">
             <h1 class="mt-3 text-xl font-semibold text-ink">{{ __('i18n::messages.install.title') }}</h1>
             <p class="mt-1 text-sm text-ink-muted">{{ $siteName }}</p>
+        </div>
+
+        {{-- Restore from backup.zip — replaces every step below in one shot --}}
+        <div x-show="step === 1" x-cloak class="mt-8 rounded-xl border border-dashed border-line bg-surface-raised/50 p-4">
+            <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.install.restore_choice_title') }}</h2>
+            <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.restore_choice_body') }}</p>
+
+            <label
+                class="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-line"
+                :class="restoring ? 'pointer-events-none opacity-50' : ''"
+            >
+                <x-icon name="upload" class="size-4" />
+                <span x-show="!restoring">{{ __('i18n::messages.install.restore_button') }}</span>
+                <span x-show="restoring" x-cloak>{{ __('i18n::messages.install.restore_uploading') }}</span>
+                <input type="file" accept=".zip" class="hidden" :disabled="restoring" @change="restoreBackup($event)">
+            </label>
+
+            <p x-show="restoreError" x-cloak class="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" x-text="restoreError"></p>
+        </div>
+
+        <div class="mt-6 flex items-center gap-3 text-xs uppercase tracking-wide text-ink-faint" x-show="step === 1" x-cloak>
+            <span class="h-px flex-1 bg-line"></span>
+            {{ __('i18n::messages.install.restore_or') }}
+            <span class="h-px flex-1 bg-line"></span>
         </div>
 
         {{-- Step indicator --}}

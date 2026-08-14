@@ -223,5 +223,21 @@
         <p x-show="error" x-cloak class="mt-6 text-sm text-red-400">
             {{ __('i18n::messages.common.error') }}
         </p>
+
+        <div x-show="!loading" x-cloak class="mt-8 max-w-xl rounded-xl border border-line bg-surface p-5">
+            <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.backup.title') }}</h2>
+            <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.backup.subtitle') }}</p>
+            <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.backup.plugins_note') }}</p>
+
+            <a
+                href="{{ route('settings.backup') }}"
+                class="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-surface-raised"
+            >
+                <x-icon name="upload" class="size-4 rotate-180" />
+                {{ __('i18n::messages.backup.download') }}
+            </a>
+
+            <p class="mt-3 text-xs text-ink-faint">{{ __('i18n::messages.backup.warning') }}</p>
+        </div>
     </div>
 </x-layout.app>

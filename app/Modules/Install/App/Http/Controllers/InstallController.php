@@ -6,10 +6,14 @@ use App\Modules\Install\App\Services\ConnectionProbe;
 use App\Modules\Install\App\Services\EnvWriter;
 use App\Modules\Settings\App\Services\SettingService;
 use App\Support\Api;
+use App\Support\PanelBackup;
+use App\Support\PanelBackupException;
 use App\Support\SteamId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use InvalidArgumentException;
+use Throwable;
 
 /**
  * Installation wizard (C13). Public endpoints – the InstallLock middleware
@@ -18,6 +22,9 @@ use Illuminate\Support\Facades\Validator;
  * Flow: status → locale (session + owner default) → database (probe +
  * persist) → steam/owner (validate + persist) → modules (persist toggles)
  * → complete (INSTALLED=true).
+ *
+ * Alternative flow: restoreBackup() replaces every step above at once from
+ * a previously-downloaded backup.zip (see Settings > Backup / PanelBackup).
  */
 class InstallController
 {
@@ -220,6 +227,37 @@ class InstallController
         (new EnvWriter($this->envPath()))->set(['INSTALLED' => true]);
 
         return Api::success(['installed' => true]);
+    }
+
+    /**
+     * POST /api/install/restore-backup
+     *
+     * Body: multipart { backup: <file> }. Replaces the entire locale ->
+     * database -> steam -> modules -> complete flow above in one shot -
+     * see PanelBackup::restore() for exactly what it does and does not
+     * restore (plugin *code* is deliberately excluded; see its docblock).
+     */
+    public function restoreBackup(Request $request, PanelBackup $backup): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'backup' => 'required|file|max:51200',
+        ]);
+
+        if ($validator->fails()) {
+            return Api::error(Api::MSG_VALIDATION_FAILED, $validator->errors()->toArray(), 422);
+        }
+
+        try {
+            $summary = $backup->restore($request->file('backup'));
+
+            return Api::success($summary);
+        } catch (PanelBackupException $e) {
+            return Api::error($e->getMessage(), $e->errors(), 422);
+        } catch (InvalidArgumentException $e) {
+            return Api::error($e->getMessage(), [], 422);
+        } catch (Throwable) {
+            return Api::error('backup_restore_failed', [], 422);
+        }
     }
 
     /**
