@@ -7,6 +7,7 @@ use App\Modules\Rank\App\Models\RankHit;
 use App\Modules\Rank\App\Models\RankPlayer;
 use App\Support\CsRank;
 use App\Support\SteamId;
+use App\Support\SteamProfiles;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use InvalidArgumentException;
 
@@ -53,7 +54,16 @@ class RankService
 
         $players = $query->orderByDesc('value')->orderBy('steam')->paginate($perPage);
 
-        $players->getCollection()->each(fn (RankPlayer $p) => $p->setAttribute('rank_tier', $this->tier($p)));
+        // One Steam API call for the whole page rather than one per row -
+        // see SteamProfiles. Missing profiles simply render without an
+        // avatar, which is why this never blocks the response.
+        $profiles = SteamProfiles::many($players->getCollection()->pluck('steam')->all());
+
+        $players->getCollection()->each(function (RankPlayer $p) use ($profiles): void {
+            $p->setAttribute('rank_tier', $this->tier($p));
+            $p->setAttribute('avatar', $profiles[$p->steam]['avatar'] ?? null);
+            $p->setAttribute('profile_url', $profiles[$p->steam]['profile_url'] ?? null);
+        });
 
         return $players;
     }

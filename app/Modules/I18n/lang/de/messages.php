@@ -222,6 +222,10 @@ return [
         'profile' => 'Spielerprofil',
         'back_to_ranks' => 'Zurück zur Rangliste',
         'not_found' => 'Kein Ranglisteneintrag für diesen Spieler.',
+        'time_on_server' => 'Zeit auf dem Server',
+        'seen_today' => 'Heute gesehen',
+        'seen_yesterday' => 'Gestern gesehen',
+        'seen_days_ago' => 'vor :days Tagen',
     ],
 
     'rank_tiers' => [

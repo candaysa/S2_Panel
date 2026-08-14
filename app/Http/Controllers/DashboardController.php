@@ -12,6 +12,7 @@ use App\Support\Api;
 use App\Support\CsRank;
 use App\Support\Flags;
 use App\Support\ModuleRegistry;
+use App\Support\SteamProfiles;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Throwable;
@@ -98,12 +99,17 @@ class DashboardController extends Controller
      */
     private function topPlayers(): array
     {
-        return RankPlayer::query()
+        $players = RankPlayer::query()
             ->orderByDesc('value')
             ->limit(10)
-            ->get(['steam', 'name', 'value', 'rank', 'kills', 'deaths', 'playtime'])
+            ->get(['steam', 'name', 'value', 'rank', 'kills', 'deaths', 'playtime', 'lastconnect']);
+
+        $profiles = SteamProfiles::many($players->pluck('steam')->all());
+
+        return $players
             ->map(fn (RankPlayer $p): array => array_merge($p->toArray(), [
                 'rank_tier' => CsRank::for((int) $p->value, (int) $p->rank),
+                'avatar' => $profiles[$p->steam]['avatar'] ?? null,
             ]))
             ->all();
     }

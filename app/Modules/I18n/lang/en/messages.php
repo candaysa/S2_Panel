@@ -222,6 +222,10 @@ return [
         'profile' => 'Player profile',
         'back_to_ranks' => 'Back to leaderboard',
         'not_found' => 'No ranked record for this player.',
+        'time_on_server' => 'Time on server',
+        'seen_today' => 'Seen today',
+        'seen_yesterday' => 'Seen yesterday',
+        'seen_days_ago' => ':days days ago',
     ],
 
     'rank_tiers' => [

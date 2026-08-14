@@ -32,24 +32,30 @@
                         <th class="px-4 py-3">{{ __('i18n::messages.ranks.rank') }}</th>
                         <th class="px-4 py-3">{{ __('i18n::messages.ranks.points') }}</th>
                         <th class="px-4 py-3">{{ __('i18n::messages.ranks.kills') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.ranks.playtime') }}</th>
+                        <th class="px-4 py-3">{{ __('i18n::messages.ranks.time_on_server') }}</th>
                         <th class="px-4 py-3">{{ __('i18n::messages.ranks.kd') }}</th>
                         <th class="px-4 py-3"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line-soft">
                     <template x-for="player in players" :key="player.steam">
-                        <tr class="text-ink-muted transition-colors hover:bg-surface-raised">
+                        <tr class="group text-ink-muted transition-colors hover:bg-surface-raised">
                             <td class="px-4 py-3">
                                 <span
-                                    class="inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold"
-                                    :class="player.position <= 3 ? 'bg-brand-soft text-brand-strong' : 'text-ink-faint'"
+                                    class="inline-flex size-7 items-center justify-center rounded-lg text-xs font-bold ring-1 ring-inset"
+                                    :class="medal(player.position)"
                                     x-text="player.position"
                                 ></span>
                             </td>
                             <td class="px-4 py-3">
-                                <a :href="'/players/' + encodeURIComponent(player.steam)" class="block font-medium text-ink hover:text-brand-strong" x-text="player.name || '—'"></a>
-                                <span class="block font-mono text-xs text-ink-faint" x-text="player.steam"></span>
+                                <a :href="'/players/' + encodeURIComponent(player.steam)" class="flex items-center gap-2.5">
+                                    <img x-show="player.avatar" :src="player.avatar" alt="" loading="lazy" class="size-9 shrink-0 rounded-full object-cover ring-1 ring-line">
+                                    <span x-show="!player.avatar" class="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold text-ink-faint" x-text="(player.name ?? '?').charAt(0).toUpperCase()"></span>
+                                    <span class="min-w-0">
+                                        <span class="block truncate font-medium text-ink transition-colors group-hover:text-brand-strong" x-text="player.name || '—'"></span>
+                                        <span class="block truncate font-mono text-xs text-ink-faint" x-text="player.steam"></span>
+                                    </span>
+                                </a>
                             </td>
                             <td class="px-4 py-3">
                                 <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" show-label />
@@ -67,9 +73,11 @@
                                     </div>
                                 </template>
                             </td>
-                            <td class="px-4 py-3" x-text="num(player.kills)"></td>
-                            <td class="px-4 py-3" x-text="playtime(player.playtime)"></td>
-                            <td class="px-4 py-3" x-text="kd(player)"></td>
+                            <td class="px-4 py-3 tabular-nums" x-text="num(player.kills)"></td>
+                            <td class="px-4 py-3 tabular-nums" x-text="playtime(player.playtime)"></td>
+                            <td class="px-4 py-3">
+                                <span class="font-medium tabular-nums" :class="kdColor(player)" x-text="kd(player)"></span>
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <button type="button" x-show="canEdit && editing !== player.steam" @click="startEdit(player)" class="text-xs text-ink-faint hover:text-ink">
                                     {{ __('i18n::messages.ranks.edit_points') }}
@@ -91,10 +99,11 @@
                 <a :href="'/players/' + encodeURIComponent(player.steam)" class="block rounded-xl border border-line bg-surface p-4">
                     <div class="flex items-center gap-3">
                         <span
-                            class="inline-flex size-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-                            :class="player.position <= 3 ? 'bg-brand-soft text-brand-strong' : 'bg-surface-raised text-ink-faint'"
+                            class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ring-1 ring-inset"
+                            :class="medal(player.position)"
                             x-text="player.position"
                         ></span>
+                        <img x-show="player.avatar" :src="player.avatar" alt="" loading="lazy" class="size-9 shrink-0 rounded-full object-cover ring-1 ring-line">
                         <div class="min-w-0 flex-1">
                             <p class="truncate font-medium text-ink" x-text="player.name || '—'"></p>
                             <p class="truncate font-mono text-xs text-ink-faint" x-text="player.steam"></p>
@@ -104,7 +113,7 @@
                     <dl class="mt-3 grid grid-cols-4 gap-2 border-t border-line-soft pt-3 text-center">
                         <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.points') }}</dt><dd class="text-sm font-medium text-ink" x-text="num(player.value)"></dd></div>
                         <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.kills') }}</dt><dd class="text-sm text-ink-muted" x-text="num(player.kills)"></dd></div>
-                        <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.playtime') }}</dt><dd class="text-sm text-ink-muted" x-text="playtime(player.playtime)"></dd></div>
+                        <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.time_on_server') }}</dt><dd class="text-sm text-ink-muted" x-text="playtime(player.playtime)"></dd></div>
                         <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.kd') }}</dt><dd class="text-sm text-ink-muted" x-text="kd(player)"></dd></div>
                     </dl>
                 </a>
@@ -148,6 +157,22 @@
 
                 rankLabel(player) {
                     return this.labels[player.rank_tier?.key] ?? this.labels.unranked;
+                },
+
+                // Gold / silver / bronze for the podium, nothing for the rest.
+                medal(position) {
+                    return {
+                        1: 'bg-amber-400/15 text-amber-300 ring-amber-400/30',
+                        2: 'bg-slate-300/15 text-slate-200 ring-slate-300/30',
+                        3: 'bg-orange-600/15 text-orange-400 ring-orange-600/30',
+                    }[position] ?? 'text-ink-faint ring-transparent';
+                },
+
+                kdColor(player) {
+                    const kd = player.deaths ? player.kills / player.deaths : player.kills;
+                    if (kd >= 1.5) return 'text-emerald-400';
+                    if (kd >= 1) return 'text-ink';
+                    return 'text-ink-faint';
                 },
 
                 num(value) {
