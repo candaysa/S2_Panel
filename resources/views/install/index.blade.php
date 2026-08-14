@@ -8,13 +8,6 @@
         ? asset($settingService->get('favicon'))
         : asset('favicon-32x32.png');
 
-    // Every module except the always-on core ones (auth/install/modules) is
-    // installer-selectable - see InstallController::modules() which applies
-    // the exact same exclusion list when persisting the choice.
-    $installableModules = collect(config('modules.modules', []))
-        ->except(['auth', 'install', 'modules'])
-        ->keys()
-        ->values();
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
@@ -43,7 +36,7 @@
         class="m-auto w-full max-w-2xl"
         x-data="{
             step: 1,
-            steps: ['locale', 'database', 'steam', 'modules', 'complete'],
+            steps: ['locale', 'database', 'steam', 'complete'],
             loading: false,
             error: null,
             integrations: [],
@@ -72,13 +65,7 @@
 
             db: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
 
-            steam: { api_key: '', client_id: '', client_secret: '', callback_url: '', owner_steam_id: '' },
-
-            modules: {
-                @foreach ($installableModules as $key)
-                    {{ $key }}: true,
-                @endforeach
-            },
+            steam: { api_key: '', owner_steam_id: '' },
 
             csrf() {
                 return document.querySelector('meta[name=csrf-token]').content;
@@ -170,25 +157,12 @@
                 }
             },
 
-            async submitModules() {
-                this.loading = true;
-                this.error = null;
-                try {
-                    await this.post('/api/install/modules', this.modules);
-                    this.step = 5;
-                } catch (e) {
-                    this.error = '{{ __('i18n::messages.install.generic_error') }}';
-                } finally {
-                    this.loading = false;
-                }
-            },
-
             async complete() {
                 this.loading = true;
                 this.error = null;
                 try {
                     await this.post('/api/install/complete', {});
-                    window.location.href = '/login';
+                    window.location.href = '/dashboard';
                 } catch (e) {
                     this.error = '{{ __('i18n::messages.install.generic_error') }}';
                     this.loading = false;
@@ -225,7 +199,7 @@
                         throw new Error(key);
                     }
                     this.restoreDone = body.data;
-                    window.location.href = '/login';
+                    window.location.href = '/dashboard';
                 } catch (e) {
                     const messages = @js(collect(['restore_invalid_zip', 'restore_manifest_invalid', 'restore_db_connection_failed', 'restore_failed'])->mapWithKeys(fn ($key) => [$key => __('i18n::messages.install.'.$key)]));
                     this.restoreError = messages[e.message] ?? messages.restore_failed;
@@ -346,11 +320,11 @@
                 <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.step_steam') }}</h2>
                 <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.steam_hint') }}</p>
 
+                {{-- Two fields: Steam OpenID 2.0 has no client id or secret,
+                     and the callback is derived from APP_URL. See the note in
+                     config/services.php. --}}
                 <div class="mt-4 space-y-3">
                     <input type="text" x-model="steam.api_key" placeholder="{{ __('i18n::messages.install.steam_api_key') }}" class="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                    <input type="text" x-model="steam.client_id" placeholder="{{ __('i18n::messages.install.steam_client_id') }}" class="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                    <input type="text" x-model="steam.client_secret" placeholder="{{ __('i18n::messages.install.steam_client_secret') }}" class="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                    <input type="text" x-model="steam.callback_url" placeholder="{{ __('i18n::messages.install.steam_callback_url') }}" class="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
                     <input type="text" x-model="steam.owner_steam_id" placeholder="{{ __('i18n::messages.install.owner_steam_id') }}" class="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
                 </div>
 
@@ -370,43 +344,13 @@
                 </div>
             </div>
 
-            {{-- Step 4: Modules --}}
+            {{-- Step 4: Complete --}}
             <div x-show="step === 4" x-cloak>
-                <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.step_modules') }}</h2>
-                <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.modules_prompt') }}</p>
-
-                <div class="mt-4 grid gap-2 sm:grid-cols-2">
-                    @foreach ($installableModules as $key)
-                        <label class="flex items-center gap-2.5 rounded-lg border border-line-soft px-3 py-2.5 text-sm text-ink-muted transition-colors has-[:checked]:border-brand-strong has-[:checked]:text-ink">
-                            <input type="checkbox" x-model="modules.{{ $key }}" class="size-4 rounded border-line text-brand-strong focus:ring-brand-strong">
-                            {{ \Illuminate\Support\Str::headline($key) }}
-                        </label>
-                    @endforeach
-                </div>
-
-                <div class="mt-6 flex gap-3">
-                    <button type="button" @click="step = 3" class="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
-                        {{ __('i18n::messages.install.back') }}
-                    </button>
-                    <button
-                        type="button"
-                        :disabled="loading"
-                        @click="submitModules()"
-                        class="inline-flex flex-1 items-center justify-center rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
-                    >
-                        <span x-show="!loading">{{ __('i18n::messages.install.next') }}</span>
-                        <span x-show="loading" x-cloak>{{ __('i18n::messages.common.loading') }}</span>
-                    </button>
-                </div>
-            </div>
-
-            {{-- Step 5: Complete --}}
-            <div x-show="step === 5" x-cloak>
                 <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.complete_title') }}</h2>
                 <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.complete_body') }}</p>
 
                 <div class="mt-6 flex gap-3">
-                    <button type="button" @click="step = 4" class="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
+                    <button type="button" @click="step = 3" class="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
                         {{ __('i18n::messages.install.back') }}
                     </button>
                     <button
@@ -424,7 +368,7 @@
             {{-- Plugin tables the database is missing. Shown from the Steam
                  step onward so it stays visible past the screen that produced
                  it, and styled as a warning because installation continues. --}}
-            <div x-show="integrations.length && step > 2 && step < 5" x-cloak class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+            <div x-show="integrations.length && step > 2 && step < 4" x-cloak class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
                 <p class="text-sm font-medium text-amber-400">{{ __('i18n::messages.install.deps_missing_title') }}</p>
                 <p class="mt-0.5 text-xs text-amber-400/80">{{ __('i18n::messages.install.deps_missing_body') }}</p>
                 <ul class="mt-2 space-y-1">

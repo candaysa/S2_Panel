@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('api')->group(function (): void {
-    //
+Route::prefix('api')->middleware('steam.auth')->group(function (): void {
+    // Not a module route: the dashboard reads across several modules and has
+    // to render when any of them is off. See DashboardController.
+    Route::get('dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard.summary');
 });

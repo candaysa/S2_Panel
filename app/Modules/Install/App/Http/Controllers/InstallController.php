@@ -24,8 +24,7 @@ use Throwable;
  * already exempts "api/install/*" while INSTALLED=false.
  *
  * Flow: status → locale (session + owner default) → database (probe +
- * persist) → steam/owner (validate + persist) → modules (persist toggles)
- * → complete (INSTALLED=true).
+ * persist) → steam/owner (validate + persist) → complete (INSTALLED=true).
  *
  * Alternative flow: restoreBackup() replaces every step above at once from
  * a previously-downloaded backup.zip (see Settings > Backup / PanelBackup).
@@ -50,17 +49,22 @@ class InstallController
      */
     private const STEP_KEY = 'INSTALL_STEP';
 
+    private const STEP_LOCALE = 1;
+
     private const STEP_DATABASE = 2;
 
     private const STEP_STEAM = 3;
 
-    private const STEP_MODULES = 4;
-
     /**
      * Wizard screens, in order. Only the count is used server-side, to clamp
      * a restored step; the labels live in the view.
+     *
+     * Module selection is not among them. Which features are on is an ongoing
+     * operational decision, not an installation one, and it already has a
+     * proper home in the owner's Modules tab - asking during setup only forced
+     * a choice before there was anything to base it on.
      */
-    private const STEPS = ['locale', 'database', 'steam', 'modules', 'complete'];
+    private const STEPS = ['locale', 'database', 'steam', 'complete'];
 
     public function __construct(
         private readonly ConnectionProbe $probe,
@@ -112,6 +116,11 @@ class InstallController
 
         $request->session()->put('locale', $locale);
         app(SettingService::class)->set('default_locale', $locale);
+
+        // Recorded like every other step. Without this a refresh right after
+        // choosing a language restarted the wizard, because nothing on the
+        // server knew the step had been completed.
+        (new EnvWriter($this->envPath()))->set([self::STEP_KEY => self::STEP_LOCALE]);
 
         return Api::success(['locale' => $locale]);
     }
@@ -198,10 +207,7 @@ class InstallController
     public function steam(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'api_key' => 'nullable|string',
-            'client_id' => 'nullable|string',
-            'client_secret' => 'nullable|string',
-            'callback_url' => 'nullable|url',
+            'api_key' => 'required|string',
             'owner_steam_id' => 'required|string',
         ]);
 
@@ -215,11 +221,11 @@ class InstallController
             return Api::error(Api::MSG_INVALID_INPUT, ['owner_steam_id' => 'invalid_steam_id'], 422);
         }
 
+        // Two values, because Steam OpenID 2.0 genuinely needs no more.
+        // config/services.php derives the Socialite client secret and the
+        // callback from these; see the note there.
         (new EnvWriter($this->envPath()))->set([
-            'STEAM_API_KEY' => $request->input('api_key'),
-            'STEAM_CLIENT_ID' => $request->input('client_id'),
-            'STEAM_CLIENT_SECRET' => $request->input('client_secret'),
-            'STEAM_CALLBACK_URL' => $request->input('callback_url') ?? config('app.url').'/api/auth/callback',
+            'STEAM_API_KEY' => trim((string) $request->input('api_key')),
             'OWNER_STEAM_ID' => $ownerId,
             self::STEP_KEY => self::STEP_STEAM,
         ]);
@@ -227,37 +233,6 @@ class InstallController
         return Api::success(null);
     }
 
-    /**
-     * POST /api/install/modules
-     *
-     * Body: { admin: true, ban: true, ... } – any module key present is
-     * persisted as MODULE_<KEY>=true/false.
-     */
-    public function modules(Request $request): JsonResponse
-    {
-        $moduleKeys = array_keys(config('modules.modules', []));
-        $values = [];
-
-        foreach ($moduleKeys as $key) {
-            // auth/install/modules/plugins are always-on core plumbing,
-            // not installer-selectable features - see config/modules.php.
-            if (in_array($key, ['auth', 'install', 'modules', 'plugins'], true)) {
-                continue;
-            }
-
-            $envKey = 'MODULE_'.strtoupper($key);
-
-            if ($request->has($key)) {
-                $values[$envKey] = filter_var($request->input($key), FILTER_VALIDATE_BOOLEAN);
-            }
-        }
-
-        $values[self::STEP_KEY] = self::STEP_MODULES;
-
-        (new EnvWriter($this->envPath()))->set($values);
-
-        return Api::success(null, ['written' => array_keys($values)]);
-    }
 
     /**
      * POST /api/install/complete
