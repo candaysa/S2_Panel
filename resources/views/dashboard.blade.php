@@ -35,23 +35,30 @@
                 <a href="{{ route('servers.page') }}" class="text-xs text-ink-faint transition-colors hover:text-brand-strong">{{ __('i18n::messages.dashboard.view_all') }}</a>
             </div>
 
+            {{-- name / map / ip / players / connect, aligned as columns but
+                 with no header row. Fixed track widths rather than a table so
+                 the narrow columns stay put and only the name flexes; map and
+                 ip drop away on small screens instead of squashing the rest. --}}
             <ul class="divide-y divide-line-soft">
                 <template x-for="server in sortedServers" :key="server.id">
-                    <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
+                    <li class="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-4 px-5 py-3 sm:grid-cols-[auto_minmax(0,1fr)_9rem_auto_auto] lg:grid-cols-[auto_minmax(0,1fr)_10rem_11rem_auto_auto]">
                         <span class="size-2 shrink-0 rounded-full" :class="server.online ? 'bg-emerald-400' : 'bg-ink-faint/40'"></span>
-                        <div class="min-w-0 flex-1">
-                            <p class="truncate text-sm font-medium text-ink" x-text="server.live?.name || (server.server_ip + ':' + server.server_port)"></p>
-                            <p class="truncate text-xs text-ink-faint">
-                                <span x-text="server.live?.map || '—'"></span>
-                                <span class="font-mono opacity-70"> &middot; <span x-text="server.server_ip + ':' + server.server_port"></span></span>
-                            </p>
-                        </div>
-                        <span class="shrink-0 text-sm" :class="server.online ? 'text-ink-muted' : 'text-ink-faint'"
+
+                        <p class="min-w-0 truncate text-sm font-medium text-ink" x-text="server.live?.name || (server.server_ip + ':' + server.server_port)"></p>
+
+                        <p class="hidden truncate text-sm text-ink-muted sm:block" x-text="server.live?.map || '—'"></p>
+
+                        <p class="hidden truncate font-mono text-xs text-ink-faint lg:block" x-text="server.server_ip + ':' + server.server_port"></p>
+
+                        <span class="whitespace-nowrap text-right text-sm tabular-nums" :class="server.online ? 'text-ink-muted' : 'text-ink-faint'"
                               x-text="server.live ? server.live.players + ' / ' + server.live.max_players : '—'"></span>
+
                         <a x-show="server.online" :href="'steam://connect/' + server.server_ip + ':' + server.server_port"
-                           class="shrink-0 rounded-lg bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-strong transition-opacity hover:opacity-80">
+                           class="justify-self-end rounded-lg bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-strong transition-opacity hover:opacity-80">
                             {{ __('i18n::messages.servers.connect') }}
                         </a>
+                        {{-- Keeps the grid aligned when a row has no button --}}
+                        <span x-show="!server.online" class="justify-self-end text-xs text-ink-faint">—</span>
                     </li>
                 </template>
             </ul>

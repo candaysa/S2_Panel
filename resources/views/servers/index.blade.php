@@ -82,68 +82,70 @@
         <p x-show="error" x-cloak class="mt-8 text-center text-sm text-red-400">{{ __('i18n::messages.common.error') }}</p>
         <p x-show="!loading && !error && servers.length === 0" x-cloak class="mt-8 rounded-xl border border-line bg-surface px-4 py-10 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.empty') }}</p>
 
-        <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            <template x-for="server in sorted" :key="server.id">
-                <div
-                    class="flex flex-col rounded-xl border bg-surface p-4 transition-colors"
-                    :class="server.online ? 'border-line' : 'border-line-soft opacity-70'"
-                >
-                    <div class="flex items-start gap-2.5">
-                        <span class="mt-1.5 size-2 shrink-0 rounded-full" :class="server.online ? 'bg-emerald-400' : 'bg-ink-faint/40'"></span>
-                        <div class="min-w-0 flex-1">
-                            {{-- Real hostname when the server answered A2S;
-                                 the address is the honest fallback, since a
-                                 name we never received should not be invented. --}}
-                            <p class="truncate font-medium text-ink" x-text="server.live?.name || address(server)"></p>
-                            <p class="truncate font-mono text-xs text-ink-faint" x-text="address(server)"></p>
-                        </div>
-                        <span
-                            class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium"
-                            :class="server.online ? 'bg-emerald-500/10 text-emerald-400' : 'bg-surface-raised text-ink-faint'"
-                            x-text="server.online ? @js(__('i18n::messages.servers.online')) : @js(__('i18n::messages.servers.offline'))"
-                        ></span>
-                    </div>
+        {{-- name / map / ip / players / connect as aligned columns, no header
+             row. Same shape as the dashboard list so the two never look like
+             different features. --}}
+        <div class="mt-5 overflow-hidden rounded-xl border border-line bg-surface">
+            <ul class="divide-y divide-line-soft">
+                <template x-for="server in sorted" :key="server.id">
+                    <li
+                        class="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-4 px-4 py-3 transition-colors hover:bg-surface-raised sm:grid-cols-[auto_minmax(0,1fr)_9rem_auto_auto] lg:grid-cols-[auto_minmax(0,1fr)_10rem_11rem_auto_auto_auto]"
+                        :class="!server.online && 'opacity-60'"
+                    >
+                        <span class="size-2 shrink-0 rounded-full" :class="server.online ? 'bg-emerald-400' : 'bg-ink-faint/40'"></span>
 
-                    <div class="mt-4 flex items-end justify-between gap-3">
+                        {{-- Real hostname when the server answered A2S; the
+                             address is the honest fallback, since a name we
+                             never received should not be invented. --}}
                         <div class="min-w-0">
-                            <p class="text-[11px] uppercase tracking-wider text-ink-faint">{{ __('i18n::messages.servers.map') }}</p>
-                            <p class="truncate text-sm text-ink-muted" x-text="server.live?.map || '—'"></p>
+                            <p class="truncate text-sm font-medium text-ink" x-text="server.live?.name || address(server)"></p>
+                            {{-- Map and ip collapse into the name cell on the
+                                 narrow layouts where their columns are gone. --}}
+                            <p class="truncate text-xs text-ink-faint sm:hidden">
+                                <span x-text="server.live?.map || '—'"></span>
+                                <span class="font-mono opacity-70"> &middot; <span x-text="address(server)"></span></span>
+                            </p>
+                            <p class="hidden truncate font-mono text-xs text-ink-faint sm:block lg:hidden" x-text="address(server)"></p>
                         </div>
-                        <div class="text-right">
-                            <p class="text-[11px] uppercase tracking-wider text-ink-faint">{{ __('i18n::messages.servers.players') }}</p>
-                            <p class="text-sm font-medium text-ink" x-text="server.live ? server.live.players + ' / ' + server.live.max_players : '—'"></p>
+
+                        <p class="hidden truncate text-sm text-ink-muted sm:block" x-text="server.live?.map || '—'"></p>
+
+                        <p class="hidden truncate font-mono text-xs text-ink-faint lg:block" x-text="address(server)"></p>
+
+                        <div class="whitespace-nowrap text-right">
+                            <p class="text-sm tabular-nums" :class="server.online ? 'text-ink-muted' : 'text-ink-faint'"
+                               x-text="server.live ? server.live.players + ' / ' + server.live.max_players : '—'"></p>
+                            <div class="mt-1 h-1 w-16 overflow-hidden rounded-full bg-surface-raised">
+                                <div class="h-full rounded-full bg-brand-strong transition-all" :style="'width:' + fill(server) + '%'"></div>
+                            </div>
                         </div>
-                    </div>
 
-                    {{-- Slot fill, so a busy server reads at a glance --}}
-                    <div class="mt-2 h-1 overflow-hidden rounded-full bg-surface-raised">
-                        <div class="h-full rounded-full bg-brand-strong transition-all" :style="'width:' + fill(server) + '%'"></div>
-                    </div>
-
-                    <div class="mt-4 flex gap-2">
                         {{-- steam://connect hands off to the game client. Only
                              offered when the server actually answered - a
                              connect button for a dead host is a dead end. --}}
                         <a
                             x-show="server.online"
                             :href="'steam://connect/' + address(server)"
-                            class="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
+                            class="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-strong px-3 py-1.5 text-sm font-medium text-canvas transition-opacity hover:opacity-90"
                         >
                             <x-icon name="play" class="size-4" />
-                            {{ __('i18n::messages.servers.connect') }}
+                            <span class="hidden sm:inline">{{ __('i18n::messages.servers.connect') }}</span>
                         </a>
+                        <span x-show="!server.online" class="justify-self-end text-xs text-ink-faint">
+                            {{ __('i18n::messages.servers.offline') }}
+                        </span>
+
                         <button
                             type="button"
                             @click="copy(server)"
-                            class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
-                            :class="!server.online && 'flex-1'"
+                            class="hidden items-center justify-center rounded-lg border border-line p-1.5 text-ink-faint transition-colors hover:bg-surface-raised hover:text-ink lg:inline-flex"
+                            :title="copied === server.id ? @js(__('i18n::messages.servers.copied')) : @js(__('i18n::messages.servers.copy_ip'))"
                         >
                             <x-icon name="copy" class="size-4" />
-                            <span x-text="copied === server.id ? @js(__('i18n::messages.servers.copied')) : @js(__('i18n::messages.servers.copy_ip'))"></span>
                         </button>
-                    </div>
-                </div>
-            </template>
+                    </li>
+                </template>
+            </ul>
         </div>
     </div>
 

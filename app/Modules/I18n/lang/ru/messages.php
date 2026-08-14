@@ -62,6 +62,7 @@ return [
         'kd' => 'K/D',
         'recent_bans' => 'Последние баны',
         'recent_mutes' => 'Последние муты',
+        'view_all' => 'Показать все',
     ],
     'theme' => [
         'appearance' => 'Внешний вид',

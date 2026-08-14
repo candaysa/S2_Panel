@@ -62,6 +62,7 @@ return [
         'kd' => 'K/D',
         'recent_bans' => 'Son banlar',
         'recent_mutes' => 'Son susturmalar',
+        'view_all' => 'Tümünü gör',
     ],
     'theme' => [
         'appearance' => 'Görünüm',
