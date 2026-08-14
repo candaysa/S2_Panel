@@ -19,7 +19,6 @@ Route::prefix('api/install')->group(function (): void {
     Route::post('locale', [InstallController::class, 'locale'])->name('install.locale');
     Route::post('database', [InstallController::class, 'database'])->name('install.database');
     Route::post('steam', [InstallController::class, 'steam'])->name('install.steam');
-    Route::post('modules', [InstallController::class, 'modules'])->name('install.modules');
     Route::post('complete', [InstallController::class, 'complete'])->name('install.complete');
     Route::post('restore-backup', [InstallController::class, 'restoreBackup'])->name('install.restore-backup');
 });

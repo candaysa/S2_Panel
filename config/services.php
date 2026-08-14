@@ -40,15 +40,22 @@ return [
     | Steam OpenID (Socialite)
     |--------------------------------------------------------------------------
     |
-    | STEAM_API_KEY is only used to enrich the profile (nickname/avatar);
-    | login itself works without a key via OpenID.
+    | Steam OpenID 2.0 has no client id and no client secret. Socialite's
+    | interface asks for both anyway, and its Steam provider repurposes
+    | client_secret as the Web API key - it is interpolated straight into the
+    | GetPlayerSummaries URL. Everything therefore comes from STEAM_API_KEY,
+    | so there is one value to obtain and one place it can be wrong.
+    |
+    | The callback defaults to APP_URL, which is where it has to point;
+    | STEAM_CALLBACK_URL only exists for installations serving the panel from
+    | a different external address than the app knows about.
     |
     */
 
     'steam' => [
-        'client_id' => env('STEAM_CLIENT_ID'),
-        'client_secret' => env('STEAM_CLIENT_SECRET'),
-        'redirect' => env('STEAM_CALLBACK_URL'),
+        'client_id' => null,
+        'client_secret' => env('STEAM_API_KEY'),
+        'redirect' => env('STEAM_CALLBACK_URL', rtrim((string) env('APP_URL'), '/').'/api/auth/callback'),
         'api_key' => env('STEAM_API_KEY'),
     ],
 

@@ -189,6 +189,13 @@
         </svg>
         @break
 
+    @case('mute')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <path d="M10.5 5.5 7 8.5H4.5v6H7l3.5 3z" />
+            <path d="m15.5 9.5 4 4M19.5 9.5l-4 4" />
+        </svg>
+        @break
+
     @case('shield')
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
             <path d="M12 3.25 5 6v5.5c0 4 2.9 7.6 7 9.25 4.1-1.65 7-5.25 7-9.25V6z" />
