@@ -395,4 +395,23 @@ return [
         'invalid' => 'Gültige IP und Port eingeben.',
         'last_seen' => 'Zuletzt gesehen',
     ],
+
+    'update' => [
+        'title' => 'Update verfügbar',
+        'later' => 'Später',
+        'install_now' => 'Jetzt installieren',
+        'installing' => 'Wird installiert…',
+        'finalising' => 'Wird abgeschlossen…',
+        'done' => 'Aktualisiert. Neu laden…',
+        'failed' => 'Update fehlgeschlagen.',
+        'full_notes' => 'Vollständige Release Notes',
+        'cannot_install' => 'Dieser Server kann das Update nicht automatisch installieren:',
+        'no_asset' => 'Dem Release ist kein installierbares Paket beigefügt.',
+        'check_install_writable' => 'Installationsverzeichnis ist für den Webserver nicht beschreibbar',
+        'check_parent_writable' => 'Übergeordnetes Verzeichnis ist nicht beschreibbar',
+        'check_storage_writable' => 'storage/app ist nicht beschreibbar',
+        'check_tar_available' => 'tar wurde auf diesem Server nicht gefunden',
+        'check_disk_space' => 'Nicht genug freier Speicherplatz',
+        'check_updates_enabled' => 'Updates sind in der Konfiguration deaktiviert',
+    ],
 ];

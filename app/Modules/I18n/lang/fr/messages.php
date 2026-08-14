@@ -395,4 +395,23 @@ return [
         'invalid' => 'Saisissez une IP et un port valides.',
         'last_seen' => 'Vu pour la dernière fois',
     ],
+
+    'update' => [
+        'title' => 'Mise à jour disponible',
+        'later' => 'Plus tard',
+        'install_now' => 'Installer',
+        'installing' => 'Installation…',
+        'finalising' => 'Finalisation…',
+        'done' => 'Mis à jour. Rechargement…',
+        'failed' => 'Échec de la mise à jour.',
+        'full_notes' => 'Notes de version complètes',
+        'cannot_install' => 'Ce serveur ne peut pas installer la mise à jour automatiquement :',
+        'no_asset' => 'Aucun paquet installable joint à cette version.',
+        'check_install_writable' => "Le répertoire d'installation n'est pas accessible en écriture",
+        'check_parent_writable' => "Le répertoire parent n'est pas accessible en écriture",
+        'check_storage_writable' => "storage/app n'est pas accessible en écriture",
+        'check_tar_available' => 'tar est introuvable sur ce serveur',
+        'check_disk_space' => 'Espace disque insuffisant',
+        'check_updates_enabled' => 'Les mises à jour sont désactivées',
+    ],
 ];

@@ -395,4 +395,23 @@ return [
         'invalid' => 'Enter a valid IP and port.',
         'last_seen' => 'Last seen',
     ],
+
+    'update' => [
+        'title' => 'Update available',
+        'later' => 'Later',
+        'install_now' => 'Install now',
+        'installing' => 'Installing…',
+        'finalising' => 'Finalising…',
+        'done' => 'Updated. Reloading…',
+        'failed' => 'Update failed.',
+        'full_notes' => 'Full release notes',
+        'cannot_install' => 'This server cannot install the update automatically:',
+        'no_asset' => 'The release has no installable bundle attached.',
+        'check_install_writable' => 'The install directory is not writable by the web server',
+        'check_parent_writable' => 'The parent directory is not writable by the web server',
+        'check_storage_writable' => 'storage/app is not writable',
+        'check_tar_available' => 'tar was not found on this server',
+        'check_disk_space' => 'Not enough free disk space',
+        'check_updates_enabled' => 'Updates are disabled in configuration',
+    ],
 ];

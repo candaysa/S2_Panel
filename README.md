@@ -229,7 +229,53 @@ also needs a worker (or set `QUEUE_CONNECTION=sync` to send them inline):
 php artisan queue:work --queue=default
 ```
 
-### Upgrading
+### Updating from the panel
+
+The panel checks GitHub Releases and offers the owner a one-click update.
+Two rules make that safe, and both are on the release side:
+
+**1. Attach a built bundle, not the source.** GitHub's auto-generated
+source archive has no `vendor/` and no compiled `public/build`, so
+installing it would leave the panel unbootable on any server without
+Composer and Node. The updater therefore ignores the source tarball and
+only installs an asset matching `s2panel-*.tar.gz`. Build it the same way
+you would deploy:
+
+```bash
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+tar -czf s2panel-1.2.3.tar.gz \
+    --exclude='./node_modules' --exclude='./.git' --exclude='./.env' \
+    --exclude='./storage/logs/*' --exclude='./storage/framework/cache/data/*' \
+    --exclude='./storage/framework/sessions/*' --exclude='./storage/framework/views/*' .
+```
+
+Attach that file to the release. The updater refuses any bundle missing
+`vendor/`, `public/build/manifest.json`, or whose `composer.json` name does
+not match the running panel.
+
+**2. Bump `version` in `config/panel.php`** in the same commit you tag.
+The panel compares that value against the release tag, so a release tagged
+`v1.2.3` against a config still saying `1.2.2` is what triggers the prompt.
+
+What an update does and does not touch:
+
+| | |
+|---|---|
+| Replaced | application code, `vendor/`, `public/build` |
+| Preserved | `.env`, `storage/` (logs, sessions, uploads) |
+| Database | `migrate --force` only — forward, additive, never a rollback |
+| Rollback | the previous install is kept as `<dir>_pre-update_<timestamp>` |
+
+The web server user needs write access to the install directory **and its
+parent** (the swap creates a sibling directory). On a deployment where
+those are root-owned, the panel reports exactly which check failed instead
+of offering a button that cannot work — update manually with the steps
+below in that case.
+
+Set `PANEL_UPDATE_ENABLED=false` to turn the whole thing off.
+
+### Upgrading manually
 
 ```bash
 git pull

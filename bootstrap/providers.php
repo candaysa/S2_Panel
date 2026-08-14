@@ -18,6 +18,7 @@ use App\Modules\Server\ServerServiceProvider;
 use App\Modules\Settings\SettingsServiceProvider;
 use App\Modules\Skin\SkinServiceProvider;
 use App\Modules\Stats\StatsServiceProvider;
+use App\Modules\Updater\UpdaterServiceProvider;
 use App\Modules\Vip\VipServiceProvider;
 use App\Modules\Webhook\WebhookServiceProvider;
 use App\Providers\AppServiceProvider;
@@ -44,4 +45,5 @@ return [
     HealthServiceProvider::class,
     WebhookServiceProvider::class,
     CheatCheckServiceProvider::class,
+    UpdaterServiceProvider::class,
 ];
