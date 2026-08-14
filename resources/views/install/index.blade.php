@@ -53,10 +53,7 @@
 
             locale: '{{ app()->getLocale() }}',
 
-            db: {
-                panel: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
-                plugins: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
-            },
+            db: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
 
             steam: { api_key: '', client_id: '', client_secret: '', callback_url: '', owner_steam_id: '' },
 
@@ -126,11 +123,13 @@
                 this.loading = true;
                 this.error = null;
                 try {
-                    await this.post('/api/install/database', this.db);
+                    await this.post('/api/install/database', { connection: this.db });
                     this.step = 3;
                 } catch (e) {
+                    // A single connection is submitted now, so naming it back
+                    // adds nothing - report the failure on its own.
                     this.error = e.data?.message === 'database_connection_failed'
-                        ? '{{ __('i18n::messages.install.db_connection_failed') }}: ' + (e.data.errors?.connections ?? []).join(', ')
+                        ? '{{ __('i18n::messages.install.db_connection_failed') }}'
                         : '{{ __('i18n::messages.install.generic_error') }}';
                 } finally {
                     this.loading = false;
@@ -292,31 +291,16 @@
                 <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.step_database') }}</h2>
                 <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.db_hint') }}</p>
 
-                {{-- Two blocks, not five. Swiftly, CS2_Admin, CS2_Ranks, the
-                     weapon skins plugin and VIPCore all share one database, so
-                     they are asked for once and fanned out to the four
-                     connections server-side (InstallController::database).
-                     The panel stays separate because its own migrations create
-                     tables - users, sessions, reports - that already exist in a
-                     live Swiftly database. --}}
-                <div class="mt-4 space-y-5">
-                    @foreach ([
-                        'panel' => [__('i18n::messages.install.db_panel_label'), __('i18n::messages.install.db_panel_hint')],
-                        'plugins' => [__('i18n::messages.install.db_plugins_label'), __('i18n::messages.install.db_plugins_hint')],
-                    ] as $connKey => [$connLabel, $connHint])
-                        <fieldset class="rounded-lg border border-line-soft p-4">
-                            <legend class="px-1 text-sm font-medium text-ink">{{ $connLabel }}</legend>
-                            <p class="mb-3 text-xs text-ink-faint">{{ $connHint }}</p>
-
-                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                                <input type="text" x-model="db.{{ $connKey }}.host" placeholder="{{ __('i18n::messages.install.db_host') }}" class="col-span-2 rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none sm:col-span-1">
-                                <input type="text" x-model="db.{{ $connKey }}.port" placeholder="{{ __('i18n::messages.install.db_port') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                                <input type="text" x-model="db.{{ $connKey }}.database" placeholder="{{ __('i18n::messages.install.db_database') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                                <input type="text" x-model="db.{{ $connKey }}.username" placeholder="{{ __('i18n::messages.install.db_username') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                                <input type="password" x-model="db.{{ $connKey }}.password" placeholder="{{ __('i18n::messages.install.db_password') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                            </div>
-                        </fieldset>
-                    @endforeach
+                {{-- One block. The plugins already share a database and the
+                     panel stores its tables in the same one, so the credentials
+                     are entered once and fanned out to every connection
+                     server-side (InstallController::database). --}}
+                <div class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <input type="text" x-model="db.host" placeholder="{{ __('i18n::messages.install.db_host') }}" class="col-span-2 rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none sm:col-span-1">
+                    <input type="text" x-model="db.port" placeholder="{{ __('i18n::messages.install.db_port') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
+                    <input type="text" x-model="db.database" placeholder="{{ __('i18n::messages.install.db_database') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
+                    <input type="text" x-model="db.username" placeholder="{{ __('i18n::messages.install.db_username') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
+                    <input type="password" x-model="db.password" placeholder="{{ __('i18n::messages.install.db_password') }}" class="col-span-2 rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none sm:col-span-4">
                 </div>
 
                 <div class="mt-6 flex gap-3">
