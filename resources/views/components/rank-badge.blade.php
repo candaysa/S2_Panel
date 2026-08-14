@@ -10,9 +10,13 @@
 
 <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-2']) }}>
     <template x-if="({{ $rank }}?.index ?? 0) > 0">
+        {{-- When the label is rendered beside it the plate is decorative, so
+             alt is empty: otherwise the rank name is announced twice by a
+             screen reader and appears twice when the page is copied as text. --}}
         <img
             :src="'/images/ranks/' + {{ $rank }}.index + '.png'"
-            :alt="{{ $label }}"
+            alt="{{ $showLabel ? '' : '' }}"
+            @if (! $showLabel) :alt="{{ $label }}" @endif
             :title="{{ $label }}"
             class="{{ $height }} w-auto shrink-0"
             loading="lazy"

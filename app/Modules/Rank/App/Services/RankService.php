@@ -98,6 +98,10 @@ class RankService
         $player->setAttribute('position', $position);
         $player->setAttribute('rank_tier', $this->tier($player));
 
+        $profile = SteamProfiles::many([$steam])[$steam] ?? null;
+        $player->setAttribute('avatar', $profile['avatar'] ?? null);
+        $player->setAttribute('profile_url', $profile['profile_url'] ?? null);
+
         return [
             'player' => $player,
             'hits' => RankHit::query()->where('SteamID', $steam)->first(),

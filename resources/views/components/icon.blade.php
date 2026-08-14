@@ -203,6 +203,20 @@
         </svg>
         @break
 
+    @case('search')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <circle cx="10.5" cy="10.5" r="6" />
+            <path d="m15 15 4.5 4.5" />
+        </svg>
+        @break
+
+    @case('crosshair')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <circle cx="12" cy="12" r="7.5" />
+            <path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4" />
+        </svg>
+        @break
+
     @case('chevron-left')
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
             <path d="m14.5 5.5-7 6.5 7 6.5" />

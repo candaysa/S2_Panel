@@ -11,14 +11,27 @@
         x-init="init()"
     >
         <div class="flex flex-wrap items-center justify-between gap-4">
-            <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.ranks') }}</h1>
-            <input
-                type="search"
-                x-model.debounce.400ms="search"
-                @input="load()"
-                placeholder="{{ __('i18n::messages.common.search') }}"
-                class="w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none sm:w-64"
-            >
+            <div>
+                <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.ranks') }}</h1>
+                <p class="mt-1 text-sm text-ink-faint" x-show="!loading" x-cloak>
+                    <span x-text="rangeFrom"></span>&ndash;<span x-text="rangeTo"></span>
+                    <span class="opacity-70">/</span>
+                    <span x-text="total.toLocaleString()"></span>
+                    {{ __('i18n::messages.ranks.players_total') }}
+                </p>
+            </div>
+            <div class="relative w-full sm:w-72">
+                <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-faint">
+                    <x-icon name="search" class="size-4" />
+                </span>
+                <input
+                    type="search"
+                    x-model.debounce.400ms="search"
+                    @input="load(true)"
+                    placeholder="{{ __('i18n::messages.ranks.search_placeholder') }}"
+                    class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none"
+                >
+            </div>
         </div>
 
         {{-- Desktop: table. Mobile: the same rows as cards, since eight
@@ -122,6 +135,46 @@
             <p x-show="loading" x-cloak class="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
             <p x-show="!loading && !error && players.length === 0" x-cloak class="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.empty') }}</p>
         </div>
+
+        {{-- Pagination. Hidden when everything fits on one page, so a small
+             server never sees controls it has no use for. --}}
+        <div x-show="!loading && lastPage > 1" x-cloak class="mt-4 flex flex-wrap items-center justify-center gap-1">
+            <button
+                type="button"
+                @click="go(page - 1)"
+                :disabled="page === 1"
+                class="inline-flex size-9 items-center justify-center rounded-lg border border-line text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink disabled:pointer-events-none disabled:opacity-40"
+                aria-label="{{ __('i18n::messages.ranks.previous_page') }}"
+            >
+                <x-icon name="chevron-left" class="size-4" />
+            </button>
+
+            <template x-for="(n, i) in pageNumbers" :key="'p' + i">
+                <span>
+                    <span x-show="n === '…'" class="inline-flex size-9 items-center justify-center text-ink-faint">…</span>
+                    <button
+                        type="button"
+                        x-show="n !== '…'"
+                        @click="go(n)"
+                        class="inline-flex min-w-9 items-center justify-center rounded-lg border px-2.5 py-2 text-sm font-medium transition-colors"
+                        :class="n === page
+                            ? 'border-brand-strong bg-brand-soft text-brand-strong'
+                            : 'border-line text-ink-muted hover:bg-surface-raised hover:text-ink'"
+                        x-text="n"
+                    ></button>
+                </span>
+            </template>
+
+            <button
+                type="button"
+                @click="go(page + 1)"
+                :disabled="page === lastPage"
+                class="inline-flex size-9 items-center justify-center rounded-lg border border-line text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink disabled:pointer-events-none disabled:opacity-40"
+                aria-label="{{ __('i18n::messages.ranks.next_page') }}"
+            >
+                <x-icon name="chevron-left" class="size-4 rotate-180" />
+            </button>
+        </div>
     </div>
 
     @push('scripts')
@@ -138,21 +191,70 @@
 
                 labels: @js(__('i18n::messages.rank_tiers')),
 
-                async load() {
+                page: 1,
+                perPage: 50,
+                total: 0,
+                lastPage: 1,
+
+                async load(resetPage = false) {
+                    // Any change to the filter has to send the reader back to
+                    // page 1, or a search from page 7 lands on an empty page.
+                    if (resetPage) this.page = 1;
+
                     this.loading = true;
                     this.error = false;
                     try {
                         const url = new URL('/api/ranks', window.location.origin);
-                        url.searchParams.set('per_page', '50');
+                        url.searchParams.set('per_page', String(this.perPage));
+                        url.searchParams.set('page', String(this.page));
                         if (this.search) url.searchParams.set('search', this.search);
                         const res = await fetch(url, { headers: { Accept: 'application/json' } });
                         if (!res.ok) throw new Error('request_failed');
-                        this.players = (await res.json()).data;
+                        const body = await res.json();
+                        this.players = body.data;
+                        const p = body.meta?.pagination ?? {};
+                        this.total = p.total ?? body.data.length;
+                        this.lastPage = p.last_page ?? 1;
+                        this.page = p.current_page ?? this.page;
                     } catch (e) {
                         this.error = true;
                     } finally {
                         this.loading = false;
                     }
+                },
+
+                go(page) {
+                    if (page < 1 || page > this.lastPage || page === this.page) return;
+                    this.page = page;
+                    this.load();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+
+                // A short window around the current page plus the two ends,
+                // so 60 pages do not render 60 buttons.
+                get pageNumbers() {
+                    const span = 2;
+                    const pages = new Set([1, this.lastPage]);
+                    for (let i = this.page - span; i <= this.page + span; i++) {
+                        if (i >= 1 && i <= this.lastPage) pages.add(i);
+                    }
+                    const sorted = [...pages].sort((a, b) => a - b);
+                    const out = [];
+                    let prev = 0;
+                    for (const n of sorted) {
+                        if (prev && n - prev > 1) out.push('…');
+                        out.push(n);
+                        prev = n;
+                    }
+                    return out;
+                },
+
+                get rangeFrom() {
+                    return this.total === 0 ? 0 : (this.page - 1) * this.perPage + 1;
+                },
+
+                get rangeTo() {
+                    return Math.min(this.page * this.perPage, this.total);
                 },
 
                 rankLabel(player) {
