@@ -22,6 +22,7 @@ return [
         'webhooks' => 'Webhooks',
         'stats' => 'Statistiques',
         'modules' => 'Modules',
+        'plugins' => 'Extensions',
         'settings' => 'Réglages',
         'logout' => 'Déconnexion',
     ],
@@ -239,6 +240,13 @@ return [
         'total_servers' => 'Serveurs au total',
         'open_tickets' => 'Tickets ouverts',
         'total_users' => 'Utilisateurs du panel',
+    ],
+    'plugins' => [
+        'subtitle' => 'Installez des extensions tierces sous forme de .zip, directement depuis le panel.',
+        'upload_zip' => 'Téléverser une extension (.zip)',
+        'uninstall' => 'Désinstaller',
+        'uninstall_confirm' => 'Désinstaller cette extension ? Ses fichiers seront supprimés. Action irréversible.',
+        'trust_note' => 'Une extension est du code que vous choisissez d\'exécuter, comme une extension WordPress ou un module WHMCS. N\'installez que des .zip provenant de sources fiables.',
     ],
     'appeals' => [
         'status_pending' => 'En attente',

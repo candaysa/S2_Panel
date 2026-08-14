@@ -41,6 +41,17 @@ return [
             'depends' => [],
         ],
 
+        // Owner-facing plugin management (the "Plugins" tab): lets the
+        // owner upload/enable/disable/remove third-party .zip plugins at
+        // runtime. Always on for the same reason "modules" is - it's how
+        // installed plugins get discovered in the first place. See
+        // PluginManager and AppServiceProvider::register().
+        'plugins' => [
+            'enabled' => true,
+            'provider' => App\Modules\Plugins\PluginsServiceProvider::class,
+            'depends' => [],
+        ],
+
         'admin' => [
             'enabled' => env('MODULE_ADMIN', false),
             'provider' => App\Modules\Admin\AdminServiceProvider::class,

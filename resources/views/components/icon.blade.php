@@ -45,6 +45,13 @@
         </svg>
         @break
 
+    @case('upload')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <path d="M12 15.5V4.5M8 8.5 12 4.5l4 4" />
+            <path d="M4.5 15.5v3a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3" />
+        </svg>
+        @break
+
     @case('trophy')
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
             <path d="M7 4.5h10v5a5 5 0 0 1-10 0Z" />

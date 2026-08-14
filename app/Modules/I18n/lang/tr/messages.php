@@ -22,6 +22,7 @@ return [
         'webhooks' => 'Webhooklar',
         'stats' => 'İstatistikler',
         'modules' => 'Modüller',
+        'plugins' => 'Eklentiler',
         'settings' => 'Ayarlar',
         'logout' => 'Çıkış',
     ],
@@ -239,6 +240,13 @@ return [
         'total_servers' => 'Toplam sunucu',
         'open_tickets' => 'Açık talepler',
         'total_users' => 'Panel kullanıcıları',
+    ],
+    'plugins' => [
+        'subtitle' => 'Üçüncü parti eklentileri doğrudan panelden .zip olarak yükleyin.',
+        'upload_zip' => 'Eklenti yükle (.zip)',
+        'uninstall' => 'Kaldır',
+        'uninstall_confirm' => 'Bu eklenti kaldırılsın mı? Dosyaları silinecek. Bu işlem geri alınamaz.',
+        'trust_note' => 'Bir eklenti, çalıştırmayı seçtiğiniz koddur — tıpkı bir WordPress eklentisi veya WHMCS modülü gibi. Sadece güvendiğiniz kaynaklardan gelen .zip dosyalarını yükleyin.',
     ],
     'appeals' => [
         'status_pending' => 'Beklemede',

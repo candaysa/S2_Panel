@@ -191,9 +191,9 @@ class InstallController
         $values = [];
 
         foreach ($moduleKeys as $key) {
-            // auth/install/modules are always-on core plumbing, not
-            // installer-selectable features - see config/modules.php.
-            if ($key === 'auth' || $key === 'install' || $key === 'modules') {
+            // auth/install/modules/plugins are always-on core plumbing,
+            // not installer-selectable features - see config/modules.php.
+            if (in_array($key, ['auth', 'install', 'modules', 'plugins'], true)) {
                 continue;
             }
 

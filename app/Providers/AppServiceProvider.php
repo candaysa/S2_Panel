@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Modules\Plugins\App\Services\PluginManager;
 use App\Support\ModuleRegistry;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Throwable;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +26,55 @@ class AppServiceProvider extends ServiceProvider
         // (bootstrap/providers.php), so this is bound before anything else
         // can ask for it.
         $this->app->singleton(ModuleRegistry::class);
+
+        $this->registerInstalledPlugins();
+    }
+
+    /**
+     * Third-party plugins (see PluginManager) aren't compiled into
+     * bootstrap/providers.php like the panel's own built-in modules - they
+     * are discovered from the plugin_installs table and registered here,
+     * dynamically, on every request. This has to run during THIS request's
+     * register() phase (not boot()) so each plugin's own register() *and*
+     * boot() both run through Laravel's normal provider lifecycle exactly
+     * like every other provider.
+     *
+     * Raw query builder (not the PluginInstall Eloquent model): Eloquent's
+     * connection resolver isn't wired up until DatabaseServiceProvider's
+     * boot() runs, which hasn't happened yet at this point in the register
+     * pass. The query builder only needs the "db" manager, which - being a
+     * framework service registered before any app provider - is already
+     * available. Either way, this must tolerate plugin_installs not
+     * existing yet (fresh checkout, pre-migrate): any failure here just
+     * means no plugins load for this request, never a 500.
+     */
+    private function registerInstalledPlugins(): void
+    {
+        try {
+            $plugins = DB::table('plugin_installs')
+                ->where('enabled', true)
+                ->get(['key', 'provider_class']);
+        } catch (Throwable) {
+            return;
+        }
+
+        foreach ($plugins as $plugin) {
+            if (! is_string($plugin->provider_class) || ! class_exists($plugin->provider_class)) {
+                continue;
+            }
+
+            try {
+                // See PluginManager::activateInRegistry() - this is what
+                // makes ModuleServiceProvider::moduleEnabled() (which only
+                // knows about config('modules.modules')) treat this plugin
+                // as enabled, exactly like a built-in module.
+                PluginManager::activateInRegistry($plugin->key, $plugin->provider_class);
+                $this->app->register($plugin->provider_class);
+            } catch (Throwable) {
+                // A broken/removed plugin must never take the whole panel
+                // down - skip it and let the other providers register.
+            }
+        }
     }
 
     /**

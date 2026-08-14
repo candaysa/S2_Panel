@@ -22,6 +22,7 @@ return [
         'webhooks' => 'Webhook',
         'stats' => 'Statistiche',
         'modules' => 'Moduli',
+        'plugins' => 'Plugin',
         'settings' => 'Impostazioni',
         'logout' => 'Esci',
     ],
@@ -239,6 +240,13 @@ return [
         'total_servers' => 'Server totali',
         'open_tickets' => 'Ticket aperti',
         'total_users' => 'Utenti del pannello',
+    ],
+    'plugins' => [
+        'subtitle' => 'Installa plugin di terze parti come file .zip, direttamente dal pannello.',
+        'upload_zip' => 'Carica plugin (.zip)',
+        'uninstall' => 'Disinstalla',
+        'uninstall_confirm' => 'Disinstallare questo plugin? I suoi file verranno eliminati. Azione irreversibile.',
+        'trust_note' => 'Un plugin è codice che scegli di eseguire, esattamente come un plugin WordPress o un modulo WHMCS - installa solo file .zip da fonti attendibili.',
     ],
     'appeals' => [
         'status_pending' => 'In attesa',

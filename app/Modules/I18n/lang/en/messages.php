@@ -22,6 +22,7 @@ return [
         'webhooks' => 'Webhooks',
         'stats' => 'Stats',
         'modules' => 'Modules',
+        'plugins' => 'Plugins',
         'settings' => 'Settings',
         'logout' => 'Logout',
     ],
@@ -239,6 +240,13 @@ return [
         'total_servers' => 'Total servers',
         'open_tickets' => 'Open tickets',
         'total_users' => 'Panel users',
+    ],
+    'plugins' => [
+        'subtitle' => 'Install third-party plugins as a .zip, right from the panel.',
+        'upload_zip' => 'Upload plugin (.zip)',
+        'uninstall' => 'Uninstall',
+        'uninstall_confirm' => 'Uninstall this plugin? Its files will be deleted. This cannot be undone.',
+        'trust_note' => 'A plugin is code you choose to run, exactly like a WordPress plugin or a WHMCS module - only install .zips from sources you trust.',
     ],
     'appeals' => [
         'status_pending' => 'Pending',

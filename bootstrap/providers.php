@@ -9,6 +9,7 @@ use App\Modules\Health\HealthServiceProvider;
 use App\Modules\I18n\I18nServiceProvider;
 use App\Modules\Install\InstallServiceProvider;
 use App\Modules\Modules\ModulesServiceProvider;
+use App\Modules\Plugins\PluginsServiceProvider;
 use App\Modules\Rank\RankServiceProvider;
 use App\Modules\Rcon\RconServiceProvider;
 use App\Modules\Report\ReportServiceProvider;
@@ -25,6 +26,7 @@ return [
     AuthServiceProvider::class,
     InstallServiceProvider::class,
     ModulesServiceProvider::class,
+    PluginsServiceProvider::class,
     AdminServiceProvider::class,
     BanServiceProvider::class,
     RankServiceProvider::class,
