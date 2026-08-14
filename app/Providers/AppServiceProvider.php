@@ -7,8 +7,11 @@ use App\Support\ModuleRegistry;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use SocialiteProviders\Manager\SocialiteWasCalled;
+use SocialiteProviders\Steam\Provider as SteamProvider;
 use Throwable;
 
 class AppServiceProvider extends ServiceProvider
@@ -82,6 +85,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Socialite ships no "steam" driver - socialiteproviders/steam adds
+        // one, but only if something listens for SocialiteWasCalled and
+        // extends the manager. Nothing did, so every login attempt died with
+        // "Driver [steam] not supported" the moment anyone clicked through:
+        // a 500 on /api/auth/redirect that made the panel impossible to sign
+        // into at all. The package documents an $listen entry on the old
+        // EventServiceProvider, which this skeleton does not have.
+        Event::listen(function (SocialiteWasCalled $event): void {
+            $event->extendSocialite('steam', SteamProvider::class);
+        });
+
         // General API protection: 120 requests/minute per IP (or user id).
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(120)->by($request->user()?->id ?? $request->ip());

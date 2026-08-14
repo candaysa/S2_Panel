@@ -33,16 +33,9 @@
         ]],
     ];
 
-    $user = auth()->user();
-    $isOwner = $user?->isOwner() ?? false;
-    $userFlags = [];
-    if ($user && ! $isOwner) {
-        try {
-            $userFlags = \App\Support\Flags::for((int) $user->steam_id)['flags'] ?? [];
-        } catch (\Throwable) {
-            $userFlags = [];
-        }
-    }
+    $user = \App\Support\Access::user();
+    $isOwner = \App\Support\Access::isOwner();
+    $userFlags = $isOwner ? [] : \App\Support\Access::flags();
 
     $canSee = function (?array $gate) use ($user, $isOwner, $userFlags): bool {
         if ($gate === null) {
@@ -89,14 +82,14 @@
 >
     <div class="flex items-center gap-3 px-5 py-4 border-b border-line">
         <img src="{{ $siteLogo }}" alt="{{ $siteName }}" class="size-8 shrink-0 object-contain">
-        <span class="text-[15px] font-semibold text-ink truncate">{{ $siteName }}</span>
+        <span class="text-base font-semibold text-ink truncate">{{ $siteName }}</span>
         <x-theme-toggle class="ml-auto" />
     </div>
 
     <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-4">
         @foreach ($visibleGroups as [$sectionLabel, $items])
             <div>
-                <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
+                <p class="px-3 mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-faint">
                     {{ $sectionLabel }}
                 </p>
                 <ul class="space-y-0.5">
@@ -105,7 +98,7 @@
                             <a
                                 href="{{ route($routeName) }}"
                                 @class([
-                                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                                     'bg-brand-soft text-brand-strong font-medium' => request()->routeIs($routeName),
                                     'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs($routeName),
                                 ])
@@ -125,7 +118,7 @@
             <a
                 href="{{ route('health.page') }}"
                 @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                     'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('health.page'),
                     'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('health.page'),
                 ])
@@ -137,7 +130,7 @@
             <a
                 href="{{ route('webhooks.page') }}"
                 @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                     'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('webhooks.page'),
                     'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('webhooks.page'),
                 ])
@@ -149,7 +142,7 @@
             <a
                 href="{{ route('modules.page') }}"
                 @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                     'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('modules.page'),
                     'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('modules.page'),
                 ])
@@ -161,7 +154,7 @@
             <a
                 href="{{ route('plugins.page') }}"
                 @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                     'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('plugins.page'),
                     'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('plugins.page'),
                 ])
@@ -173,7 +166,7 @@
             <a
                 href="{{ route('settings.page') }}"
                 @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                     'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('settings.page'),
                     'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('settings.page'),
                 ])
@@ -188,7 +181,7 @@
                 @csrf
                 <button
                     type="submit"
-                    class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
+                    class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
                 >
                     @if ($user->avatar)
                         <img src="{{ $user->avatar }}" alt="" class="size-6 shrink-0 rounded-full">
@@ -201,9 +194,14 @@
                 </button>
             </form>
         @else
+            {{-- Straight to Steam, not via /login: a visitor already on a
+                 public page should not be bounced through an interstitial
+                 just to click one more button. "return" carries where they
+                 were so the callback lands them back here, not on the
+                 dashboard. --}}
             <a
-                href="{{ route('login') }}"
-                class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-raised"
+                href="{{ route('auth.redirect', ['return' => request()->fullUrl()]) }}"
+                class="flex w-full items-center gap-3 rounded-lg bg-brand-soft px-3 py-2.5 text-[15px] font-medium text-brand-strong transition-opacity hover:opacity-80"
             >
                 <x-icon name="steam" class="size-5 shrink-0" />
                 {{ __('i18n::messages.auth.login_with_steam') }}

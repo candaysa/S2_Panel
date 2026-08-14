@@ -24,6 +24,15 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
 
+    {{-- Installable web app. theme-color has to be a literal here (not a
+         CSS variable) because the browser reads it before any stylesheet. --}}
+    <link rel="manifest" href="{{ route('pwa.manifest') }}">
+    <meta name="theme-color" content="{{ app(\App\Modules\Settings\App\Services\SettingService::class)->get('brand_color') ?: '#00ffe3' }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ $siteName }}">
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials.head-theme')
 </head>
@@ -60,5 +69,21 @@
             </main>
         </div>
     </div>
+
+    {{-- Pages with more Alpine state than fits legibly in an x-data attribute
+         push a component factory here instead. Anything pushed must carry the
+         CSP nonce (see partials/head-theme) or it will not execute. --}}
+    @stack('scripts')
+
+    <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
+        // Registered after load so it never competes with the first paint.
+        // The worker itself caches only hashed build assets and an offline
+        // page - see public/sw.js for why nothing else is cached.
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {});
+            });
+        }
+    </script>
 </body>
 </html>

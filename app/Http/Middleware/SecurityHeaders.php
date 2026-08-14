@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\View;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -20,6 +21,17 @@ class SecurityHeaders
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Per-request nonce, generated before the view renders so Blade can
+        // stamp it onto the one inline script the panel has (the pre-paint
+        // theme restore in partials/head-theme.blade.php). Without it that
+        // script was silently dropped by CSP: the toggle worked, because
+        // Alpine runs from a same-origin bundle, but the saved preference was
+        // never re-applied on load - which read as "light mode resets to dark
+        // on refresh". The alternative, 'unsafe-inline', would re-open every
+        // injected <script> in the app, so a nonce it is.
+        $nonce = base64_encode(random_bytes(16));
+        View::share('cspNonce', $nonce);
+
         $response = $next($request);
 
         $response->headers->set('X-Content-Type-Options', 'nosniff');
@@ -40,9 +52,11 @@ class SecurityHeaders
         // 'self' so only same-origin files execute, and Blade's escaping is
         // what keeps user input from ever reaching the evaluator.
         $response->headers->set('Content-Security-Policy',
-            "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; ".
+            "default-src 'self'; script-src 'self' 'unsafe-eval' 'nonce-{$nonce}'; ".
+            "style-src 'self' 'unsafe-inline'; ".
             "img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; ".
-            "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+            "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; ".
+            "manifest-src 'self'; worker-src 'self'"
         );
 
         if ($request->isSecure() || strtolower((string) $request->header('X-Forwarded-Proto')) === 'https') {

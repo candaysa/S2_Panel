@@ -16,12 +16,22 @@
      personal viewer preference, so it lives in localStorage, not the DB).
      Runs synchronously, before first paint, to avoid a flash of the wrong
      theme; the toggle button (in the sidebar / login page) writes the same
-     key. --}}
-<script>
+     key.
+
+     The nonce is required: script-src has no 'unsafe-inline', so without it
+     CSP drops this block and the saved preference is never re-applied - the
+     toggle appears to work, then "forgets" on every reload. See
+     App\Http\Middleware\SecurityHeaders, which mints $cspNonce per request. --}}
+<script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
     (function () {
         var theme = localStorage.getItem('theme');
         if (theme === 'light' || theme === 'dark') {
             document.documentElement.setAttribute('data-theme', theme);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+            // No stored choice: follow the OS instead of forcing dark on
+            // someone whose system is light. Not persisted - only an explicit
+            // toggle writes localStorage, so this keeps tracking the OS.
+            document.documentElement.setAttribute('data-theme', 'light');
         }
     })();
 </script>

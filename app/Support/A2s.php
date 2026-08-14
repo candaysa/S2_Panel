@@ -94,6 +94,167 @@ final class A2s
     }
 
     /**
+     * Query A2S_INFO for many servers at once.
+     *
+     * One socket per target, all written before anything is read, then
+     * stream_select() waits on the whole set together. Cost is therefore one
+     * timeout for the batch instead of one per server: the sequential version
+     * took up to 12 x 2s on this panel's server list, most of it spent on
+     * entries whose stored IP is 0.0.0.0 and can never answer.
+     *
+     * Steam replies to an unchallenged A2S_INFO with S2C_CHALLENGE, so this
+     * runs two rounds - the second only for the servers that asked for one.
+     *
+     * @param  array<string|int, array{host: string, port: int}>  $targets
+     * @return array<string|int, array<string, mixed>|null> same keys as $targets
+     */
+    public static function infoMany(array $targets, float $timeout = 2.0): array
+    {
+        $payload = "Source Engine Query\x00";
+        $results = array_fill_keys(array_keys($targets), null);
+
+        $pending = [];
+        foreach ($targets as $key => $target) {
+            $host = trim((string) ($target['host'] ?? ''));
+            $port = (int) ($target['port'] ?? 0);
+
+            if ($host === '' || $host === '0.0.0.0' || $port < 1 || $port > 65535) {
+                continue;
+            }
+
+            $socket = @stream_socket_client("udp://{$host}:{$port}", $errno, $errstr, $timeout);
+
+            if ($socket === false) {
+                continue;
+            }
+
+            stream_set_blocking($socket, false);
+
+            if (@fwrite($socket, self::HEADER.self::CMD_INFO.$payload) === false) {
+                fclose($socket);
+
+                continue;
+            }
+
+            $pending[$key] = $socket;
+        }
+
+        // Round 1, then round 2 for whoever answered with a challenge.
+        $raw = self::collect($pending, $timeout);
+        $retry = [];
+
+        foreach ($raw as $key => $response) {
+            if ($response !== null && self::responseType($response) === self::TYPE_CHALLENGE) {
+                $challenge = substr($response, 5, 4);
+
+                if (@fwrite($pending[$key], self::HEADER.self::CMD_INFO.$payload.$challenge) !== false) {
+                    $retry[$key] = $pending[$key];
+                }
+            }
+        }
+
+        if ($retry !== []) {
+            foreach (self::collect($retry, $timeout) as $key => $response) {
+                $raw[$key] = $response;
+            }
+        }
+
+        foreach ($pending as $socket) {
+            @fclose($socket);
+        }
+
+        foreach ($raw as $key => $response) {
+            if ($response === null || self::responseType($response) !== self::TYPE_INFO) {
+                continue;
+            }
+
+            $results[$key] = self::parseInfo($response);
+        }
+
+        return $results;
+    }
+
+    /**
+     * Wait on a set of non-blocking sockets until each has answered once or
+     * the shared deadline passes.
+     *
+     * @param  array<string|int, resource>  $sockets
+     * @return array<string|int, string|null>
+     */
+    private static function collect(array $sockets, float $timeout): array
+    {
+        $out = array_fill_keys(array_keys($sockets), null);
+        $waiting = $sockets;
+        $deadline = microtime(true) + $timeout;
+
+        while ($waiting !== []) {
+            $remaining = $deadline - microtime(true);
+
+            if ($remaining <= 0) {
+                break;
+            }
+
+            $read = array_values($waiting);
+            $write = null;
+            $except = null;
+
+            $ready = @stream_select(
+                $read,
+                $write,
+                $except,
+                (int) $remaining,
+                (int) (fmod($remaining, 1) * 1_000_000),
+            );
+
+            if ($ready === false || $ready === 0) {
+                break;
+            }
+
+            foreach ($read as $socket) {
+                $key = array_search($socket, $waiting, true);
+
+                if ($key === false) {
+                    continue;
+                }
+
+                $response = @fread($socket, 4096);
+                unset($waiting[$key]);
+
+                if ($response !== false && strlen($response) >= 5) {
+                    $out[$key] = $response;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function parseInfo(string $response): array
+    {
+        $offset = 5;
+        $info = [];
+        $info['protocol'] = self::byte($response, $offset);
+        $info['name'] = self::string($response, $offset);
+        $info['map'] = self::string($response, $offset);
+        $info['folder'] = self::string($response, $offset);
+        $info['game'] = self::string($response, $offset);
+        $info['app_id'] = self::int16($response, $offset);
+        $info['players'] = self::byte($response, $offset);
+        $info['max_players'] = self::byte($response, $offset);
+        $info['bots'] = self::byte($response, $offset);
+        $info['server_type'] = self::byte($response, $offset) === 'd' ? 'dedicated' : 'listen';
+        $info['environment'] = self::byte($response, $offset);
+        $info['visibility'] = self::byte($response, $offset);
+        $info['vac'] = self::byte($response, $offset) === 1;
+        $info['version'] = self::string($response, $offset);
+
+        return $info;
+    }
+
+    /**
      * Query A2S_PLAYER.
      *
      * @return array<int, array{index: int, name: string, score: int, duration: float}>|null

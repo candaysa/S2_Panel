@@ -5,6 +5,7 @@ namespace App\Modules\Rank\App\Services;
 use App\Modules\Audit\App\Services\AuditService;
 use App\Modules\Rank\App\Models\RankHit;
 use App\Modules\Rank\App\Models\RankPlayer;
+use App\Support\CsRank;
 use App\Support\SteamId;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use InvalidArgumentException;
@@ -27,11 +28,18 @@ class RankService
     /**
      * Leaderboard – descending value (the plugin's own index order).
      *
+     * Each row carries its true leaderboard position, not its offset in the
+     * current page: paginating or searching must not renumber everyone from 1
+     * again. The tier badge is attached here too, so the list and the profile
+     * can never disagree about what rank a points total means.
+     *
      * @return LengthAwarePaginator<int, RankPlayer>
      */
     public function leaderboard(?string $search = null, int $perPage = 25): LengthAwarePaginator
     {
-        $query = RankPlayer::query();
+        $query = RankPlayer::query()
+            ->select('*')
+            ->selectRaw('(SELECT COUNT(*) + 1 FROM rank_base AS peer WHERE peer.value > rank_base.value) AS position');
 
         if ($search !== null && $search !== '') {
             $query->where(function ($q) use ($search): void {
@@ -43,7 +51,19 @@ class RankService
             });
         }
 
-        return $query->orderByDesc('value')->orderBy('rank')->paginate($perPage);
+        $players = $query->orderByDesc('value')->orderBy('steam')->paginate($perPage);
+
+        $players->getCollection()->each(fn (RankPlayer $p) => $p->setAttribute('rank_tier', $this->tier($p)));
+
+        return $players;
+    }
+
+    /**
+     * @return array{key: string, index: int, group: string, tiers: int}
+     */
+    public function tier(RankPlayer $player): array
+    {
+        return CsRank::for((int) $player->value, (int) $player->rank);
     }
 
     /**
@@ -63,6 +83,10 @@ class RankService
         if ($player === null) {
             return null;
         }
+
+        $position = RankPlayer::query()->where('value', '>', (int) $player->value)->count() + 1;
+        $player->setAttribute('position', $position);
+        $player->setAttribute('rank_tier', $this->tier($player));
 
         return [
             'player' => $player,
