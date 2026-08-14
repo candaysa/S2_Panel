@@ -46,6 +46,23 @@
             steps: ['locale', 'database', 'steam', 'modules', 'complete'],
             loading: false,
             error: null,
+            integrations: [],
+
+            // Progress is restored from the server, which records each step in
+            // .env as it commits. Keeping it in the browser alone meant a
+            // refresh - or the reload the language step performs - sent the
+            // operator back to step 1 with their credentials already saved.
+            async init() {
+                try {
+                    const res = await fetch('/api/install/status', { headers: { Accept: 'application/json' } });
+                    if (!res.ok) return;
+                    const body = await res.json();
+                    if (body.data?.step) this.step = body.data.step;
+                } catch (e) {
+                    // Fall back to step 1: a wizard that starts over is
+                    // recoverable, one that will not render is not.
+                }
+            },
 
             restoring: false,
             restoreError: null,
@@ -123,7 +140,11 @@
                 this.loading = true;
                 this.error = null;
                 try {
-                    await this.post('/api/install/database', { connection: this.db });
+                    const res = await this.post('/api/install/database', { connection: this.db });
+                    // Missing plugin tables are surfaced on the next screen
+                    // rather than blocking: not every server runs every
+                    // plugin, and the matching module can stay switched off.
+                    this.integrations = (res.meta?.integrations ?? []).filter(i => !i.satisfied);
                     this.step = 3;
                 } catch (e) {
                     // A single connection is submitted now, so naming it back
@@ -214,6 +235,7 @@
                 }
             },
         }"
+        x-init="init()"
     >
         <div class="flex flex-col items-center text-center">
             <img src="{{ $siteLogo }}" alt="{{ $siteName }}" class="size-12 object-contain">
@@ -397,6 +419,28 @@
                         <span x-show="loading" x-cloak>{{ __('i18n::messages.common.loading') }}</span>
                     </button>
                 </div>
+            </div>
+
+            {{-- Plugin tables the database is missing. Shown from the Steam
+                 step onward so it stays visible past the screen that produced
+                 it, and styled as a warning because installation continues. --}}
+            <div x-show="integrations.length && step > 2 && step < 5" x-cloak class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+                <p class="text-sm font-medium text-amber-400">{{ __('i18n::messages.install.deps_missing_title') }}</p>
+                <p class="mt-0.5 text-xs text-amber-400/80">{{ __('i18n::messages.install.deps_missing_body') }}</p>
+                <ul class="mt-2 space-y-1">
+                    <template x-for="i in integrations" :key="i.key">
+                        <li class="text-xs text-amber-400/90">
+                            <span class="font-medium" x-text="{
+                                admin: @js(__('i18n::messages.install.deps_admin')),
+                                ban: @js(__('i18n::messages.install.deps_ban')),
+                                rank: @js(__('i18n::messages.install.deps_rank')),
+                                skin: @js(__('i18n::messages.install.deps_skin')),
+                                vip: @js(__('i18n::messages.install.deps_vip')),
+                            }[i.key] ?? i.key"></span>
+                            <span class="font-mono opacity-70" x-text="' - ' + i.missing.join(', ')"></span>
+                        </li>
+                    </template>
+                </ul>
             </div>
 
             <p x-show="error" x-cloak class="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" x-text="error"></p>

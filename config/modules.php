@@ -25,8 +25,13 @@ return [
             'depends' => [],
         ],
 
+        // Retired the moment installation completes: the wizard writes
+        // credentials, the owner SteamID and module toggles with no
+        // authentication in front of it, so once it is no longer needed its
+        // routes should not exist at all. InstallLock also refuses them, on
+        // purpose - see InstallController::retireInstaller().
         'install' => [
-            'enabled' => true,
+            'enabled' => ! env('INSTALLED', false),
             'provider' => App\Modules\Install\InstallServiceProvider::class,
             'depends' => [],
         ],
