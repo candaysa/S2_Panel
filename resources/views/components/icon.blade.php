@@ -203,6 +203,39 @@
         </svg>
         @break
 
+    @case('chevron-left')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <path d="m14.5 5.5-7 6.5 7 6.5" />
+        </svg>
+        @break
+
+    @case('play')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <path d="M8 5.5v13l10-6.5z" />
+        </svg>
+        @break
+
+    @case('trash')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <path d="M4.5 6.5h15M9.5 6.5V4.75a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1V6.5" />
+            <path d="M6.5 6.5 7.4 19a1 1 0 0 0 1 .95h7.2a1 1 0 0 0 1-.95l.9-12.5" />
+            <path d="M10.5 10v6M13.5 10v6" />
+        </svg>
+        @break
+
+    @case('plus')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <path d="M12 5.5v13M5.5 12h13" />
+        </svg>
+        @break
+
+    @case('copy')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <rect x="9" y="9" width="11" height="11" rx="2" />
+            <path d="M15 6.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h.5" />
+        </svg>
+        @break
+
     @case('steam')
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="{{ $class }}">
             <path d="M12 2C6.99 2 2.87 5.8 2.25 10.71l5.37 2.28a2.9 2.9 0 0 1 1.62-.5c.06 0 .11 0 .17.01l2.39-3.55v-.05a3.61 3.61 0 1 1 3.61 3.65h-.08l-3.44 2.49v.09a2.9 2.9 0 0 1-4.82 2.18l-3.82-1.62A10 10 0 1 0 12 2Zm-2.28 14.9-1.1-.47a2.19 2.19 0 0 0 3.99-1.55l1.19.5a3.4 3.4 0 0 1-4.08 1.52ZM12.94 10.7a2.4 2.4 0 1 1 2.4 2.4 2.4 2.4 0 0 1-2.4-2.4Zm.6 0a1.8 1.8 0 1 0 1.8-1.8 1.8 1.8 0 0 0-1.8 1.8Z" />

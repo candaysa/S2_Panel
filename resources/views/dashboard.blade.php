@@ -1,86 +1,71 @@
 <x-layout.app :title="__('i18n::messages.nav.dashboard')">
-    <div
-        x-data="{
-            loading: true,
-            error: false,
-            counts: { servers: null, bans: null, mutes: null, admins: null },
-            servers: [],
-            ranks: [],
-            recentBans: [],
-            recentMutes: [],
-            // The page is public; this defaults to false so nothing ban/mute
-            // related renders before the response comes back. The API applies
-            // the same moderation-flag gate the Ban module's own endpoint
-            // does - see DashboardController::canViewBanDetail().
-            canViewBanDetail: false,
-
-            async init() {
-                try {
-                    const res = await fetch('/api/dashboard', { headers: { Accept: 'application/json' } });
-                    if (!res.ok) throw new Error('request_failed');
-                    const body = await res.json();
-                    this.counts = body.data.counts;
-                    this.servers = body.data.servers;
-                    this.ranks = body.data.ranks;
-                    this.recentBans = body.data.recent_bans;
-                    this.recentMutes = body.data.recent_mutes;
-                    this.canViewBanDetail = body.meta?.can_view_ban_detail ?? false;
-                } catch (e) {
-                    this.error = true;
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            // null means the figure could not be read, which is not the same
-            // as zero - show a dash rather than claim there are none.
-            stat(value) {
-                return value === null || value === undefined ? '—' : value.toLocaleString();
-            },
-
-            date(value) {
-                return value ? new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : '—';
-            },
-
-            expiry(value) {
-                return value ? new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : @js(__('i18n::messages.bans.never'));
-            },
-
-            ratio(kills, deaths) {
-                if (!deaths) return (kills ?? 0).toFixed(2);
-                return (kills / deaths).toFixed(2);
-            },
-        }"
-        x-init="init()"
-    >
+    <div x-data="dashboard()" x-init="init()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.dashboard') }}</h1>
 
         <p x-show="error" x-cloak class="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">
             {{ __('i18n::messages.common.error') }}
         </p>
 
-        {{-- Counters --}}
-        <div class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {{-- Counters. Each card carries its own accent so the four read as
+             distinct figures at a glance instead of one grey block; the tint
+             is tied to meaning (bans red, mutes amber) rather than decoration. --}}
+        <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             @foreach ([
-                ['servers', 'server', __('i18n::messages.dashboard.card_servers')],
-                ['bans', 'ban', __('i18n::messages.dashboard.card_bans')],
-                ['mutes', 'mute', __('i18n::messages.dashboard.card_mutes')],
-                ['admins', 'users', __('i18n::messages.dashboard.card_admins')],
-            ] as [$key, $icon, $label])
-                <div class="rounded-xl border border-line bg-surface p-5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-medium uppercase tracking-wider text-ink-faint">{{ $label }}</span>
-                        <x-icon name="{{ $icon }}" class="size-4 text-ink-faint" />
+                ['servers', 'server', __('i18n::messages.dashboard.card_servers'), 'text-emerald-400', 'bg-emerald-500/10', 'from-emerald-500/[0.07]'],
+                ['bans', 'ban', __('i18n::messages.dashboard.card_bans'), 'text-red-400', 'bg-red-500/10', 'from-red-500/[0.07]'],
+                ['mutes', 'mute', __('i18n::messages.dashboard.card_mutes'), 'text-amber-400', 'bg-amber-500/10', 'from-amber-500/[0.07]'],
+                ['admins', 'users', __('i18n::messages.dashboard.card_admins'), 'text-sky-400', 'bg-sky-500/10', 'from-sky-500/[0.07]'],
+            ] as [$key, $icon, $label, $fg, $chip, $wash])
+                <div class="relative overflow-hidden rounded-xl border border-line bg-surface bg-gradient-to-br {{ $wash }} to-transparent p-4 sm:p-5">
+                    <div class="flex items-start justify-between gap-2">
+                        <span class="text-[11px] font-medium uppercase tracking-wider text-ink-faint sm:text-xs">{{ $label }}</span>
+                        <span class="flex size-8 shrink-0 items-center justify-center rounded-lg {{ $chip }}">
+                            <x-icon name="{{ $icon }}" class="size-4 {{ $fg }}" />
+                        </span>
                     </div>
-                    <p class="mt-2 text-3xl font-semibold text-ink" x-text="loading ? '·' : stat(counts.{{ $key }})"></p>
+                    <p class="mt-2 text-2xl font-semibold text-ink sm:text-3xl" x-text="loading ? '·' : stat(counts.{{ $key }})"></p>
                 </div>
             @endforeach
         </div>
 
-        {{-- Rank leaderboard --}}
+        {{-- Servers: live cards, not a bare id list --}}
         <div class="mt-6 rounded-xl border border-line bg-surface">
-            <div class="border-b border-line px-5 py-3.5">
+            <div class="flex items-center justify-between border-b border-line px-5 py-3.5">
+                <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.nav.servers') }}</h2>
+                <a href="{{ route('servers.page') }}" class="text-xs text-ink-faint transition-colors hover:text-brand-strong">{{ __('i18n::messages.dashboard.view_all') }}</a>
+            </div>
+
+            <ul class="divide-y divide-line-soft">
+                <template x-for="server in sortedServers" :key="server.id">
+                    <li class="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3">
+                        <span class="size-2 shrink-0 rounded-full" :class="server.online ? 'bg-emerald-400' : 'bg-ink-faint/40'"></span>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-medium text-ink" x-text="server.live?.name || (server.server_ip + ':' + server.server_port)"></p>
+                            <p class="truncate text-xs text-ink-faint">
+                                <span x-text="server.live?.map || '—'"></span>
+                                <span class="font-mono opacity-70"> &middot; <span x-text="server.server_ip + ':' + server.server_port"></span></span>
+                            </p>
+                        </div>
+                        <span class="shrink-0 text-sm" :class="server.online ? 'text-ink-muted' : 'text-ink-faint'"
+                              x-text="server.live ? server.live.players + ' / ' + server.live.max_players : '—'"></span>
+                        <a x-show="server.online" :href="'steam://connect/' + server.server_ip + ':' + server.server_port"
+                           class="shrink-0 rounded-lg bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-strong transition-opacity hover:opacity-80">
+                            {{ __('i18n::messages.servers.connect') }}
+                        </a>
+                    </li>
+                </template>
+            </ul>
+
+            <p x-show="!loading && servers.length === 0" x-cloak class="px-5 py-8 text-center text-sm text-ink-faint">
+                {{ __('i18n::messages.common.empty') }}
+            </p>
+        </div>
+
+        {{-- Leaderboard --}}
+        <div class="mt-6 rounded-xl border border-line bg-surface">
+            <div class="flex items-center justify-between border-b border-line px-5 py-3.5">
                 <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.dashboard.top_players') }}</h2>
+                <a href="{{ route('ranks.page') }}" class="text-xs text-ink-faint transition-colors hover:text-brand-strong">{{ __('i18n::messages.dashboard.view_all') }}</a>
             </div>
 
             <div class="overflow-x-auto">
@@ -89,8 +74,10 @@
                         <tr class="border-b border-line-soft text-xs uppercase tracking-wider text-ink-faint">
                             <th class="px-5 py-2.5 font-medium">#</th>
                             <th class="px-5 py-2.5 font-medium">{{ __('i18n::messages.dashboard.player') }}</th>
+                            <th class="hidden px-5 py-2.5 font-medium sm:table-cell">{{ __('i18n::messages.ranks.rank') }}</th>
                             <th class="px-5 py-2.5 font-medium">{{ __('i18n::messages.dashboard.points') }}</th>
-                            <th class="px-5 py-2.5 font-medium">{{ __('i18n::messages.dashboard.kills') }}</th>
+                            <th class="hidden px-5 py-2.5 font-medium md:table-cell">{{ __('i18n::messages.dashboard.kills') }}</th>
+                            <th class="hidden px-5 py-2.5 font-medium md:table-cell">{{ __('i18n::messages.ranks.playtime') }}</th>
                             <th class="px-5 py-2.5 font-medium">{{ __('i18n::messages.dashboard.kd') }}</th>
                         </tr>
                     </thead>
@@ -104,9 +91,15 @@
                                         x-text="index + 1"
                                     ></span>
                                 </td>
-                                <td class="px-5 py-2.5 font-medium text-ink" x-text="player.name ?? player.steam"></td>
-                                <td class="px-5 py-2.5" x-text="stat(player.value)"></td>
-                                <td class="px-5 py-2.5" x-text="stat(player.kills)"></td>
+                                <td class="px-5 py-2.5">
+                                    <a :href="'/players/' + encodeURIComponent(player.steam)" class="font-medium text-ink transition-colors hover:text-brand-strong" x-text="player.name ?? player.steam"></a>
+                                </td>
+                                <td class="hidden px-5 py-2.5 sm:table-cell">
+                                    <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" />
+                                </td>
+                                <td class="px-5 py-2.5 font-medium text-ink" x-text="stat(player.value)"></td>
+                                <td class="hidden px-5 py-2.5 md:table-cell" x-text="stat(player.kills)"></td>
+                                <td class="hidden px-5 py-2.5 md:table-cell" x-text="playtime(player.playtime)"></td>
                                 <td class="px-5 py-2.5" x-text="ratio(player.kills, player.deaths)"></td>
                             </tr>
                         </template>
@@ -119,30 +112,10 @@
             </p>
         </div>
 
-        {{-- Server list --}}
-        <div class="mt-6 rounded-xl border border-line bg-surface">
-            <div class="border-b border-line px-5 py-3.5">
-                <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.nav.servers') }}</h2>
-            </div>
-
-            <ul class="divide-y divide-line-soft">
-                <template x-for="server in servers" :key="server.id">
-                    <li class="flex items-center justify-between gap-4 px-5 py-3">
-                        <span class="min-w-0 truncate text-sm font-medium text-ink">{{ __('i18n::messages.nav.servers') }} #<span x-text="server.id"></span></span>
-                        <span class="shrink-0 font-mono text-xs text-ink-faint" x-text="server.server_ip + ':' + server.server_port"></span>
-                    </li>
-                </template>
-            </ul>
-
-            <p x-show="!loading && servers.length === 0" x-cloak class="px-5 py-8 text-center text-sm text-ink-faint">
-                {{ __('i18n::messages.common.empty') }}
-            </p>
-        </div>
-
         {{-- Recent bans / recent mutes, side by side - hidden entirely (not
              shown empty) for a viewer without a moderation flag, so it never
              reads as "no bans" when the real answer is "you can't see them". --}}
-        <div x-show="!loading && canViewBanDetail" x-cloak class="mt-6 grid gap-6 lg:grid-cols-2">
+        <div x-show="!loading && canViewBanDetail" x-cloak class="mt-6 grid gap-4 lg:grid-cols-2">
             @foreach ([
                 ['recentBans', __('i18n::messages.dashboard.recent_bans')],
                 ['recentMutes', __('i18n::messages.dashboard.recent_mutes')],
@@ -176,4 +149,77 @@
             @endforeach
         </div>
     </div>
+
+    @push('scripts')
+        <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
+            window.dashboard = () => ({
+                loading: true,
+                error: false,
+                counts: { servers: null, bans: null, mutes: null, admins: null },
+                servers: [],
+                ranks: [],
+                recentBans: [],
+                recentMutes: [],
+                // The page is public; this defaults to false so nothing
+                // ban/mute related renders before the response comes back.
+                // The API applies the same moderation-flag gate the Ban
+                // module's own endpoint does.
+                canViewBanDetail: false,
+                tierLabels: @js(__('i18n::messages.rank_tiers')),
+                t: @js(__('i18n::messages.ranks')),
+
+                async init() {
+                    try {
+                        const res = await fetch('/api/dashboard', { headers: { Accept: 'application/json' } });
+                        if (!res.ok) throw new Error('request_failed');
+                        const body = await res.json();
+                        this.counts = body.data.counts;
+                        this.servers = body.data.servers;
+                        this.ranks = body.data.ranks;
+                        this.recentBans = body.data.recent_bans;
+                        this.recentMutes = body.data.recent_mutes;
+                        this.canViewBanDetail = body.meta?.can_view_ban_detail ?? false;
+                    } catch (e) {
+                        this.error = true;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                get sortedServers() {
+                    return [...this.servers].sort((a, b) =>
+                        (b.online - a.online) || ((b.live?.players ?? 0) - (a.live?.players ?? 0))
+                    );
+                },
+
+                rankLabel(player) {
+                    return this.tierLabels[player.rank_tier?.key] ?? this.tierLabels.unranked;
+                },
+
+                playtime(seconds) {
+                    const h = Math.floor((seconds ?? 0) / 3600);
+                    return h >= 1 ? h.toLocaleString() + this.t.hours_short : Math.floor((seconds ?? 0) / 60) + this.t.minutes_short;
+                },
+
+                // null means the figure could not be read, which is not the
+                // same as zero - show a dash rather than claim there are none.
+                stat(value) {
+                    return value === null || value === undefined ? '—' : value.toLocaleString();
+                },
+
+                date(value) {
+                    return value ? new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : '—';
+                },
+
+                expiry(value) {
+                    return value ? new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : @js(__('i18n::messages.bans.never'));
+                },
+
+                ratio(kills, deaths) {
+                    if (!deaths) return (kills ?? 0).toFixed(2);
+                    return (kills / deaths).toFixed(2);
+                },
+            });
+        </script>
+    @endpush
 </x-layout.app>

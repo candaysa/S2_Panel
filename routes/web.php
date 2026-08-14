@@ -23,6 +23,32 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 // it reachable only while the panel isn't installed (see InstallController).
 Route::view('/install', 'install.index')->name('install.page');
 
+// PWA manifest. Served by a route rather than a static file because the
+// name, icon and theme colour are all owner-configurable in Settings - a
+// checked-in manifest.json would show "S2 Panel" on someone else's install.
+Route::get('/manifest.webmanifest', function () {
+    $settings = app(\App\Modules\Settings\App\Services\SettingService::class);
+    $name = $settings->get('site_name') ?: 'S2 Panel';
+    $icon = $settings->get('logo') ? asset($settings->get('logo')) : asset('images/logo.png');
+
+    return response()->json([
+        'name' => $name,
+        'short_name' => \Illuminate\Support\Str::limit($name, 12, ''),
+        'description' => 'Admin panel for Counter-Strike 2 servers.',
+        'start_url' => '/dashboard',
+        'scope' => '/',
+        'display' => 'standalone',
+        'orientation' => 'any',
+        'background_color' => '#0c0c0e',
+        'theme_color' => $settings->get('brand_color') ?: '#00ffe3',
+        'icons' => [
+            ['src' => $icon, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => $icon, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+            ['src' => $icon, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+        ],
+    ])->header('Content-Type', 'application/manifest+json');
+})->name('pwa.manifest');
+
 Route::get('/login', function (Request $request) {
     if (Auth::check()) {
         return redirect()->route('dashboard');
@@ -40,6 +66,13 @@ Route::view('/dashboard', 'dashboard')->name('dashboard');
 Route::view('/servers', 'servers.index')->name('servers.page');
 Route::view('/stats', 'stats.index')->name('stats.page');
 Route::view('/ranks', 'ranks.index')->name('ranks.page');
+
+// Public player profile. The SteamID is only passed through to the page so
+// its Alpine component can fetch /api/ranks/{steam}; that endpoint does the
+// real validation and 404s on anything malformed, so nothing here trusts it.
+Route::get('/players/{steam}', fn (string $steam) => view('players.show', ['steam' => $steam]))
+    ->where('steam', '[A-Za-z0-9:_\-\[\]]{1,64}')
+    ->name('players.show');
 
 Route::middleware('steam.auth')->group(function (): void {
     // Open to any logged-in session - no flag required. Their APIs enforce

@@ -25,6 +25,26 @@ class AuthController
      */
     public function redirect(Request $request): JsonResponse|RedirectResponse
     {
+        // Remember where the visitor was so the callback can put them back
+        // there. Public pages link straight here rather than via /login, so
+        // without this every login would dump the user on the dashboard
+        // regardless of what they were reading.
+        //
+        // Only same-origin paths are stored: "return" arrives from the query
+        // string, and echoing an arbitrary absolute URL back into a redirect
+        // is an open redirect.
+        $return = (string) $request->query('return', '');
+
+        if ($return !== '') {
+            $path = parse_url($return, PHP_URL_PATH) ?: '/';
+            $host = parse_url($return, PHP_URL_HOST);
+
+            if ($host === null || $host === $request->getHost()) {
+                $query = parse_url($return, PHP_URL_QUERY);
+                $request->session()->put('url.intended', $path.($query ? '?'.$query : ''));
+            }
+        }
+
         $target = Socialite::driver('steam')->redirect();
 
         if ($request->expectsJson()) {

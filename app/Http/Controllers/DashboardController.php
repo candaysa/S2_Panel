@@ -7,7 +7,9 @@ use App\Modules\Ban\App\Models\AdminBan;
 use App\Modules\Ban\App\Models\AdminMute;
 use App\Modules\Rank\App\Models\RankPlayer;
 use App\Modules\Server\App\Models\AdminServer;
+use App\Modules\Server\App\Services\ServerService;
 use App\Support\Api;
+use App\Support\CsRank;
 use App\Support\Flags;
 use App\Support\ModuleRegistry;
 use Illuminate\Http\JsonResponse;
@@ -50,22 +52,12 @@ class DashboardController extends Controller
             ],
             // id/hostname/address were never real columns on admin_servers -
             // this silently returned an empty list on every load (masked by
-            // section()'s catch-and-hide). hostname is a live A2S field
-            // (ServerService::live()), deliberately not queried here: the
-            // dashboard has to stay fast for an anonymous visitor, and firing
-            // a live UDP probe per server on every public page view is an
-            // easy amplification vector. The full /servers page already
-            // shows live status for whoever actually wants it.
-            'servers' => $this->section('server', fn (): array => AdminServer::query()
-                ->orderBy('id')
-                ->limit(25)
-                ->get(['id', 'server_ip', 'server_port'])
-                ->all()),
-            'ranks' => $this->section('rank', fn (): array => RankPlayer::query()
-                ->orderByDesc('value')
-                ->limit(10)
-                ->get(['steam', 'name', 'value', 'rank', 'kills', 'deaths'])
-                ->all()),
+            // section()'s catch-and-hide). hostname is a live A2S field, so
+            // it comes from ServerService, which probes the whole set in one
+            // parallel batch behind a short cache - cheap enough to run for
+            // an anonymous visitor, unlike the old one-probe-per-server path.
+            'servers' => $this->section('server', fn (): array => $this->serversWithLive()),
+            'ranks' => $this->section('rank', fn (): array => $this->topPlayers()),
             'recent_bans' => ! $canViewBanDetail ? [] : $this->section('ban', fn (): array => AdminBan::query()
                 ->orderByDesc('id')
                 ->limit(8)
@@ -77,6 +69,43 @@ class DashboardController extends Controller
                 ->get(['id', 'name', 'steamid', 'reason', 'admin_name', 'created_at', 'expires_at'])
                 ->all()),
         ], ['can_view_ban_detail' => $canViewBanDetail]);
+    }
+
+    /**
+     * Server rows plus their live A2S state, newest-seen first.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function serversWithLive(): array
+    {
+        $servers = AdminServer::query()->visible()->orderBy('id')->limit(25)->get();
+        $live = app(ServerService::class)->liveFor($servers);
+
+        return $servers->map(fn (AdminServer $s): array => [
+            'id' => $s->getKey(),
+            'server_ip' => $s->server_ip,
+            'server_port' => $s->server_port,
+            'live' => $live[(int) $s->getKey()] ?? null,
+            'online' => ($live[(int) $s->getKey()] ?? null) !== null,
+        ])->all();
+    }
+
+    /**
+     * Top ten by points, each with the tier its points earn - the same
+     * mapping the leaderboard page uses, so the two never disagree.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function topPlayers(): array
+    {
+        return RankPlayer::query()
+            ->orderByDesc('value')
+            ->limit(10)
+            ->get(['steam', 'name', 'value', 'rank', 'kills', 'deaths', 'playtime'])
+            ->map(fn (RankPlayer $p): array => array_merge($p->toArray(), [
+                'rank_tier' => CsRank::for((int) $p->value, (int) $p->rank),
+            ]))
+            ->all();
     }
 
     /**
