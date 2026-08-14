@@ -1,0 +1,65 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Brand is a single owner-customizable token (Settings > Appearance,
+       injected per-request as an inline :root override — see app.blade.php)
+       — everything else derives from it with color-mix() so "strong"/"soft"
+       stay in sync with whatever accent color is chosen, instead of being
+       three colors an owner would have to keep coordinated by hand.
+       #00ffe3 here is only the factory default (sampled from the Swiftly
+       logo mark), not a fixed brand identity. */
+    --color-brand: #00ffe3;
+    --color-brand-strong: color-mix(in oklab, var(--color-brand) 82%, black);
+    --color-brand-soft: color-mix(in oklab, var(--color-brand) 14%, var(--color-canvas));
+
+    /* Dark palette (default — no data-theme attribute, or data-theme="dark").
+       Surface sampled directly from the reference navbar mockup (#18181B),
+       which happens to equal Tailwind's own zinc-900, so the rest of the
+       neutral scale stays on the zinc ramp for a coherent palette. */
+    --color-surface: #18181b;
+    --color-surface-raised: #1f1f23;
+    --color-canvas: #0c0c0e;
+    --color-line: #2b2b30;
+    --color-line-soft: #232327;
+
+    --color-ink: #f4f4f5;
+    --color-ink-muted: #a1a1aa;
+    --color-ink-faint: #71717a;
+}
+
+/* Light palette — activated by the theme toggle (persisted in
+   localStorage, applied as document.documentElement.dataset.theme before
+   first paint; see the inline script in every top-level layout). Same
+   token set, just re-pointed, so every component that already reads
+   --color-* automatically adapts without any per-component light variant. */
+:root[data-theme='light'] {
+    --color-surface: #ffffff;
+    --color-surface-raised: #f4f4f5;
+    --color-canvas: #f9fafb;
+    --color-line: #e4e4e7;
+    --color-line-soft: #ececef;
+
+    --color-ink: #18181b;
+    --color-ink-muted: #52525b;
+    --color-ink-faint: #a1a1aa;
+
+    --color-brand-strong: color-mix(in oklab, var(--color-brand) 78%, black);
+    --color-brand-soft: color-mix(in oklab, var(--color-brand) 16%, white);
+}
+
+@layer base {
+    body {
+        background-color: var(--color-canvas);
+        color: var(--color-ink);
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+}

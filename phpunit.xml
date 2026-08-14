@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+>
+    <testsuites>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="DB_URL" value=""/>
+        <env name="INSTALLED" value="true"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="MODULE_ADMIN" value="true"/>
+        <env name="MODULE_AUDIT" value="true"/>
+        <env name="MODULE_BAN" value="true"/>
+        <env name="MODULE_RANK" value="true"/>
+        <env name="MODULE_SKIN" value="true"/>
+        <env name="MODULE_VIP" value="true"/>
+        <env name="MODULE_REPORTS" value="true"/>
+        <env name="MODULE_APPEALS" value="true"/>
+        <env name="MODULE_SERVERS" value="true"/>
+        <env name="MODULE_RCON" value="true"/>
+        <env name="MODULE_STATS" value="true"/>
+        <env name="MODULE_SETTINGS" value="true"/>
+        <env name="MODULE_I18N" value="true"/>
+        <env name="MODULE_HEALTH" value="true"/>
+        <env name="MODULE_WEBHOOKS" value="true"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>
