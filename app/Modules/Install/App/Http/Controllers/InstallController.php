@@ -11,6 +11,7 @@ use App\Support\PanelBackupException;
 use App\Support\SteamId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 use Throwable;
@@ -29,6 +30,12 @@ use Throwable;
 class InstallController
 {
     private const CONNECTIONS = ['panel', 'swiftly', 'ranks', 'weaponskins', 'vip'];
+
+    /**
+     * Scratch connection name used only to validate submitted credentials.
+     * Deliberately not one of self::CONNECTIONS - see probeCredentials().
+     */
+    private const PROBE_CONNECTION = 'install_probe';
 
     public function __construct(private readonly ConnectionProbe $probe)
     {
@@ -79,76 +86,47 @@ class InstallController
     /**
      * POST /api/install/database
      *
-     * Body: { panel: {host, port, database, username, password}, plugins: {...} }
+     * Body: { connection: {host, port, database, username, password} }
      *
-     * Two connections are asked for, not five. Swiftly and its companion
-     * plugins (CS2_Admin, CS2_Ranks, weapon skins, VIPCore) all keep their
-     * tables in one shared database, so asking for the same credentials four
-     * times only created four chances to typo them. The single "plugins"
-     * block is fanned out to all four connections below.
+     * One database, not five. Swiftly and its companion plugins (CS2_Admin,
+     * CS2_Ranks, weapon skins, VIPCore) already share a single database, and
+     * the panel stores its own tables alongside them rather than standing up a
+     * second one. The submitted block is fanned out to every connection name
+     * the application uses, so config/database.php keeps its five entries and
+     * a later install can repoint one of them without a schema change.
      *
-     * The panel keeps its own separate database on purpose: its migrations
-     * create users, sessions, migrations, password_reset_tokens and reports,
-     * every one of which already exists in a live Swiftly database.
+     * The panel's migrations must therefore not collide with what the plugins
+     * own. They do not: the plugin tables are prefixed by plugin (admin_*,
+     * k4*, wp_*, vip_*, sa_*), while the panel creates the usual Laravel set
+     * plus its own feature tables.
      */
     public function database(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'panel.host' => 'required|string',
-            'panel.port' => 'required|integer|between:1,65535',
-            'panel.database' => 'required|string',
-            'panel.username' => 'required|string',
-            'panel.password' => 'nullable|string',
-            'plugins.host' => 'required|string',
-            'plugins.port' => 'required|integer|between:1,65535',
-            'plugins.database' => 'required|string',
-            'plugins.username' => 'required|string',
-            'plugins.password' => 'nullable|string',
+            'connection.host' => 'required|string',
+            'connection.port' => 'required|integer|between:1,65535',
+            'connection.database' => 'required|string',
+            'connection.username' => 'required|string',
+            'connection.password' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
             return Api::error(Api::MSG_VALIDATION_FAILED, $validator->errors()->toArray(), 422);
         }
 
-        // One submitted block per distinct database, fanned out to the
-        // connection names the rest of the app already uses.
-        $submitted = [
-            'panel' => $request->input('panel'),
-            'swiftly' => $request->input('plugins'),
-            'ranks' => $request->input('plugins'),
-            'weaponskins' => $request->input('plugins'),
-            'vip' => $request->input('plugins'),
-        ];
+        $data = $request->input('connection');
 
-        // Probe once per database rather than once per connection - the four
-        // plugin connections are the same server, so testing them separately
-        // would just open four identical connections and report one failure
-        // as four.
-        $failures = [];
-
-        foreach (['panel' => 'panel', 'plugins' => 'swiftly'] as $label => $connection) {
-            $this->overrideConnection($connection, $submitted[$connection]);
-
-            if (! $this->probe->isHealthy($connection)) {
-                $failures[] = $label;
-            }
-        }
-
-        if ($failures !== []) {
-            return Api::error('database_connection_failed', ['connections' => $failures], 422);
-        }
-
-        // The plugin connections share credentials but are still configured
-        // individually, so a future install can point one of them somewhere
-        // else without a schema change.
-        foreach (self::CONNECTIONS as $connection) {
-            $this->overrideConnection($connection, $submitted[$connection]);
+        // Probe once. Every connection points at the same server, so testing
+        // each one separately would report a single wrong password five times.
+        if (! $this->probeCredentials($data)) {
+            return Api::error('database_connection_failed', ['connections' => ['connection']], 422);
         }
 
         $values = [];
 
         foreach (self::CONNECTIONS as $connection) {
-            $data = $submitted[$connection];
+            $this->overrideConnection($connection, $data);
+
             $prefix = $connection === 'panel' ? 'DB_' : strtoupper($connection).'_DB_';
 
             $values[$prefix.'HOST'] = $data['host'];
@@ -277,6 +255,34 @@ class InstallController
     /**
      * @param  array<string, mixed>  $data
      */
+    /**
+     * Test submitted credentials on a throwaway connection.
+     *
+     * Probing one of the app's own connections does not work: Laravel caches
+     * a connection once it has been resolved, and "panel" is the default one,
+     * already open for the session and cache drivers. Overriding its config
+     * therefore changes nothing, DB::connection() hands back the live handle
+     * and the probe reports success no matter what was typed in.
+     *
+     * Purging that connection instead would test the right credentials but
+     * leave the request without a working session store when they are wrong,
+     * so the probe gets a connection of its own that nothing else uses.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function probeCredentials(array $data): bool
+    {
+        $this->overrideConnection(self::PROBE_CONNECTION, $data);
+
+        DB::purge(self::PROBE_CONNECTION);
+
+        $healthy = $this->probe->isHealthy(self::PROBE_CONNECTION);
+
+        DB::purge(self::PROBE_CONNECTION);
+
+        return $healthy;
+    }
+
     private function overrideConnection(string $connection, array $data): void
     {
         config()->set("database.connections.{$connection}", [
