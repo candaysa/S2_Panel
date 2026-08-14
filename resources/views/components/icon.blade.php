@@ -189,6 +189,13 @@
         </svg>
         @break
 
+    @case('shield')
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="{{ $class }}">
+            <path d="M12 3.25 5 6v5.5c0 4 2.9 7.6 7 9.25 4.1-1.65 7-5.25 7-9.25V6z" />
+            <path d="m9.25 12 1.9 1.9 3.6-3.8" />
+        </svg>
+        @break
+
     @case('steam')
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="{{ $class }}">
             <path d="M12 2C6.99 2 2.87 5.8 2.25 10.71l5.37 2.28a2.9 2.9 0 0 1 1.62-.5c.06 0 .11 0 .17.01l2.39-3.55v-.05a3.61 3.61 0 1 1 3.61 3.65h-.08l-3.44 2.49v.09a2.9 2.9 0 0 1-4.82 2.18l-3.82-1.62A10 10 0 1 0 12 2Zm-2.28 14.9-1.1-.47a2.19 2.19 0 0 0 3.99-1.55l1.19.5a3.4 3.4 0 0 1-4.08 1.52ZM12.94 10.7a2.4 2.4 0 1 1 2.4 2.4 2.4 2.4 0 0 1-2.4-2.4Zm.6 0a1.8 1.8 0 1 0 1.8-1.8 1.8 1.8 0 0 0-1.8 1.8Z" />

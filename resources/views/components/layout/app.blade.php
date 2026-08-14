@@ -46,7 +46,7 @@
                     type="button"
                     @click="sidebarOpen = !sidebarOpen"
                     class="flex size-9 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-raised hover:text-ink"
-                    aria-label="Menüyü aç/kapat"
+                    :aria-label="sidebarOpen ? @js(__('i18n::messages.nav.close_menu')) : @js(__('i18n::messages.nav.open_menu'))"
                 >
                     <x-icon name="menu" class="size-5" />
                 </button>
