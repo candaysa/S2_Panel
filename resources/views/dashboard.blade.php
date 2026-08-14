@@ -79,35 +79,52 @@
                 <table class="w-full text-left text-sm">
                     <thead>
                         <tr class="border-b border-line-soft text-xs uppercase tracking-wider text-ink-faint">
-                            <th class="px-5 py-2.5 font-medium">#</th>
-                            <th class="px-5 py-2.5 font-medium">{{ __('i18n::messages.dashboard.player') }}</th>
-                            <th class="hidden px-5 py-2.5 font-medium sm:table-cell">{{ __('i18n::messages.ranks.rank') }}</th>
-                            <th class="px-5 py-2.5 font-medium">{{ __('i18n::messages.dashboard.points') }}</th>
-                            <th class="hidden px-5 py-2.5 font-medium md:table-cell">{{ __('i18n::messages.dashboard.kills') }}</th>
-                            <th class="hidden px-5 py-2.5 font-medium md:table-cell">{{ __('i18n::messages.ranks.playtime') }}</th>
-                            <th class="px-5 py-2.5 font-medium">{{ __('i18n::messages.dashboard.kd') }}</th>
+                            <th class="w-12 py-2.5 pl-5 pr-2 font-medium">#</th>
+                            <th class="px-3 py-2.5 font-medium">{{ __('i18n::messages.dashboard.player') }}</th>
+                            <th class="hidden px-3 py-2.5 font-medium sm:table-cell">{{ __('i18n::messages.ranks.rank') }}</th>
+                            <th class="px-3 py-2.5 text-right font-medium">{{ __('i18n::messages.dashboard.points') }}</th>
+                            <th class="hidden px-3 py-2.5 text-right font-medium md:table-cell">{{ __('i18n::messages.dashboard.kills') }}</th>
+                            <th class="hidden px-3 py-2.5 text-right font-medium md:table-cell">{{ __('i18n::messages.ranks.time_on_server') }}</th>
+                            <th class="py-2.5 pl-3 pr-5 text-right font-medium">{{ __('i18n::messages.dashboard.kd') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-line-soft">
                         <template x-for="(player, index) in ranks" :key="player.steam">
-                            <tr class="text-ink-muted transition-colors hover:bg-surface-raised">
-                                <td class="px-5 py-2.5">
+                            <tr class="group text-ink-muted transition-colors hover:bg-surface-raised">
+                                {{-- Top three get a medal tint; the rest stay
+                                     quiet so the podium actually stands out. --}}
+                                <td class="py-2.5 pl-5 pr-2">
                                     <span
-                                        class="inline-flex size-6 items-center justify-center rounded-full text-xs font-semibold"
-                                        :class="index < 3 ? 'bg-brand-soft text-brand-strong' : 'text-ink-faint'"
+                                        class="inline-flex size-7 items-center justify-center rounded-lg text-xs font-bold ring-1 ring-inset"
+                                        :class="medal(index)"
                                         x-text="index + 1"
                                     ></span>
                                 </td>
-                                <td class="px-5 py-2.5">
-                                    <a :href="'/players/' + encodeURIComponent(player.steam)" class="font-medium text-ink transition-colors hover:text-brand-strong" x-text="player.name ?? player.steam"></a>
+                                <td class="px-3 py-2.5">
+                                    <a :href="'/players/' + encodeURIComponent(player.steam)" class="flex items-center gap-2.5">
+                                        <img
+                                            x-show="player.avatar"
+                                            :src="player.avatar"
+                                            alt=""
+                                            loading="lazy"
+                                            class="size-8 shrink-0 rounded-full ring-1 ring-line object-cover"
+                                        >
+                                        <span x-show="!player.avatar" class="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-faint" x-text="(player.name ?? '?').charAt(0).toUpperCase()"></span>
+                                        <span class="min-w-0">
+                                            <span class="block truncate font-medium text-ink transition-colors group-hover:text-brand-strong" x-text="player.name ?? player.steam"></span>
+                                            <span class="block truncate text-xs text-ink-faint" x-text="lastSeen(player.lastconnect)"></span>
+                                        </span>
+                                    </a>
                                 </td>
-                                <td class="hidden px-5 py-2.5 sm:table-cell">
+                                <td class="hidden px-3 py-2.5 sm:table-cell">
                                     <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" />
                                 </td>
-                                <td class="px-5 py-2.5 font-medium text-ink" x-text="stat(player.value)"></td>
-                                <td class="hidden px-5 py-2.5 md:table-cell" x-text="stat(player.kills)"></td>
-                                <td class="hidden px-5 py-2.5 md:table-cell" x-text="playtime(player.playtime)"></td>
-                                <td class="px-5 py-2.5" x-text="ratio(player.kills, player.deaths)"></td>
+                                <td class="px-3 py-2.5 text-right font-semibold tabular-nums text-ink" x-text="stat(player.value)"></td>
+                                <td class="hidden px-3 py-2.5 text-right tabular-nums md:table-cell" x-text="stat(player.kills)"></td>
+                                <td class="hidden px-3 py-2.5 text-right tabular-nums md:table-cell" x-text="playtime(player.playtime)"></td>
+                                <td class="py-2.5 pl-3 pr-5 text-right">
+                                    <span class="font-medium tabular-nums" :class="kdColor(player)" x-text="ratio(player.kills, player.deaths)"></span>
+                                </td>
                             </tr>
                         </template>
                     </tbody>
@@ -201,6 +218,30 @@
 
                 rankLabel(player) {
                     return this.tierLabels[player.rank_tier?.key] ?? this.tierLabels.unranked;
+                },
+
+                // Gold / silver / bronze for the podium, nothing for the rest.
+                medal(index) {
+                    return [
+                        'bg-amber-400/15 text-amber-300 ring-amber-400/30',
+                        'bg-slate-300/15 text-slate-200 ring-slate-300/30',
+                        'bg-orange-600/15 text-orange-400 ring-orange-600/30',
+                    ][index] ?? 'text-ink-faint ring-transparent';
+                },
+
+                kdColor(player) {
+                    const kd = player.deaths ? player.kills / player.deaths : player.kills;
+                    if (kd >= 1.5) return 'text-emerald-400';
+                    if (kd >= 1) return 'text-ink';
+                    return 'text-ink-faint';
+                },
+
+                lastSeen(unix) {
+                    if (!unix) return '';
+                    const days = Math.floor((Date.now() / 1000 - unix) / 86400);
+                    if (days <= 0) return this.t.seen_today;
+                    if (days === 1) return this.t.seen_yesterday;
+                    return this.t.seen_days_ago.replace(':days', days);
                 },
 
                 playtime(seconds) {

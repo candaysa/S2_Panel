@@ -222,6 +222,10 @@ return [
         'profile' => 'Profilo giocatore',
         'back_to_ranks' => 'Torna alla classifica',
         'not_found' => 'Nessun record in classifica per questo giocatore.',
+        'time_on_server' => 'Tempo sul server',
+        'seen_today' => 'Visto oggi',
+        'seen_yesterday' => 'Visto ieri',
+        'seen_days_ago' => ':days giorni fa',
     ],
 
     'rank_tiers' => [

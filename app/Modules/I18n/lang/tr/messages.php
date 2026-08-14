@@ -222,6 +222,10 @@ return [
         'profile' => 'Oyuncu profili',
         'back_to_ranks' => 'Sıralamaya dön',
         'not_found' => 'Bu oyuncuya ait sıralama kaydı yok.',
+        'time_on_server' => 'Sunucuda geçen süre',
+        'seen_today' => 'Bugün görüldü',
+        'seen_yesterday' => 'Dün görüldü',
+        'seen_days_ago' => ':days gün önce',
     ],
 
     'rank_tiers' => [

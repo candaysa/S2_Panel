@@ -222,6 +222,10 @@ return [
         'profile' => 'Профиль игрока',
         'back_to_ranks' => 'К таблице лидеров',
         'not_found' => 'Нет записи в рейтинге для этого игрока.',
+        'time_on_server' => 'Время на сервере',
+        'seen_today' => 'Заходил сегодня',
+        'seen_yesterday' => 'Заходил вчера',
+        'seen_days_ago' => ':days дн. назад',
     ],
 
     'rank_tiers' => [

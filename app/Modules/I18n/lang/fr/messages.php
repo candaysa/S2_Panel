@@ -222,6 +222,10 @@ return [
         'profile' => 'Profil du joueur',
         'back_to_ranks' => 'Retour au classement',
         'not_found' => 'Aucun classement pour ce joueur.',
+        'time_on_server' => 'Temps sur le serveur',
+        'seen_today' => "Vu aujourd'hui",
+        'seen_yesterday' => 'Vu hier',
+        'seen_days_ago' => 'il y a :days jours',
     ],
 
     'rank_tiers' => [
