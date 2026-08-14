@@ -32,11 +32,15 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials.head-theme')
 </head>
-<body class="relative min-h-screen bg-canvas px-4 py-10 text-ink antialiased sm:px-6">
+<body class="relative flex min-h-screen bg-canvas px-4 py-10 text-ink antialiased sm:px-6">
     <x-theme-toggle class="absolute right-4 top-4" />
 
+    {{-- m-auto rather than justify-center on the body: with flexbox, centering
+         a child that is taller than the viewport (the database step has five
+         connection blocks) makes its top overflow out of reach. Auto margins
+         centre it while still letting it scroll from the top. --}}
     <div
-        class="mx-auto w-full max-w-2xl"
+        class="m-auto w-full max-w-2xl"
         x-data="{
             step: 1,
             steps: ['locale', 'database', 'steam', 'modules', 'complete'],
@@ -224,37 +228,32 @@
             <span class="h-px flex-1 bg-line"></span>
         </div>
 
-        {{-- Step indicator --}}
-        <ol class="mt-8 flex items-center justify-center gap-2">
-            <template x-for="(s, i) in steps" :key="s">
-                <li class="flex items-center gap-2">
-                    <span
-                        class="flex size-7 items-center justify-center rounded-full text-xs font-semibold transition-colors"
-                        :class="step > i + 1 ? 'bg-brand-strong text-canvas' : (step === i + 1 ? 'bg-brand-soft text-brand-strong ring-1 ring-brand-strong' : 'bg-surface-raised text-ink-faint')"
-                        x-text="i + 1"
-                    ></span>
-                    <span x-show="i < steps.length - 1" class="h-px w-4 bg-line sm:w-8"></span>
-                </li>
-            </template>
-        </ol>
-
-        <div class="mt-6 rounded-xl border border-line bg-surface p-6">
+        <div class="mt-8 rounded-xl border border-line bg-surface p-6">
             {{-- Step 1: Locale --}}
             <div x-show="step === 1" x-cloak>
                 <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.step_locale') }}</h2>
                 <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.locale_prompt') }}</p>
 
-                <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                    @foreach (['en' => 'English', 'tr' => 'Türkçe', 'de' => 'Deutsch', 'fr' => 'Français', 'it' => 'Italiano', 'ru' => 'Русский'] as $code => $label)
-                        <button
-                            type="button"
-                            @click="locale = '{{ $code }}'"
-                            :class="locale === '{{ $code }}' ? 'border-brand-strong bg-brand-soft text-brand-strong' : 'border-line text-ink-muted hover:bg-surface-raised hover:text-ink'"
-                            class="rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors"
-                        >
-                            {{ $label }}
-                        </button>
-                    @endforeach
+                {{-- Native <select>: one control instead of a six-button grid,
+                     and it stays usable on a phone where the grid wrapped. The
+                     chevron is drawn by the wrapper because appearance-none
+                     removes the platform one. --}}
+                <div class="relative mt-4">
+                    <select
+                        x-model="locale"
+                        class="w-full appearance-none rounded-lg border border-line bg-canvas px-3 py-2.5 pr-10 text-sm font-medium text-ink transition-colors hover:bg-surface-raised focus:border-brand-strong focus:outline-none"
+                    >
+                        @foreach (['en' => 'English', 'tr' => 'Türkçe', 'de' => 'Deutsch', 'fr' => 'Français', 'it' => 'Italiano', 'ru' => 'Русский'] as $code => $label)
+                            <option value="{{ $code }}">{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <svg
+                        class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-faint"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    >
+                        <path d="m6 9 6 6 6-6" />
+                    </svg>
                 </div>
 
                 <button
@@ -263,7 +262,8 @@
                     @click="submitLocale()"
                     class="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
-                    {{ __('i18n::messages.install.next') }}
+                    <span x-show="!loading">{{ __('i18n::messages.install.next') }}</span>
+                    <span x-show="loading" x-cloak>{{ __('i18n::messages.common.loading') }}</span>
                 </button>
             </div>
 
@@ -391,6 +391,25 @@
             </div>
 
             <p x-show="error" x-cloak class="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" x-text="error"></p>
+
+            {{-- Progress dots. One per step, the current one filled in the
+                 highest-contrast ink colour (white on the dark theme, near
+                 black on the light one) and widened into a pill so the
+                 position reads at a glance without any numbers. Steps are not
+                 clickable on purpose - each one persists to .env before the
+                 next unlocks, so jumping ahead would skip that write. --}}
+            <ol
+                class="mt-6 flex items-center justify-center gap-1.5 border-t border-line-soft pt-5"
+                :aria-label="`Step ${step} of ${steps.length}`"
+            >
+                <template x-for="(s, i) in steps" :key="s">
+                    <li
+                        class="h-1.5 rounded-full transition-all duration-300"
+                        :class="step === i + 1 ? 'w-6 bg-ink' : (step > i + 1 ? 'w-1.5 bg-ink-faint' : 'w-1.5 bg-line')"
+                        :aria-current="step === i + 1 ? 'step' : false"
+                    ></li>
+                </template>
+            </ol>
         </div>
     </div>
 </body>
