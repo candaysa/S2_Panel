@@ -395,4 +395,23 @@ return [
         'invalid' => 'Geçerli bir IP ve port girin.',
         'last_seen' => 'Son görülme',
     ],
+
+    'update' => [
+        'title' => 'Güncelleme mevcut',
+        'later' => 'Daha sonra',
+        'install_now' => 'Şimdi güncelle',
+        'installing' => 'Yükleniyor…',
+        'finalising' => 'Tamamlanıyor…',
+        'done' => 'Güncellendi. Yenileniyor…',
+        'failed' => 'Güncelleme başarısız.',
+        'full_notes' => 'Tüm sürüm notları',
+        'cannot_install' => 'Bu sunucu güncellemeyi otomatik yükleyemiyor:',
+        'no_asset' => 'Sürüme yüklenebilir bir paket eklenmemiş.',
+        'check_install_writable' => 'Kurulum dizinine web sunucusu yazamıyor',
+        'check_parent_writable' => 'Üst dizine web sunucusu yazamıyor',
+        'check_storage_writable' => 'storage/app yazılabilir değil',
+        'check_tar_available' => 'Sunucuda tar bulunamadı',
+        'check_disk_space' => 'Yeterli boş disk alanı yok',
+        'check_updates_enabled' => 'Güncellemeler yapılandırmada kapalı',
+    ],
 ];

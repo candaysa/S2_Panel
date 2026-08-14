@@ -395,4 +395,23 @@ return [
         'invalid' => 'Inserisci un IP e una porta validi.',
         'last_seen' => 'Ultimo accesso',
     ],
+
+    'update' => [
+        'title' => 'Aggiornamento disponibile',
+        'later' => 'Più tardi',
+        'install_now' => 'Installa ora',
+        'installing' => 'Installazione…',
+        'finalising' => 'Completamento…',
+        'done' => 'Aggiornato. Ricaricamento…',
+        'failed' => 'Aggiornamento non riuscito.',
+        'full_notes' => 'Note di rilascio complete',
+        'cannot_install' => 'Questo server non può installare laggiornamento automaticamente:',
+        'no_asset' => 'Nessun pacchetto installabile allegato alla release.',
+        'check_install_writable' => 'La directory di installazione non è scrivibile dal web server',
+        'check_parent_writable' => 'La directory superiore non è scrivibile',
+        'check_storage_writable' => 'storage/app non è scrivibile',
+        'check_tar_available' => 'tar non trovato su questo server',
+        'check_disk_space' => 'Spazio su disco insufficiente',
+        'check_updates_enabled' => 'Gli aggiornamenti sono disattivati nella configurazione',
+    ],
 ];

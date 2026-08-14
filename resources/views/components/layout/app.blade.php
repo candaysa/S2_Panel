@@ -70,6 +70,12 @@
         </div>
     </div>
 
+    {{-- Owner-only; the component itself checks and stays hidden otherwise,
+         and /api/update/status is gated behind owner.only regardless. --}}
+    @if (\App\Support\Access::isOwner())
+        <x-update-prompt />
+    @endif
+
     {{-- Pages with more Alpine state than fits legibly in an x-data attribute
          push a component factory here instead. Anything pushed must carry the
          CSP nonce (see partials/head-theme) or it will not execute. --}}

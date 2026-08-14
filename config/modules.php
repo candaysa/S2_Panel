@@ -147,6 +147,17 @@ return [
             'depends' => ['auth'],
         ],
 
+        // Self-update from GitHub Releases. Always on, like the other
+        // owner-facing plumbing: a panel that cannot tell its owner an update
+        // exists is exactly the panel that ends up unpatched. Installing is
+        // gated behind owner.only plus a preflight that refuses to run when
+        // the install directory is not writable.
+        'updater' => [
+            'enabled' => true,
+            'provider' => App\Modules\Updater\UpdaterServiceProvider::class,
+            'depends' => [],
+        ],
+
         'cheat_check' => [
             'enabled' => env('MODULE_CHEAT_CHECK', false),
             'provider' => App\Modules\CheatCheck\CheatCheckServiceProvider::class,
