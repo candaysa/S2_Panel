@@ -145,6 +145,8 @@ return [
                 'description' => 'Oyuncu rütbe ve seviye takibi (CS2_Ranks).',
             ],
         ],
+        'tab_builtin' => 'Yerleşik',
+        'tab_plugins' => 'Eklentiler',
     ],
     'bans' => [
         'type_ban' => 'Banlar',
@@ -340,6 +342,9 @@ return [
         'uninstall' => 'Kaldır',
         'uninstall_confirm' => 'Bu eklenti kaldırılsın mı? Dosyaları silinecek. Bu işlem geri alınamaz.',
         'trust_note' => 'Bir eklenti, çalıştırmayı seçtiğiniz koddur — tıpkı bir WordPress eklentisi veya WHMCS modülü gibi. Sadece güvendiğiniz kaynaklardan gelen .zip dosyalarını yükleyin.',
+        'upload_title' => 'Eklenti yükle',
+        'upload_hint' => 'Bir .zip yükleyin. Eklenti, çalıştırmayı seçtiğiniz koddur - tıpkı WordPress eklentisi gibi, yalnızca güvendiğiniz kaynaklardan yükleyin.',
+        'none_installed' => 'Henüz eklenti yüklenmemiş.',
     ],
     'cheat_check' => [
         'subtitle' => 'Oyuncunun kendi bilgisayarında çalıştıracağı tek kullanımlık bir bağlantı oluşturun; tarama sonucu buraya düşer.',
@@ -432,5 +437,31 @@ return [
         'check_tar_available' => 'Sunucuda tar bulunamadı',
         'check_disk_space' => 'Yeterli boş disk alanı yok',
         'check_updates_enabled' => 'Güncellemeler yapılandırmada kapalı',
+    ],
+
+    'webhook_events' => [
+        'admin.action' => 'Yetkili işlemi',
+        'user.registered' => 'Yeni kullanıcı kaydı',
+        'report.created' => 'Yeni rapor',
+        'report.replied' => 'Rapora yanıt',
+        'report.closed' => 'Rapor kapatıldı',
+        'appeal.created' => 'Yeni itiraz',
+        'appeal.decided' => 'İtiraz sonuçlandı',
+        'health.alert' => 'Sistem uyarısı',
+    ],
+
+    'settings' => [
+        'timezone' => 'Zaman dilimi',
+        'default_locale' => 'Varsayılan dil',
+    ],
+
+    'admins' => [
+        'flags' => 'Yetkiler',
+        'immunity' => 'Dokunulmazlık',
+        'status' => 'Durum',
+        'expires' => 'Bitiş',
+        'active' => 'Aktif',
+        'disabled' => 'Devre dışı',
+        'groups_subtitle' => 'Yetkili eklentisinde tanımlı gruplar. Buradaki yetkiler gruptaki tüm yetkililere uygulanır.',
     ],
 ];

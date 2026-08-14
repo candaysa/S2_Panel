@@ -5,6 +5,9 @@
             error: false,
             webhooks: [],
             eventOptions: [],
+            // Event keys are stable identifiers the API validates
+            // against; only their labels are translated.
+            eventLabels: @js(__('i18n::messages.webhook_events')),
             showForm: false,
             saving: false,
             form: { name: '', url: '', events: [], enabled: true },
@@ -27,6 +30,10 @@
                 } finally {
                     this.loading = false;
                 }
+            },
+
+            eventLabel(event) {
+                return this.eventLabels[event] ?? event;
             },
 
             toggleEvent(event) {
@@ -101,7 +108,7 @@
                         @click="toggleEvent(event)"
                         :class="form.events.includes(event) ? 'bg-brand-soft text-brand-strong' : 'bg-surface-raised text-ink-muted'"
                         class="rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
-                        x-text="event"
+                        x-text="eventLabel(event)"
                     ></button>
                 </template>
             </div>
@@ -124,7 +131,7 @@
                             ></span>
                         </div>
                         <p class="mt-0.5 font-mono text-xs text-ink-faint" x-text="webhook.url_hint"></p>
-                        <p class="mt-0.5 text-xs text-ink-faint" x-text="(webhook.events ?? []).join(', ')"></p>
+                        <p class="mt-0.5 text-xs text-ink-faint" x-text="(webhook.events ?? []).map(e => eventLabel(e)).join(', ')"></p>
                     </div>
                     <div class="flex shrink-0 gap-2 text-sm">
                         <button type="button" @click="test(webhook)" class="text-ink-muted hover:text-ink">{{ __('i18n::messages.webhooks.test') }}</button>

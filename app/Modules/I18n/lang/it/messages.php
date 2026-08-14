@@ -145,6 +145,8 @@ return [
                 'description' => 'Monitoraggio rank e livello dei giocatori (CS2_Ranks).',
             ],
         ],
+        'tab_builtin' => 'Integrati',
+        'tab_plugins' => 'Plugin',
     ],
     'bans' => [
         'type_ban' => 'Ban',
@@ -340,6 +342,9 @@ return [
         'uninstall' => 'Disinstalla',
         'uninstall_confirm' => 'Disinstallare questo plugin? I suoi file verranno eliminati. Azione irreversibile.',
         'trust_note' => 'Un plugin è codice che scegli di eseguire, esattamente come un plugin WordPress o un modulo WHMCS - installa solo file .zip da fonti attendibili.',
+        'upload_title' => 'Installa un plugin',
+        'upload_hint' => 'Carica un .zip. Un plugin è codice che scegli di eseguire, come un plugin WordPress - installa solo da fonti affidabili.',
+        'none_installed' => 'Nessun plugin installato.',
     ],
     'cheat_check' => [
         'subtitle' => 'Genera un link monouso che il giocatore esegue sul proprio PC; il risultato arriva qui.',
@@ -432,5 +437,31 @@ return [
         'check_tar_available' => 'tar non trovato su questo server',
         'check_disk_space' => 'Spazio su disco insufficiente',
         'check_updates_enabled' => 'Gli aggiornamenti sono disattivati nella configurazione',
+    ],
+
+    'webhook_events' => [
+        'admin.action' => 'Azione admin',
+        'user.registered' => 'Nuovo utente',
+        'report.created' => 'Nuova segnalazione',
+        'report.replied' => 'Risposta alla segnalazione',
+        'report.closed' => 'Segnalazione chiusa',
+        'appeal.created' => 'Nuovo ricorso',
+        'appeal.decided' => 'Ricorso deciso',
+        'health.alert' => 'Avviso di sistema',
+    ],
+
+    'settings' => [
+        'timezone' => 'Fuso orario',
+        'default_locale' => 'Lingua predefinita',
+    ],
+
+    'admins' => [
+        'flags' => 'Permessi',
+        'immunity' => 'Immunità',
+        'status' => 'Stato',
+        'expires' => 'Scade',
+        'active' => 'Attivo',
+        'disabled' => 'Disattivato',
+        'groups_subtitle' => 'Gruppi definiti dal plugin di amministrazione. I permessi qui valgono per tutti gli admin del gruppo.',
     ],
 ];

@@ -145,6 +145,8 @@ return [
                 'description' => 'Suivi des rangs et niveaux des joueurs (CS2_Ranks).',
             ],
         ],
+        'tab_builtin' => 'Intégrés',
+        'tab_plugins' => 'Plugins',
     ],
     'bans' => [
         'type_ban' => 'Bannissements',
@@ -340,6 +342,9 @@ return [
         'uninstall' => 'Désinstaller',
         'uninstall_confirm' => 'Désinstaller cette extension ? Ses fichiers seront supprimés. Action irréversible.',
         'trust_note' => 'Une extension est du code que vous choisissez d\'exécuter, comme une extension WordPress ou un module WHMCS. N\'installez que des .zip provenant de sources fiables.',
+        'upload_title' => 'Installer un plugin',
+        'upload_hint' => "Envoyez un .zip. Un plugin est du code que vous choisissez d'exécuter, comme une extension WordPress - n'installez que depuis des sources fiables.",
+        'none_installed' => 'Aucun plugin installé.',
     ],
     'cheat_check' => [
         'subtitle' => 'Générez un lien à usage unique que le joueur exécute sur sa machine ; le résultat remonte ici.',
@@ -432,5 +437,31 @@ return [
         'check_tar_available' => 'tar est introuvable sur ce serveur',
         'check_disk_space' => 'Espace disque insuffisant',
         'check_updates_enabled' => 'Les mises à jour sont désactivées',
+    ],
+
+    'webhook_events' => [
+        'admin.action' => 'Action admin',
+        'user.registered' => 'Nouvel utilisateur',
+        'report.created' => 'Nouveau signalement',
+        'report.replied' => 'Réponse au signalement',
+        'report.closed' => 'Signalement clôturé',
+        'appeal.created' => 'Nouveau recours',
+        'appeal.decided' => 'Recours tranché',
+        'health.alert' => 'Alerte système',
+    ],
+
+    'settings' => [
+        'timezone' => 'Fuseau horaire',
+        'default_locale' => 'Langue par défaut',
+    ],
+
+    'admins' => [
+        'flags' => 'Droits',
+        'immunity' => 'Immunité',
+        'status' => 'Statut',
+        'expires' => 'Expire',
+        'active' => 'Actif',
+        'disabled' => 'Désactivé',
+        'groups_subtitle' => "Groupes définis par le plugin d'administration. Les droits accordés ici s'appliquent à tous les admins du groupe.",
     ],
 ];
