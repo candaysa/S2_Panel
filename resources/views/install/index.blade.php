@@ -92,7 +92,10 @@
                 return data;
             },
 
-            async submitLocale() {
+            // Picking a language applies it straight away. Every label on this
+            // page is rendered by Blade, so the only way to show the new one is
+            // to ask the server for the page again - hence the reload.
+            async applyLocale() {
                 this.loading = true;
                 this.error = null;
                 try {
@@ -100,6 +103,24 @@
                     window.location.reload();
                 } catch (e) {
                     this.error = '{{ __('i18n::messages.install.generic_error') }}';
+                    this.loading = false;
+                }
+            },
+
+            // Continue must NOT reload. `step` is Alpine state and starts at 1
+            // on every page load, so reloading here made step 1 a dead end -
+            // the locale saved, the page came back, and you were on step 1
+            // again with no way forward. It still posts, so the default locale
+            // is persisted even when the dropdown was never touched.
+            async submitLocale() {
+                this.loading = true;
+                this.error = null;
+                try {
+                    await this.post('/api/install/locale', { locale: this.locale });
+                    this.step = 2;
+                } catch (e) {
+                    this.error = '{{ __('i18n::messages.install.generic_error') }}';
+                } finally {
                     this.loading = false;
                 }
             },
@@ -241,7 +262,9 @@
                 <div class="relative mt-4">
                     <select
                         x-model="locale"
-                        class="w-full appearance-none rounded-lg border border-line bg-canvas px-3 py-2.5 pr-10 text-sm font-medium text-ink transition-colors hover:bg-surface-raised focus:border-brand-strong focus:outline-none"
+                        @change="applyLocale()"
+                        :disabled="loading"
+                        class="w-full appearance-none rounded-lg border border-line bg-canvas px-3 py-2.5 pr-10 text-sm font-medium text-ink transition-colors hover:bg-surface-raised focus:border-brand-strong focus:outline-none disabled:opacity-50"
                     >
                         @foreach (['en' => 'English', 'tr' => 'Türkçe', 'de' => 'Deutsch', 'fr' => 'Français', 'it' => 'Italiano', 'ru' => 'Русский'] as $code => $label)
                             <option value="{{ $code }}">{{ $label }}</option>
