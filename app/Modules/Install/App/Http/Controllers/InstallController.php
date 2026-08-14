@@ -3,6 +3,7 @@
 namespace App\Modules\Install\App\Http\Controllers;
 
 use App\Modules\Install\App\Services\ConnectionProbe;
+use App\Modules\Install\App\Services\DependencyProbe;
 use App\Modules\Install\App\Services\EnvWriter;
 use App\Modules\Settings\App\Services\SettingService;
 use App\Support\Api;
@@ -11,7 +12,9 @@ use App\Support\PanelBackupException;
 use App\Support\SteamId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 use Throwable;
@@ -37,8 +40,32 @@ class InstallController
      */
     private const PROBE_CONNECTION = 'install_probe';
 
-    public function __construct(private readonly ConnectionProbe $probe)
-    {
+    /**
+     * How far the wizard has got, recorded in .env as each step commits.
+     *
+     * The step used to live only in the browser, so a refresh - or the reload
+     * the language step performs - dropped the operator back to the beginning
+     * with their database and Steam credentials already written. Progress is
+     * server state because the thing it describes, .env, is server state.
+     */
+    private const STEP_KEY = 'INSTALL_STEP';
+
+    private const STEP_DATABASE = 2;
+
+    private const STEP_STEAM = 3;
+
+    private const STEP_MODULES = 4;
+
+    /**
+     * Wizard screens, in order. Only the count is used server-side, to clamp
+     * a restored step; the labels live in the view.
+     */
+    private const STEPS = ['locale', 'database', 'steam', 'modules', 'complete'];
+
+    public function __construct(
+        private readonly ConnectionProbe $probe,
+        private readonly DependencyProbe $dependencies,
+    ) {
     }
 
     private function envPath(): string
@@ -51,9 +78,15 @@ class InstallController
      */
     public function status(): JsonResponse
     {
+        // step is 1-based and one ahead of the last committed step, so a
+        // refresh returns to the screen the operator was on rather than the
+        // one they already finished.
+        $completed = (int) env(self::STEP_KEY, 0);
+
         return Api::success([
             'installed' => (bool) config('app.installed'),
             'app_url' => config('app.url'),
+            'step' => min($completed + 1, count(self::STEPS)),
         ]);
     }
 
@@ -122,11 +155,22 @@ class InstallController
             return Api::error('database_connection_failed', ['connections' => ['connection']], 422);
         }
 
+        // Reachable is not the same as usable: report which plugin tables are
+        // absent so a wrong-but-valid database is caught here instead of
+        // surfacing later as an empty page. Advisory only - not every server
+        // runs every plugin.
+        $integrations = $this->dependencies->inspect(self::PROBE_CONNECTION);
+
+        // Only .env is written. The live connections are deliberately left
+        // alone: "panel" is what the session and cache drivers use, so
+        // repointing it mid-request sent the rest of this request - including
+        // the session write that closes it - at a database whose panel tables
+        // do not exist yet, turning a successful save into a 500 immediately
+        // after it. The new values are picked up on the next request, which is
+        // when they are first needed.
         $values = [];
 
         foreach (self::CONNECTIONS as $connection) {
-            $this->overrideConnection($connection, $data);
-
             $prefix = $connection === 'panel' ? 'DB_' : strtoupper($connection).'_DB_';
 
             $values[$prefix.'HOST'] = $data['host'];
@@ -137,9 +181,13 @@ class InstallController
         }
 
         $values['DB_CONNECTION'] = 'panel';
+        $values[self::STEP_KEY] = self::STEP_DATABASE;
         (new EnvWriter($this->envPath()))->set($values);
 
-        return Api::success(null, ['connections' => self::CONNECTIONS]);
+        return Api::success(null, [
+            'connections' => self::CONNECTIONS,
+            'integrations' => $integrations,
+        ]);
     }
 
     /**
@@ -173,6 +221,7 @@ class InstallController
             'STEAM_CLIENT_SECRET' => $request->input('client_secret'),
             'STEAM_CALLBACK_URL' => $request->input('callback_url') ?? config('app.url').'/api/auth/callback',
             'OWNER_STEAM_ID' => $ownerId,
+            self::STEP_KEY => self::STEP_STEAM,
         ]);
 
         return Api::success(null);
@@ -203,6 +252,8 @@ class InstallController
             }
         }
 
+        $values[self::STEP_KEY] = self::STEP_MODULES;
+
         (new EnvWriter($this->envPath()))->set($values);
 
         return Api::success(null, ['written' => array_keys($values)]);
@@ -218,7 +269,49 @@ class InstallController
     {
         (new EnvWriter($this->envPath()))->set(['INSTALLED' => true]);
 
+        $this->retireInstaller();
+
         return Api::success(['installed' => true]);
+    }
+
+    /**
+     * Take the installer out of service once it has done its job.
+     *
+     * config/modules.php gates the Install module on INSTALLED, so from the
+     * next request its routes are never registered - the wizard stops
+     * existing rather than merely being refused. InstallLock's 404 stays as
+     * the outer guard; an earlier release shipped with only that check
+     * misordered and left /api/install/* writable on a live panel, so the two
+     * layers are deliberate.
+     *
+     * The gate reads env(), which a cached config resolves once at cache time,
+     * so the cache is dropped here or the module would stay registered until
+     * the next deploy.
+     *
+     * Deleting the wizard's own files is attempted but expected to fail on a
+     * correctly permissioned deploy, where the application user owns nothing
+     * it serves. That is the better arrangement, so the failure is ignored
+     * rather than reported: the routes are already gone, which is what
+     * actually matters. The module's PHP is never removed in any case -
+     * bootstrap/providers.php names InstallServiceProvider, and deleting the
+     * class would stop the application booting at all.
+     */
+    private function retireInstaller(): void
+    {
+        try {
+            Artisan::call('config:clear');
+        } catch (Throwable $e) {
+            // Worst case the wizard remains routable until the next deploy,
+            // where InstallLock still refuses it. Not worth failing the
+            // install the operator just completed.
+            report($e);
+        }
+
+        try {
+            File::delete(resource_path('views/install/index.blade.php'));
+        } catch (Throwable) {
+            // Permission denied is the normal, healthy outcome here.
+        }
     }
 
     /**
