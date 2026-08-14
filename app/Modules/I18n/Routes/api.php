@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\I18n\App\Http\Controllers\I18nController;
 use Illuminate\Support\Facades\Route;

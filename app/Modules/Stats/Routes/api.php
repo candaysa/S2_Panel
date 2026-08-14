@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Stats\App\Http\Controllers\StatsController;
 use Illuminate\Support\Facades\Route;

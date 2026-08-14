@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Audit\App\Http\Controllers\AuditController;
 use Illuminate\Support\Facades\Route;

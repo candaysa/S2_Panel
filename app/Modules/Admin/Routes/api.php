@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Admin\App\Http\Controllers\AdminController;
 use Illuminate\Support\Facades\Route;

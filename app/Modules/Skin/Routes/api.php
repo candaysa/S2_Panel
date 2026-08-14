@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Skin\App\Http\Controllers\SkinController;
 use Illuminate\Support\Facades\Route;

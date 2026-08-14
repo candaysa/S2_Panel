@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Appeal\App\Http\Controllers\AppealController;
 use Illuminate\Support\Facades\Route;

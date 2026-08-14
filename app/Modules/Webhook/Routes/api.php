@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Webhook\App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;

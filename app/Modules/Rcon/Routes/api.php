@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Rcon\App\Http\Controllers\RconController;
 use Illuminate\Support\Facades\Route;

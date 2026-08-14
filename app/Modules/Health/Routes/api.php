@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Modules\Health\App\Http\Controllers\HealthController;
 use App\Modules\Health\App\Http\Controllers\NotificationController;
