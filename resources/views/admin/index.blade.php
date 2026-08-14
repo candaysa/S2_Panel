@@ -28,6 +28,16 @@
             isActive(admin) {
                 return !admin.expires_at || new Date(admin.expires_at) > new Date();
             },
+            // flags/groups arrive as a comma-joined string from the plugin
+            // table; empty segments are dropped so a trailing comma does not
+            // render a blank chip.
+            chips(value) {
+                return (value ?? '').split(',').map(v => v.trim()).filter(Boolean);
+            },
+            expiry(admin) {
+                if (!admin.expires_at) return @js(__('i18n::messages.bans.never'));
+                return new Date(admin.expires_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+            },
         }"
         x-init="init()"
     >
@@ -47,27 +57,75 @@
                 <thead class="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-faint">
                     <tr>
                         <th class="px-4 py-3">{{ __('i18n::messages.nav.admin') }}</th>
-                        <th class="px-4 py-3">SteamID64</th>
-                        <th class="px-4 py-3">Flags</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.nav.groups') }}</th>
-                        <th class="px-4 py-3">Immunity</th>
-                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">{{ __('i18n::messages.admins.flags') }}</th>
+                        <th class="hidden px-4 py-3 lg:table-cell">{{ __('i18n::messages.nav.groups') }}</th>
+                        <th class="px-4 py-3 text-center">{{ __('i18n::messages.admins.immunity') }}</th>
+                        <th class="hidden px-4 py-3 md:table-cell">{{ __('i18n::messages.admins.expires') }}</th>
+                        <th class="px-4 py-3">{{ __('i18n::messages.admins.status') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line-soft">
                     <template x-for="admin in admins" :key="admin.id">
-                        <tr class="text-ink-muted">
-                            <td class="px-4 py-3 font-medium text-ink" x-text="admin.name"></td>
-                            <td class="px-4 py-3 font-mono text-xs" x-text="admin.steamid"></td>
-                            <td class="px-4 py-3" x-text="admin.flags || '—'"></td>
-                            <td class="px-4 py-3" x-text="admin.groups || '—'"></td>
-                            <td class="px-4 py-3" x-text="admin.immunity"></td>
+                        <tr class="group text-ink-muted transition-colors hover:bg-surface-raised">
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-2.5">
+                                    <img x-show="admin.avatar" :src="admin.avatar" alt="" loading="lazy" class="size-9 shrink-0 rounded-full object-cover ring-1 ring-line">
+                                    <span x-show="!admin.avatar" class="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold text-ink-faint" x-text="(admin.name ?? '?').charAt(0).toUpperCase()"></span>
+                                    <span class="min-w-0">
+                                        <a
+                                            :href="'https://steamcommunity.com/profiles/' + admin.steamid"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="block truncate font-medium text-ink transition-colors hover:text-brand-strong"
+                                            x-text="admin.name"
+                                        ></a>
+                                        <span class="block truncate font-mono text-xs text-ink-faint" x-text="admin.steamid"></span>
+                                    </span>
+                                </div>
+                            </td>
+
+                            {{-- Flags are a comma-joined string in the plugin
+                                 table; split into chips so a long list stays
+                                 scannable instead of running off the row. --}}
+                            <td class="px-4 py-3">
+                                <div class="flex max-w-xs flex-wrap gap-1">
+                                    <template x-for="flag in chips(admin.flags)" :key="flag">
+                                        <span class="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-[11px] text-ink-muted" x-text="flag"></span>
+                                    </template>
+                                    <span x-show="chips(admin.flags).length === 0" class="text-ink-faint">—</span>
+                                </div>
+                            </td>
+
+                            <td class="hidden px-4 py-3 lg:table-cell">
+                                <div class="flex max-w-xs flex-wrap gap-1">
+                                    <template x-for="group in chips(admin.groups)" :key="group">
+                                        <span class="rounded bg-brand-soft px-1.5 py-0.5 text-[11px] font-medium text-brand-strong" x-text="group"></span>
+                                    </template>
+                                    <span x-show="chips(admin.groups).length === 0" class="text-ink-faint">—</span>
+                                </div>
+                            </td>
+
+                            {{-- Immunity is a 0-100 rank; the bar makes the
+                                 relative standing readable at a glance. --}}
+                            <td class="px-4 py-3">
+                                <div class="mx-auto w-14">
+                                    <p class="text-center text-sm font-medium tabular-nums text-ink" x-text="admin.immunity ?? 0"></p>
+                                    <div class="mt-1 h-1 overflow-hidden rounded-full bg-surface-raised">
+                                        <div class="h-full rounded-full bg-brand-strong" :style="'width:' + Math.min(100, admin.immunity ?? 0) + '%'"></div>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="hidden px-4 py-3 text-sm md:table-cell" x-text="expiry(admin)"></td>
+
                             <td class="px-4 py-3">
                                 <span
-                                    :class="isActive(admin) ? 'bg-brand-soft text-brand-strong' : 'bg-surface-raised text-ink-faint'"
-                                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                                    x-text="isActive(admin) ? 'Active' : 'Disabled'"
-                                ></span>
+                                    :class="isActive(admin) ? 'bg-emerald-500/10 text-emerald-400' : 'bg-surface-raised text-ink-faint'"
+                                    class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                >
+                                    <span class="size-1.5 rounded-full" :class="isActive(admin) ? 'bg-emerald-400' : 'bg-ink-faint/50'"></span>
+                                    <span x-text="isActive(admin) ? @js(__('i18n::messages.admins.active')) : @js(__('i18n::messages.admins.disabled'))"></span>
+                                </span>
                             </td>
                         </tr>
                     </template>

@@ -60,7 +60,16 @@
                         body: JSON.stringify(this.form),
                     });
                     if (!res.ok) throw new Error('request_failed');
+                    const body = await res.json();
                     this.saved = true;
+
+                    // Every label on the page was rendered server-side in the
+                    // previous locale, so a language change only takes effect
+                    // on a fresh render. Reloading here is what removes the
+                    // "why is it still English until I press F5" step.
+                    if (body.meta?.locale_changed) {
+                        setTimeout(() => window.location.reload(), 500);
+                    }
                 } catch (e) {
                     this.error = true;
                 } finally {
@@ -142,13 +151,32 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-ink-muted" for="timezone">Timezone</label>
-                    <input
+                    <label class="block text-sm font-medium text-ink-muted" for="timezone">{{ __('i18n::messages.settings.timezone') }}</label>
+                    {{-- Built from PHP's own tz database and grouped by
+                         region, so it cannot drift out of date and the list
+                         stays navigable at ~400 entries. UTC is pulled to the
+                         top because it is the sensible default for a panel
+                         serving players in several countries. --}}
+                    <select
                         id="timezone"
-                        type="text"
                         x-model="form.timezone"
                         class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none"
                     >
+                        @php
+                            $zones = collect(timezone_identifiers_list())
+                                ->reject(fn (string $tz): bool => $tz === 'UTC')
+                                ->groupBy(fn (string $tz): string => str_contains($tz, '/') ? explode('/', $tz)[0] : 'Other')
+                                ->sortKeys();
+                        @endphp
+                        <option value="UTC">UTC</option>
+                        @foreach ($zones as $region => $list)
+                            <optgroup label="{{ $region }}">
+                                @foreach ($list as $tz)
+                                    <option value="{{ $tz }}">{{ str_replace(['_', '/'], [' ', ' / '], $tz) }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </select>
                 </div>
             </div>
 

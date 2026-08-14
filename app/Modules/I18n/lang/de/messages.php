@@ -145,6 +145,8 @@ return [
                 'description' => 'Spieler-Rang- und Levelverfolgung (CS2_Ranks).',
             ],
         ],
+        'tab_builtin' => 'Integriert',
+        'tab_plugins' => 'Plugins',
     ],
     'bans' => [
         'type_ban' => 'Bans',
@@ -340,6 +342,9 @@ return [
         'uninstall' => 'Deinstallieren',
         'uninstall_confirm' => 'Dieses Plugin deinstallieren? Seine Dateien werden gelöscht. Kann nicht rückgängig gemacht werden.',
         'trust_note' => 'Ein Plugin ist Code, den du bewusst ausführst - genau wie ein WordPress-Plugin oder ein WHMCS-Modul. Installiere nur .zip-Dateien aus vertrauenswürdigen Quellen.',
+        'upload_title' => 'Plugin installieren',
+        'upload_hint' => 'Eine .zip hochladen. Ein Plugin ist Code, den Sie ausführen - wie ein WordPress-Plugin. Nur aus vertrauenswürdigen Quellen installieren.',
+        'none_installed' => 'Noch keine Plugins installiert.',
     ],
     'cheat_check' => [
         'subtitle' => 'Erstelle einen einmaligen Link, den der Spieler auf seinem Rechner ausführt; das Ergebnis landet hier.',
@@ -432,5 +437,31 @@ return [
         'check_tar_available' => 'tar wurde auf diesem Server nicht gefunden',
         'check_disk_space' => 'Nicht genug freier Speicherplatz',
         'check_updates_enabled' => 'Updates sind in der Konfiguration deaktiviert',
+    ],
+
+    'webhook_events' => [
+        'admin.action' => 'Admin-Aktion',
+        'user.registered' => 'Neue Registrierung',
+        'report.created' => 'Neue Meldung',
+        'report.replied' => 'Antwort auf Meldung',
+        'report.closed' => 'Meldung geschlossen',
+        'appeal.created' => 'Neuer Einspruch',
+        'appeal.decided' => 'Einspruch entschieden',
+        'health.alert' => 'System-Warnung',
+    ],
+
+    'settings' => [
+        'timezone' => 'Zeitzone',
+        'default_locale' => 'Standardsprache',
+    ],
+
+    'admins' => [
+        'flags' => 'Rechte',
+        'immunity' => 'Immunität',
+        'status' => 'Status',
+        'expires' => 'Läuft ab',
+        'active' => 'Aktiv',
+        'disabled' => 'Deaktiviert',
+        'groups_subtitle' => 'Im Admin-Plugin definierte Gruppen. Hier vergebene Rechte gelten für alle Admins der Gruppe.',
     ],
 ];

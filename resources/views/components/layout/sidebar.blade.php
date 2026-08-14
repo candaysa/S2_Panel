@@ -151,17 +151,6 @@
                 {{ __('i18n::messages.nav.modules') }}
             </a>
 
-            <a
-                href="{{ route('plugins.page') }}"
-                @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
-                    'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('plugins.page'),
-                    'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('plugins.page'),
-                ])
-            >
-                <x-icon name="upload" class="size-5 shrink-0" />
-                {{ __('i18n::messages.nav.plugins') }}
-            </a>
 
             <a
                 href="{{ route('settings.page') }}"

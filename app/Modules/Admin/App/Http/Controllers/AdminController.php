@@ -4,6 +4,7 @@ namespace App\Modules\Admin\App\Http\Controllers;
 
 use App\Modules\Admin\App\Services\AdminService;
 use App\Support\Api;
+use App\Support\SteamProfiles;
 use App\Support\SteamId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -35,7 +36,18 @@ class AdminController
 
         $admins = $this->admins->list($search !== null ? (string) $search : null, $active, $perPage);
 
-        return Api::success($admins->items(), [
+        // One Steam call for the page, so the list can show faces instead of
+        // a column of 17-digit numbers. Never fatal - see SteamProfiles.
+        $profiles = SteamProfiles::many(collect($admins->items())->pluck('steamid')->all());
+
+        $items = collect($admins->items())->map(function ($admin) use ($profiles): array {
+            $row = is_array($admin) ? $admin : $admin->toArray();
+            $row['avatar'] = $profiles[(string) ($row['steamid'] ?? '')]['avatar'] ?? null;
+
+            return $row;
+        })->all();
+
+        return Api::success($items, [
             'pagination' => [
                 'current_page' => $admins->currentPage(),
                 'per_page' => $admins->perPage(),

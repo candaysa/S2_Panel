@@ -98,7 +98,6 @@ Route::middleware('steam.auth')->group(function (): void {
         Route::view('/health', 'health.index')->name('health.page');
         Route::view('/webhooks', 'webhooks.index')->name('webhooks.page');
         Route::view('/modules', 'modules.index')->name('modules.page');
-        Route::view('/plugins', 'plugins.index')->name('plugins.page');
         Route::view('/settings', 'settings.index')->name('settings.page');
     });
 });

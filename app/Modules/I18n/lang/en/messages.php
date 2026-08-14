@@ -145,6 +145,8 @@ return [
                 'description' => 'Player rank and level tracking (CS2_Ranks).',
             ],
         ],
+        'tab_builtin' => 'Built-in',
+        'tab_plugins' => 'Plugins',
     ],
     'bans' => [
         'type_ban' => 'Bans',
@@ -340,6 +342,9 @@ return [
         'uninstall' => 'Uninstall',
         'uninstall_confirm' => 'Uninstall this plugin? Its files will be deleted. This cannot be undone.',
         'trust_note' => 'A plugin is code you choose to run, exactly like a WordPress plugin or a WHMCS module - only install .zips from sources you trust.',
+        'upload_title' => 'Install a plugin',
+        'upload_hint' => 'Upload a .zip. A plugin is code you choose to run, exactly like a WordPress plugin - only install from sources you trust.',
+        'none_installed' => 'No plugins installed yet.',
     ],
     'cheat_check' => [
         'subtitle' => 'Issue a one-off link a player runs on their own machine; the scan reports back here.',
@@ -432,5 +437,31 @@ return [
         'check_tar_available' => 'tar was not found on this server',
         'check_disk_space' => 'Not enough free disk space',
         'check_updates_enabled' => 'Updates are disabled in configuration',
+    ],
+
+    'webhook_events' => [
+        'admin.action' => 'Admin action',
+        'user.registered' => 'New user registered',
+        'report.created' => 'New report',
+        'report.replied' => 'Report reply',
+        'report.closed' => 'Report closed',
+        'appeal.created' => 'New appeal',
+        'appeal.decided' => 'Appeal decided',
+        'health.alert' => 'Health alert',
+    ],
+
+    'settings' => [
+        'timezone' => 'Timezone',
+        'default_locale' => 'Default language',
+    ],
+
+    'admins' => [
+        'flags' => 'Flags',
+        'immunity' => 'Immunity',
+        'status' => 'Status',
+        'expires' => 'Expires',
+        'active' => 'Active',
+        'disabled' => 'Disabled',
+        'groups_subtitle' => 'Groups defined by the admin plugin. Flags granted here apply to every admin in the group.',
     ],
 ];

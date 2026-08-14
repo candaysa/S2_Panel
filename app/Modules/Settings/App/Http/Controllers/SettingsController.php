@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
@@ -52,7 +53,9 @@ class SettingsController
             'site_name' => 'nullable|string|max:120',
             'site_description' => 'nullable|string|max:500',
             'default_locale' => 'nullable|string|in:en,tr,de,ru,fr,it',
-            'timezone' => 'nullable|string|max:64',
+            // Validated against the system's own tz database rather than a
+            // hand-kept list, so it cannot drift out of date.
+            'timezone' => ['nullable', 'string', 'max:64', Rule::in(timezone_identifiers_list())],
             'brand_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
 
@@ -71,7 +74,21 @@ class SettingsController
             $updated[] = $key;
         }
 
-        return Api::success(null, ['updated' => $updated]);
+        // SetLocale prefers the session locale over this setting, and the
+        // install wizard writes one - so without this the owner who set the
+        // panel up would change the default and see no difference at all,
+        // even after a reload. Their own session follows the new default.
+        $localeChanged = false;
+
+        if (($validator->validated()['default_locale'] ?? null) !== null) {
+            $locale = (string) $validator->validated()['default_locale'];
+            $localeChanged = $request->session()->get('locale') !== $locale;
+            $request->session()->put('locale', $locale);
+        }
+
+        // The UI is server-rendered, so a new locale needs a fresh render;
+        // the client reloads when told the locale actually moved.
+        return Api::success(null, ['updated' => $updated, 'locale_changed' => $localeChanged]);
     }
 
     /**
