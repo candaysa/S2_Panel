@@ -1,58 +1,71 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# S2 Panel
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A modular admin panel for Counter-Strike 2 servers running the **Swiftly**
+plugin ecosystem — CS2_Admin, CS2_Ranks, weapon skins, and VIPCore. It reads
+and writes those plugins' own database tables directly; no separate agent
+or bridge is required on the game server.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Steam OpenID login** with an owner role (assigned during setup) plus
+  live authorization against the Swiftly admin plugin's flags/groups.
+- **Moderation**: admins & groups, bans/mutes/gags/warns, player reports
+  and admin applications (ticket system), ban appeals, an RCON console
+  with kick/ban/slay shortcuts, and a full audit log.
+- **Community**: VIP group management (VIPCore), player ranks (CS2_Ranks),
+  and weapon skin loadouts.
+- **Operations**: server list with live A2S queries, health monitoring
+  with owner notifications, Discord webhook notifications, and panel-wide
+  stats.
+- **Modules tab**: turn built-in features (VIP/Skins/Ranks) on or off at
+  runtime, no redeploy needed.
+- **Plugins tab**: install third-party plugins as a `.zip`, right from the
+  panel — see [docs/plugin-development.md](docs/plugin-development.md) for
+  how to build one.
+- **Self-service install wizard**: language, database connections,
+  Steam/owner setup, and module selection — no manual SQL required.
+- 6-language UI (English, Turkish, German, French, Italian, Russian),
+  dark/light theme, and an owner-customizable accent color.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Laravel 13 (PHP 8.3+) · Blade + Alpine.js + Tailwind CSS v4 · MySQL (one
+connection per plugin database) · Vite.
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Getting started
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+npm install
+npm run build       # or `npm run dev` while developing
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+php artisan serve
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Then open the panel in a browser and follow the install wizard — it walks
+through choosing a language, connecting the panel to its own database plus
+the Swiftly/CS2_Ranks/weapon-skins/VIPCore databases, Steam OpenID
+credentials, the panel owner's SteamID, and which built-in modules to
+enable. Nothing here is entered by hand-editing `.env`.
 
-## Contributing
+## Architecture
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Every feature is its own package under `app/Modules/*` (a `ServiceProvider`
+extending `App\Support\ModuleServiceProvider`, its own routes, controllers,
+models and — for panel-owned data — migrations). A module is gated on/off
+via `config/modules.php`; a curated subset can additionally be toggled at
+runtime from the **Modules** tab without touching `.env`. Third-party
+plugins (see **Plugins** tab) follow the exact same shape, just discovered
+from the database instead of being compiled into the app.
 
-## Code of Conduct
+## Tests
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+php artisan test
+```
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Not yet decided.

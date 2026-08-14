@@ -1,9 +1,9 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "candaysa/s2-panel",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "Admin panel for CS2 servers running the Swiftly plugin ecosystem (CS2_Admin, CS2_Ranks, weapon skins, VIPCore).",
+    "keywords": ["cs2", "counter-strike-2", "admin-panel", "swiftly", "laravel"],
     "license": "MIT",
     "require": {
         "php": "^8.3",
