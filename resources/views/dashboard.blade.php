@@ -8,6 +8,11 @@
             ranks: [],
             recentBans: [],
             recentMutes: [],
+            // The page is public; this defaults to false so nothing ban/mute
+            // related renders before the response comes back. The API applies
+            // the same moderation-flag gate the Ban module's own endpoint
+            // does - see DashboardController::canViewBanDetail().
+            canViewBanDetail: false,
 
             async init() {
                 try {
@@ -19,6 +24,7 @@
                     this.ranks = body.data.ranks;
                     this.recentBans = body.data.recent_bans;
                     this.recentMutes = body.data.recent_mutes;
+                    this.canViewBanDetail = body.meta?.can_view_ban_detail ?? false;
                 } catch (e) {
                     this.error = true;
                 } finally {
@@ -122,8 +128,8 @@
             <ul class="divide-y divide-line-soft">
                 <template x-for="server in servers" :key="server.id">
                     <li class="flex items-center justify-between gap-4 px-5 py-3">
-                        <span class="min-w-0 truncate text-sm font-medium text-ink" x-text="server.hostname ?? server.address"></span>
-                        <span class="shrink-0 font-mono text-xs text-ink-faint" x-text="server.address"></span>
+                        <span class="min-w-0 truncate text-sm font-medium text-ink">{{ __('i18n::messages.nav.servers') }} #<span x-text="server.id"></span></span>
+                        <span class="shrink-0 font-mono text-xs text-ink-faint" x-text="server.server_ip + ':' + server.server_port"></span>
                     </li>
                 </template>
             </ul>
@@ -133,8 +139,10 @@
             </p>
         </div>
 
-        {{-- Recent bans / recent mutes, side by side --}}
-        <div class="mt-6 grid gap-6 lg:grid-cols-2">
+        {{-- Recent bans / recent mutes, side by side - hidden entirely (not
+             shown empty) for a viewer without a moderation flag, so it never
+             reads as "no bans" when the real answer is "you can't see them". --}}
+        <div x-show="!loading && canViewBanDetail" x-cloak class="mt-6 grid gap-6 lg:grid-cols-2">
             @foreach ([
                 ['recentBans', __('i18n::messages.dashboard.recent_bans')],
                 ['recentMutes', __('i18n::messages.dashboard.recent_mutes')],

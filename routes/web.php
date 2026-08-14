@@ -17,9 +17,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return redirect()->to(Auth::check() ? route('dashboard') : route('login'));
-});
+Route::get('/', fn () => redirect()->route('dashboard'));
 
 // Public on purpose - no admin exists yet when this runs. InstallLock keeps
 // it reachable only while the panel isn't installed (see InstallController).
@@ -33,20 +31,34 @@ Route::get('/login', function (Request $request) {
     return view('auth.login');
 })->name('login');
 
+// Public read-only pages, reachable without a Steam session - a visitor
+// should be able to see server status, aggregate stats and the leaderboard
+// before deciding to log in. Each view fetches its data from an API route
+// that is public for exactly the same reason (see the matching module's
+// Routes/api.php); nothing mutable lives behind these.
+Route::view('/dashboard', 'dashboard')->name('dashboard');
+Route::view('/servers', 'servers.index')->name('servers.page');
+Route::view('/stats', 'stats.index')->name('stats.page');
+Route::view('/ranks', 'ranks.index')->name('ranks.page');
+
 Route::middleware('steam.auth')->group(function (): void {
-    Route::view('/dashboard', 'dashboard')->name('dashboard');
+    // Open to any logged-in session - no flag required. Their APIs enforce
+    // the exact same rule (see Vip/Skin/Report/Appeal Routes/api.php); the
+    // sidebar hides these for guests but never for a plain logged-in player.
+    Route::view('/vip', 'vip.index')->name('vip.page');
+    Route::view('/skins', 'skins.index')->name('skins.page');
+    Route::view('/reports', 'reports.index')->name('reports.page');
+    Route::view('/appeals', 'appeals.index')->name('appeals.page');
+
+    // Staff pages - each one's API additionally requires a specific flag
+    // (see the matching Routes/api.php); the page shell itself only needs a
+    // session so a signed-in non-staff user gets the API's 403 rather than a
+    // login redirect they've already passed.
     Route::view('/admins', 'admin.index')->name('admins.page');
     Route::view('/groups', 'admin.groups')->name('groups.page');
-    Route::view('/servers', 'servers.index')->name('servers.page');
     Route::view('/bans', 'bans.index')->name('bans.page');
-    Route::view('/reports', 'reports.index')->name('reports.page');
-    Route::view('/vip', 'vip.index')->name('vip.page');
-    Route::view('/ranks', 'ranks.index')->name('ranks.page');
-    Route::view('/skins', 'skins.index')->name('skins.page');
     Route::view('/rcon', 'rcon.index')->name('rcon.page');
     Route::view('/audit', 'audit.index')->name('audit.page');
-    Route::view('/stats', 'stats.index')->name('stats.page');
-    Route::view('/appeals', 'appeals.index')->name('appeals.page');
     Route::view('/cheat-check', 'cheatcheck.index')->name('cheatcheck.page');
 
     Route::middleware('owner.only')->group(function (): void {

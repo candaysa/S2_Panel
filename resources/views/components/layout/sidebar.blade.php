@@ -2,29 +2,78 @@
 
 @php
     // Grouped as [section label, items]; each item is [route name, label,
-    // icon]. Wire a new module's page in here once it has a real Blade page.
+    // icon, gate]. Wire a new module's page in here once it has a real Blade
+    // page. `gate` mirrors the access rule the item's own module already
+    // enforces server-side (see each Routes/api.php) rather than inventing a
+    // separate one here, so the nav can never promise more than the API
+    // actually grants:
+    //   null            - public, shown to everyone (see routes/web.php)
+    //   'auth'          - any logged-in session, no flag required
+    //   [flags...]      - logged-in AND at least one of these flags (or owner)
     $menuGroups = [
         [__('i18n::messages.nav.section_menu'), [
-            ['dashboard', __('i18n::messages.nav.dashboard'), 'home'],
-            ['servers.page', __('i18n::messages.nav.servers'), 'server'],
-            ['stats.page', __('i18n::messages.nav.stats'), 'chart'],
-        ]],
-        [__('i18n::messages.nav.section_moderation'), [
-            ['admins.page', __('i18n::messages.nav.admin'), 'users'],
-            ['groups.page', __('i18n::messages.nav.groups'), 'group'],
-            ['bans.page', __('i18n::messages.nav.bans'), 'ban'],
-            ['reports.page', __('i18n::messages.nav.reports'), 'flag'],
-            ['appeals.page', __('i18n::messages.nav.appeals'), 'scale'],
-            ['cheatcheck.page', __('i18n::messages.nav.cheat_check'), 'shield'],
-            ['rcon.page', __('i18n::messages.nav.rcon'), 'terminal'],
-            ['audit.page', __('i18n::messages.nav.audit'), 'list'],
+            ['dashboard', __('i18n::messages.nav.dashboard'), 'home', null],
+            ['servers.page', __('i18n::messages.nav.servers'), 'server', null],
+            ['stats.page', __('i18n::messages.nav.stats'), 'chart', null],
+            ['ranks.page', __('i18n::messages.nav.ranks'), 'trophy', null],
         ]],
         [__('i18n::messages.nav.section_community'), [
-            ['vip.page', __('i18n::messages.nav.vip'), 'star'],
-            ['ranks.page', __('i18n::messages.nav.ranks'), 'trophy'],
-            ['skins.page', __('i18n::messages.nav.skins'), 'palette'],
+            ['reports.page', __('i18n::messages.nav.reports'), 'flag', 'auth'],
+            ['appeals.page', __('i18n::messages.nav.appeals'), 'scale', 'auth'],
+            ['vip.page', __('i18n::messages.nav.vip'), 'star', 'auth'],
+            ['skins.page', __('i18n::messages.nav.skins'), 'palette', 'auth'],
+        ]],
+        [__('i18n::messages.nav.section_moderation'), [
+            ['admins.page', __('i18n::messages.nav.admin'), 'users', ['admin.root']],
+            ['groups.page', __('i18n::messages.nav.groups'), 'group', ['admin.root']],
+            ['bans.page', __('i18n::messages.nav.bans'), 'ban', ['admin.ban', 'admin.mute', 'admin.kick', 'admin.generic']],
+            ['cheatcheck.page', __('i18n::messages.nav.cheat_check'), 'shield', ['admin.generic']],
+            ['rcon.page', __('i18n::messages.nav.rcon'), 'terminal', ['admin.rcon']],
+            ['audit.page', __('i18n::messages.nav.audit'), 'list', ['admin.root']],
         ]],
     ];
+
+    $user = auth()->user();
+    $isOwner = $user?->isOwner() ?? false;
+    $userFlags = [];
+    if ($user && ! $isOwner) {
+        try {
+            $userFlags = \App\Support\Flags::for((int) $user->steam_id)['flags'] ?? [];
+        } catch (\Throwable) {
+            $userFlags = [];
+        }
+    }
+
+    $canSee = function (?array $gate) use ($user, $isOwner, $userFlags): bool {
+        if ($gate === null) {
+            return true;
+        }
+        if ($user === null) {
+            return false;
+        }
+        if ($isOwner) {
+            return true;
+        }
+        if ($gate === ['auth']) {
+            return true;
+        }
+
+        return array_intersect($gate, $userFlags) !== [];
+    };
+
+    // 'auth' is a single-item marker, not a flag list - normalize both shapes
+    // to an array so $canSee only has one thing to branch on.
+    $visibleGroups = collect($menuGroups)
+        ->map(function (array $group) use ($canSee): array {
+            [$label, $items] = $group;
+            $visible = collect($items)
+                ->filter(fn (array $item): bool => $canSee($item[3] === 'auth' ? ['auth'] : $item[3]))
+                ->all();
+
+            return [$label, $visible];
+        })
+        ->filter(fn (array $group): bool => $group[1] !== [])
+        ->all();
 @endphp
 
 <aside
@@ -45,13 +94,13 @@
     </div>
 
     <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-4">
-        @foreach ($menuGroups as [$sectionLabel, $items])
+        @foreach ($visibleGroups as [$sectionLabel, $items])
             <div>
                 <p class="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-faint">
                     {{ $sectionLabel }}
                 </p>
                 <ul class="space-y-0.5">
-                    @foreach ($items as [$routeName, $label, $icon])
+                    @foreach ($items as [$routeName, $label, $icon, $gate])
                         <li>
                             <a
                                 href="{{ route($routeName) }}"
@@ -72,7 +121,7 @@
     </nav>
 
     <div class="border-t border-line px-3 py-3 space-y-0.5">
-        @if (auth()->user()?->is_owner)
+        @if ($isOwner)
             <a
                 href="{{ route('health.page') }}"
                 @class([
@@ -134,22 +183,32 @@
             </a>
         @endif
 
-        <form method="POST" action="{{ route('auth.logout') }}">
-            @csrf
-            <button
-                type="submit"
-                class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
+        @if ($user)
+            <form method="POST" action="{{ route('auth.logout') }}">
+                @csrf
+                <button
+                    type="submit"
+                    class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
+                >
+                    @if ($user->avatar)
+                        <img src="{{ $user->avatar }}" alt="" class="size-6 shrink-0 rounded-full">
+                    @else
+                        <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-raised text-[11px] font-semibold text-ink-muted">
+                            {{ mb_strtoupper(mb_substr($user->name ?? '?', 0, 1)) }}
+                        </span>
+                    @endif
+                    {{ __('i18n::messages.nav.logout') }}
+                </button>
+            </form>
+        @else
+            <a
+                href="{{ route('login') }}"
+                class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-surface-raised"
             >
-                @if (auth()->user()?->avatar)
-                    <img src="{{ auth()->user()->avatar }}" alt="" class="size-6 shrink-0 rounded-full">
-                @else
-                    <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-raised text-[11px] font-semibold text-ink-muted">
-                        {{ mb_strtoupper(mb_substr(auth()->user()?->name ?? '?', 0, 1)) }}
-                    </span>
-                @endif
-                {{ __('i18n::messages.nav.logout') }}
-            </button>
-        </form>
+                <x-icon name="steam" class="size-5 shrink-0" />
+                {{ __('i18n::messages.auth.login_with_steam') }}
+            </a>
+        @endif
     </div>
 </aside>
 
