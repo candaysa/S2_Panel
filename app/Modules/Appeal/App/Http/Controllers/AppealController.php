@@ -18,8 +18,8 @@ use InvalidArgumentException;
  * Ban appeal endpoints (C9).
  *
  * Any authenticated player with an ACTIVE ban may file one PENDING appeal.
- * Players manage their own appeals; staff - whichever flags Settings >
- * Tickets names, see TicketAccess - see everything; deciding
+ * Players manage their own appeals; staff - whichever admin group Settings >
+ * Tickets names for ban appeals, see TicketAccess - see everything; deciding
  * (PENDING -> APPROVED/REJECTED) always requires admin.root because it is
  * the panel-side decision signal for unbanning, independent of that setting.
  */
@@ -33,7 +33,7 @@ class AppealController extends Controller
     {
         $user = Auth::user();
 
-        $staff = TicketAccess::isStaff($user);
+        $staff = TicketAccess::isStaff($user, 'ban_appeal');
 
         $query = Appeal::query()
             ->when(! $staff, fn ($q) => $q->where('steamid', (int) $user->steam_id))
@@ -138,7 +138,8 @@ class AppealController extends Controller
     }
 
     /**
-     * Owner of the appeal, or any configured ticket-staff flag. Fail-closed.
+     * Owner of the appeal, or a member of the ban-appeal staff group.
+     * Fail-closed.
      */
     private function canManage(User $user, Appeal $appeal): bool
     {
@@ -150,6 +151,6 @@ class AppealController extends Controller
             return true;
         }
 
-        return TicketAccess::isStaff($user);
+        return TicketAccess::isStaff($user, 'ban_appeal');
     }
 }

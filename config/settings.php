@@ -26,15 +26,17 @@ return [
         // app.css derive from this via color-mix(), so overriding just
         // this one hex re-tints every accent surface in the panel.
         'brand_color' => '#00ffe3',
-        // Which Swiftly flags see every ticket (reports, admin applications,
-        // ban appeals) instead of only their own. Stored comma-joined, same
-        // convention as admin_admins.flags. Previously hardcoded to
-        // 'admin.generic' inside ReportController/AppealController - moved
-        // here so an owner can widen or narrow ticket-staff access without
-        // a code change. Deciding a ticket (close/approve/reject) still
-        // requires admin.root regardless of this setting; that line is not
-        // owner-configurable on purpose - see TicketAccess::canDecide().
-        'ticket_staff_flags' => 'admin.generic',
+        // Which admin GROUP sees every ticket in a category (reports, admin
+        // applications, ban appeals) instead of only their own - one group
+        // per category, not one shared flag list, so e.g. a generic
+        // moderation group can triage reports while only a root-level group
+        // sees admin applications. Empty means "owner only" until
+        // configured. See App\Support\TicketAccess. Deciding a ticket
+        // (close/approve/reject) still requires admin.root regardless of
+        // this setting - see TicketAccess::canDecide().
+        'ticket_staff_group_report' => '',
+        'ticket_staff_group_admin_application' => '',
+        'ticket_staff_group_ban_appeal' => '',
         // Which admin plugin owns the permission/admin/group data on the
         // 'swiftly' connection: 'cs2_admin' (admin_admins/admin_groups,
         // CSV columns) or 'swiftly_admins' (admins/groups, JSON-array
@@ -52,7 +54,9 @@ return [
         'default_locale',
         'timezone',
         'brand_color',
-        'ticket_staff_flags',
+        'ticket_staff_group_report',
+        'ticket_staff_group_admin_application',
+        'ticket_staff_group_ban_appeal',
     ],
 
     'upload_path' => public_path('uploads'),

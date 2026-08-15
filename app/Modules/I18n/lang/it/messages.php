@@ -210,6 +210,7 @@ return [
         'category_reports' => 'Segnalazioni',
         'category_applications' => 'Candidature admin',
         'category_appeals' => 'Ricorsi ban',
+        'category_label' => 'Categoria',
     ],
     'reports' => [
         'new_ticket' => 'Nuovo ticket',
@@ -515,8 +516,10 @@ return [
         'tab_stats' => 'Totali del sito',
         'tab_tickets' => 'Ticket',
         'ticket_staff_title' => 'Staff ticket',
-        'ticket_staff_subtitle' => 'Gli admin con uno di questi flag vedono tutte le segnalazioni, le candidature da admin e i ricorsi ban, non solo i propri. Decidere un ticket (approvare/rifiutare) richiede sempre admin.root, indipendentemente da questa impostazione.',
+        'ticket_staff_subtitle' => 'Scegli un gruppo admin per categoria - i suoi membri vedono tutti i ticket di quella categoria, non solo i propri. Segnalazioni e candidature admin spesso richiedono gruppi diversi (un gruppo di moderazione può gestire le segnalazioni; solo un gruppo di livello root dovrebbe vedere le candidature admin). Decidere un ticket (approvare/rifiutare) richiede sempre admin.root, indipendentemente da questa impostazione.',
         'ticket_staff_empty' => 'Nessun flag selezionato — solo il proprietario vede tutti i ticket.',
+        'ticket_staff_owner_only' => 'Solo proprietario',
+        'ticket_staff_no_groups' => 'Non esiste ancora nessun gruppo admin - creane uno dalla pagina Gruppi prima.',
     ],
 
     'admins' => [

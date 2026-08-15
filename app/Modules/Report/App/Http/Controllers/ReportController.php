@@ -18,9 +18,10 @@ use InvalidArgumentException;
  * Report/ticket endpoints (C8).
  *
  * Visibility model: every authenticated user opens tickets (player report or
- * admin application) and reads/replies to their own; staff - whichever flags
- * Settings > Tickets names, see TicketAccess - see and manage everything.
- * Closing always requires admin.root regardless of that setting.
+ * admin application) and reads/replies to their own; staff - whichever admin
+ * group Settings > Tickets names for that ticket's category, see
+ * TicketAccess - see and manage everything in it. Closing always requires
+ * admin.root regardless of that setting.
  */
 class ReportController extends Controller
 {
@@ -32,11 +33,16 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        $staff = TicketAccess::isStaff($user);
-
         $perPage = min((int) $request->query('per_page', 25), 100);
         $ticketType = $request->query('ticket_type');
         $ticketType = in_array($ticketType, ['report', 'admin_application'], true) ? (string) $ticketType : null;
+
+        // No specific category requested (the panel's own UI always sends
+        // one): staff if configured for either, since "all tickets" then
+        // spans both.
+        $staff = $ticketType !== null
+            ? TicketAccess::isStaff($user, $ticketType)
+            : (TicketAccess::isStaff($user, 'report') || TicketAccess::isStaff($user, 'admin_application'));
 
         $tickets = $staff
             ? $this->reports->all($request->query('status'), $perPage, $ticketType)
@@ -174,7 +180,8 @@ class ReportController extends Controller
     }
 
     /**
-     * Owner, reporter, or any configured ticket-staff flag. Fail-closed.
+     * Owner, reporter, or a member of this ticket's configured staff group.
+     * Fail-closed.
      */
     private function canManage(User $user, Report $report): bool
     {
@@ -186,6 +193,6 @@ class ReportController extends Controller
             return true;
         }
 
-        return TicketAccess::isStaff($user);
+        return TicketAccess::isStaff($user, $report->ticket_type);
     }
 }

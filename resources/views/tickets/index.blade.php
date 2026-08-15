@@ -36,7 +36,27 @@
 
         {{-- New report / application --}}
         <div x-show="showNewForm && category !== 'ban_appeal'" x-cloak x-transition class="mt-4 rounded-xl border border-line bg-surface p-5">
-            <div class="grid gap-3 sm:grid-cols-2">
+            {{-- The category picker also lives here, not just in the header -
+                 it is the one thing that decides which queue this ticket
+                 lands in, and burying that choice behind an unrelated
+                 dropdown up top made it easy to submit into the wrong one
+                 without noticing. --}}
+            <div>
+                <label class="block text-xs font-medium uppercase tracking-wider text-ink-faint">{{ __('i18n::messages.tickets.category_label') }}</label>
+                <div class="relative mt-1 max-w-xs">
+                    <select
+                        x-model="category"
+                        @change="selected = null; load()"
+                        class="w-full appearance-none rounded-lg border border-line bg-canvas py-2 pl-3 pr-9 text-sm font-medium text-ink focus:border-brand-strong focus:outline-none"
+                    >
+                        <option value="report">{{ __('i18n::messages.tickets.category_reports') }}</option>
+                        <option value="admin_application">{{ __('i18n::messages.tickets.category_applications') }}</option>
+                    </select>
+                    <x-icon name="chevron-left" class="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 -rotate-90 text-ink-faint" />
+                </div>
+            </div>
+
+            <div class="mt-3 grid gap-3 sm:grid-cols-2">
                 <input type="text" x-model="newTicket.target_steamid" placeholder="{{ __('i18n::messages.reports.target_steamid') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
                 <input type="text" x-model="newTicket.target_name" placeholder="{{ __('i18n::messages.reports.target_name') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
             </div>

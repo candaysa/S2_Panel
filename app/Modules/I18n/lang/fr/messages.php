@@ -210,6 +210,7 @@ return [
         'category_reports' => 'Signalements',
         'category_applications' => 'Candidatures admin',
         'category_appeals' => 'Appels de bannissement',
+        'category_label' => 'Catégorie',
     ],
     'reports' => [
         'new_ticket' => 'Nouveau ticket',
@@ -515,8 +516,10 @@ return [
         'tab_stats' => 'Totaux du site',
         'tab_tickets' => 'Tickets',
         'ticket_staff_title' => 'Équipe des tickets',
-        'ticket_staff_subtitle' => 'Les admins possédant l\'un de ces drapeaux voient tous les signalements, candidatures admin et appels de bannissement - pas seulement les leurs. Décider d\'un ticket (approuver/rejeter) exige toujours admin.root, indépendamment de ce réglage.',
+        'ticket_staff_subtitle' => 'Choisissez un groupe admin par catégorie - ses membres voient tous les tickets de cette catégorie, pas seulement les leurs. Les signalements et les candidatures admin veulent souvent des groupes différents (un groupe de modération peut trier les signalements ; seul un groupe de niveau root devrait voir les candidatures admin). Décider d\'un ticket (approuver/rejeter) exige toujours admin.root, indépendamment de ce réglage.',
         'ticket_staff_empty' => 'Aucun drapeau sélectionné - seul le propriétaire voit tous les tickets.',
+        'ticket_staff_owner_only' => 'Propriétaire uniquement',
+        'ticket_staff_no_groups' => 'Aucun groupe admin n\'existe encore - créez-en un depuis la page Groupes d\'abord.',
     ],
 
     'admins' => [
