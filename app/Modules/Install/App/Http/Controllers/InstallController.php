@@ -5,6 +5,8 @@ namespace App\Modules\Install\App\Http\Controllers;
 use App\Modules\Install\App\Services\ConnectionProbe;
 use App\Modules\Install\App\Services\DependencyProbe;
 use App\Modules\Install\App\Services\EnvWriter;
+use App\Modules\Rcon\App\Models\RconSetting;
+use App\Modules\Server\App\Models\AdminServer;
 use App\Modules\Settings\App\Services\SettingService;
 use App\Support\Api;
 use App\Support\PanelBackup;
@@ -53,7 +55,9 @@ class InstallController
 
     private const STEP_DATABASE = 2;
 
-    private const STEP_STEAM = 3;
+    private const STEP_RCON = 3;
+
+    private const STEP_STEAM = 4;
 
     /**
      * Wizard screens, in order. Only the count is used server-side, to clamp
@@ -64,7 +68,7 @@ class InstallController
      * proper home in the owner's Modules tab - asking during setup only forced
      * a choice before there was anything to base it on.
      */
-    private const STEPS = ['locale', 'database', 'steam', 'complete'];
+    private const STEPS = ['locale', 'database', 'rcon', 'steam', 'complete'];
 
     public function __construct(
         private readonly ConnectionProbe $probe,
@@ -208,6 +212,64 @@ class InstallController
             'connections' => self::CONNECTIONS,
             'integrations' => $integrations,
         ]);
+    }
+
+    /**
+     * GET /api/install/servers
+     *
+     * Servers the plugin has already registered in the database just
+     * configured in the previous step - read fresh, not the "panel"
+     * connection's stale copy, since this is a new request and the .env
+     * written by database() has already taken effect by the time it runs.
+     */
+    public function servers(): JsonResponse
+    {
+        try {
+            $servers = AdminServer::query()->orderBy('server_id')->get(['id', 'server_ip', 'server_port']);
+        } catch (Throwable) {
+            // The swiftly connection may still be unreachable (wrong
+            // credentials survived the probe somehow, or the plugin has
+            // simply never run) - an empty list just skips the RCON step.
+            $servers = collect();
+        }
+
+        return Api::success($servers);
+    }
+
+    /**
+     * POST /api/install/rcon
+     *
+     * Body: { password: nullable string }. Optional - a fresh install may
+     * not know the RCON password yet, or may want a different one per
+     * server, both fine to set later from the RCON page. When provided, it
+     * is applied to every server detected in the plugin database so the
+     * 5-minute health check (see HealthService::checkRcon) has something to
+     * monitor immediately rather than only after a manual per-server visit.
+     */
+    public function rcon(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'password' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return Api::error(Api::MSG_VALIDATION_FAILED, $validator->errors()->toArray(), 422);
+        }
+
+        $password = trim((string) $request->input('password', ''));
+
+        if ($password !== '') {
+            foreach (AdminServer::query()->get(['id']) as $server) {
+                RconSetting::query()->updateOrCreate(
+                    ['server_id' => $server->id],
+                    ['password' => $password],
+                );
+            }
+        }
+
+        (new EnvWriter($this->envPath()))->set([self::STEP_KEY => self::STEP_RCON]);
+
+        return Api::success(null);
     }
 
     /**
