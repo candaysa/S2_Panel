@@ -83,7 +83,11 @@
                 if (!confirm(@js(__('i18n::messages.vip.revoke_confirm')))) return;
                 this.actionError = '';
                 try {
-                    const url = new URL(`/api/vip/${user.account_id}/${encodeURIComponent(user.group)}`, window.location.origin);
+                    // account_id alone is not a recognized SteamID format (it's
+                    // SteamID32, missing the universe/instance the parser
+                    // needs) - SteamID3 is the shortest format that round-trips.
+                    const steamId3 = `[U:1:${user.account_id}]`;
+                    const url = new URL(`/api/vip/${encodeURIComponent(steamId3)}/${encodeURIComponent(user.group)}`, window.location.origin);
                     url.searchParams.set('server_id', user.sid);
                     const res = await fetch(url, {
                         method: 'DELETE',
@@ -99,6 +103,13 @@
 
             formatExpires(value) {
                 return !value ? @js(__('i18n::messages.bans.never')) : new Date(value * 1000).toLocaleString();
+            },
+
+            formatPlaytime(minutes) {
+                if (!minutes) return '—';
+                const h = Math.floor(minutes / 60);
+                const m = minutes % 60;
+                return h > 0 ? `${h}${@js(__('i18n::messages.ranks.hours_short'))} ${m}${@js(__('i18n::messages.ranks.minutes_short'))}` : `${m}${@js(__('i18n::messages.ranks.minutes_short'))}`;
             },
 
             init() {
@@ -167,6 +178,8 @@
                         <th class="px-4 py-3">{{ __('i18n::messages.vip.player_name') }}</th>
                         <th class="px-4 py-3">{{ __('i18n::messages.vip.group') }}</th>
                         <th class="px-4 py-3">{{ __('i18n::messages.nav.servers') }}</th>
+                        <th class="px-4 py-3">{{ __('i18n::messages.ranks.playtime') }}</th>
+                        <th class="px-4 py-3">{{ __('i18n::messages.vip.status') }}</th>
                         <th class="px-4 py-3">{{ __('i18n::messages.bans.expires') }}</th>
                         <th class="px-4 py-3"></th>
                     </tr>
@@ -175,13 +188,31 @@
                     <template x-for="user in users" :key="user.account_id + '-' + user.sid + '-' + user.group">
                         <tr class="text-ink-muted">
                             <td class="px-4 py-3">
-                                <span class="block font-medium text-ink" x-text="user.name || '—'"></span>
-                                <span class="block font-mono text-xs text-ink-faint" x-text="user.account_id"></span>
+                                <div class="flex items-center gap-2.5">
+                                    <template x-if="user.avatar">
+                                        <img :src="user.avatar" alt="" class="size-7 shrink-0 rounded-full">
+                                    </template>
+                                    <template x-if="!user.avatar">
+                                        <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-muted" x-text="(user.name || '?').charAt(0).toUpperCase()"></span>
+                                    </template>
+                                    <div class="min-w-0">
+                                        <span class="block truncate font-medium text-ink" x-text="user.name || '—'"></span>
+                                        <span class="block font-mono text-xs text-ink-faint" x-text="user.account_id"></span>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full bg-brand-soft px-2.5 py-0.5 text-xs font-medium text-brand-strong" x-text="user.group"></span>
                             </td>
                             <td class="px-4 py-3" x-text="serverLabel(user.sid)"></td>
+                            <td class="px-4 py-3 tabular-nums" x-text="formatPlaytime(user.playtime_minutes)"></td>
+                            <td class="px-4 py-3">
+                                <span
+                                    class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                    :class="user.active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-surface-raised text-ink-faint'"
+                                    x-text="user.active ? @js(__('i18n::messages.vip.active')) : @js(__('i18n::messages.vip.expired'))"
+                                ></span>
+                            </td>
                             <td class="px-4 py-3" x-text="formatExpires(user.expires)"></td>
                             <td class="px-4 py-3 text-right">
                                 <button type="button" @click="revoke(user)" class="text-sm text-red-400 hover:underline">

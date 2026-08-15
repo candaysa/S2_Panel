@@ -207,6 +207,9 @@ return [
         'expires_hint' => 'Kalıcı VIP için boş bırakın.',
         'revoke' => 'Kaldır',
         'revoke_confirm' => 'Bu VIP grubu kaldırılsın mı? Bu işlem geri alınamaz.',
+        'status' => 'Durum',
+        'active' => 'Aktif',
+        'expired' => 'Süresi doldu',
     ],
     'ranks' => [
         'position' => '#',

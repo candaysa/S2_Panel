@@ -102,8 +102,18 @@
                     <template x-for="row in rows" :key="row.id">
                         <tr class="text-ink-muted">
                             <td class="px-4 py-3">
-                                <span class="block font-medium text-ink" x-text="row.target_name || '—'"></span>
-                                <span class="block font-mono text-xs text-ink-faint" x-text="row.steamid"></span>
+                                <div class="flex items-center gap-2.5">
+                                    <template x-if="row.avatar">
+                                        <img :src="row.avatar" alt="" class="size-7 shrink-0 rounded-full">
+                                    </template>
+                                    <template x-if="!row.avatar">
+                                        <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-muted" x-text="(row.target_name || '?').charAt(0).toUpperCase()"></span>
+                                    </template>
+                                    <div class="min-w-0">
+                                        <span class="block truncate font-medium text-ink" x-text="row.target_name || '—'"></span>
+                                        <span class="block font-mono text-xs text-ink-faint" x-text="row.steamid"></span>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-4 py-3" x-text="row.admin_name || '—'"></td>
                             <td class="max-w-xs px-4 py-3">

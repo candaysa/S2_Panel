@@ -207,6 +207,9 @@ return [
         'expires_hint' => 'Laisser vide pour un VIP permanent.',
         'revoke' => 'Révoquer',
         'revoke_confirm' => 'Révoquer ce groupe VIP ? Action irréversible.',
+        'status' => 'Statut',
+        'active' => 'Actif',
+        'expired' => 'Expiré',
     ],
     'ranks' => [
         'position' => '#',
