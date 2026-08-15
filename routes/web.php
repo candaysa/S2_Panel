@@ -79,7 +79,12 @@ Route::middleware('steam.auth')->group(function (): void {
     // the exact same rule (see Vip/Skin/Report/Appeal Routes/api.php); the
     // sidebar hides these for guests but never for a plain logged-in player.
     Route::view('/vip', 'vip.index')->name('vip.page');
-    Route::view('/skins', 'skins.index')->name('skins.page');
+
+    // Own SteamID64 resolved server-side once here - the page has no
+    // "look up another player" mode, so it never needs one from the client.
+    Route::get('/skins', fn () => view('skins.index', [
+        'ownSteamId' => \App\Support\SteamId::parse((string) auth()->user()->steam_id)->steamId64(),
+    ]))->name('skins.page');
 
     // Reports, admin applications, and ban appeals share one page (a
     // category dropdown switches between them); canDecide is resolved

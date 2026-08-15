@@ -4,20 +4,29 @@ namespace App\Modules\Skin\App\Http\Controllers;
 
 use App\Modules\Skin\App\Services\CatalogService;
 use App\Modules\Skin\App\Services\SkinService;
+use App\Models\User;
 use App\Support\Api;
+use App\Support\Flags;
+use App\Support\SteamId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
 
 /**
- * Skin endpoints (C6). Reads are visible to any authenticated session;
- * mutations require admin.root (owner bypasses via RequireFlag).
+ * Skin endpoints (C6). A player manages their own loadout; admin.root (or
+ * the owner) may additionally manage anyone's, for support/moderation.
  *
- * GET    /api/skins/{steamid}              – full loadout
- * GET    /api/skins/catalog/{type}         – static JSON catalog slice
- * PUT    /api/skins/{steamid}/{slot}       – upsert (weapon/knife/gloves/agent/music)
- * DELETE /api/skins/{steamid}/{slot}       – delete by team (weapon also defindex)
+ * GET    /api/skins/{steamid}                      – full loadout
+ * PUT    /api/skins/{steamid}/{slot}                – upsert (weapon/knife/gloves/agent/music)
+ * DELETE /api/skins/{steamid}/{slot}                – delete by team (weapon also defindex)
+ * GET    /api/skins/catalog/weapons                 – skinnable guns
+ * GET    /api/skins/catalog/weapons/{weapon}/paints  – paint choices for one gun
+ * GET    /api/skins/catalog/knives                  – knife types
+ * GET    /api/skins/catalog/gloves                  – glove types
+ * GET    /api/skins/catalog/agents                  – agents (optional ?team=2|3)
+ * GET    /api/skins/catalog/music                   – music kits
  */
 class SkinController
 {
@@ -29,6 +38,10 @@ class SkinController
 
     public function show(string $steamid): JsonResponse
     {
+        if (! $this->authorized($steamid)) {
+            return Api::forbidden();
+        }
+
         try {
             $profile = $this->skins->profile($steamid);
         } catch (InvalidArgumentException) {
@@ -38,17 +51,45 @@ class SkinController
         return Api::success($profile);
     }
 
-    public function catalog(string $type): JsonResponse
+    public function catalogWeapons(): JsonResponse
     {
-        if (! in_array($type, $this->catalog->types(), true)) {
-            return Api::error(Api::MSG_INVALID_INPUT, ['type' => ['invalid_catalog_type']], 422);
-        }
+        return Api::success($this->catalog->weapons());
+    }
 
-        return Api::success($this->catalog->get($type), ['type' => $type]);
+    public function catalogPaintkits(string $weapon): JsonResponse
+    {
+        return Api::success($this->catalog->paintkits($weapon));
+    }
+
+    public function catalogKnives(): JsonResponse
+    {
+        return Api::success($this->catalog->knives());
+    }
+
+    public function catalogGloves(): JsonResponse
+    {
+        return Api::success($this->catalog->gloves());
+    }
+
+    public function catalogAgents(Request $request): JsonResponse
+    {
+        $team = $request->query('team');
+        $team = in_array($team, ['2', '3'], true) ? (int) $team : null;
+
+        return Api::success($this->catalog->agents($team));
+    }
+
+    public function catalogMusic(): JsonResponse
+    {
+        return Api::success($this->catalog->music());
     }
 
     public function store(Request $request, string $steamid, string $slot): JsonResponse
     {
+        if (! $this->authorized($steamid)) {
+            return Api::forbidden();
+        }
+
         $validators = [
             'weapon' => [
                 'team' => 'required|integer|in:2,3',
@@ -117,6 +158,10 @@ class SkinController
 
     public function destroy(Request $request, string $steamid, string $slot): JsonResponse
     {
+        if (! $this->authorized($steamid)) {
+            return Api::forbidden();
+        }
+
         $rules = match ($slot) {
             'weapon' => ['team' => 'required|integer|in:2,3', 'defindex' => 'required|integer|min:0'],
             'knife', 'gloves', 'agent', 'music' => ['team' => 'required|integer|in:2,3'],
@@ -148,5 +193,29 @@ class SkinController
         }
 
         return Api::success(['deleted' => $deleted]);
+    }
+
+    /**
+     * The player editing their own loadout, or admin.root/owner support
+     * access to anyone's. Fail-closed on any malformed steamid.
+     */
+    private function authorized(string $steamid): bool
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        if ($user->isOwner()) {
+            return true;
+        }
+
+        try {
+            if (SteamId::parse((string) $user->steam_id)->equals(SteamId::parse($steamid))) {
+                return true;
+            }
+        } catch (InvalidArgumentException) {
+            return false;
+        }
+
+        return Flags::hasFlag((int) $user->steam_id, 'admin.root');
     }
 }
