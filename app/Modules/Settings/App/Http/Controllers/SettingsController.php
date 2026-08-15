@@ -57,9 +57,15 @@ class SettingsController
             // hand-kept list, so it cannot drift out of date.
             'timezone' => ['nullable', 'string', 'max:64', Rule::in(timezone_identifiers_list())],
             'brand_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
-            // Comma-joined flag names (e.g. "admin.generic,admin.root"),
-            // same convention as admin_admins.flags - see TicketAccess.
-            'ticket_staff_flags' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9_.,]*$/i'],
+            // One admin group name per ticket category - see TicketAccess.
+            // Not validated against the live group list here: Settings has
+            // no dependency on the Admin module, and an owner clearing a
+            // renamed/deleted group's name back out is exactly the "narrow
+            // access" failure mode TicketAccess::isStaff() already handles
+            // (an unknown group name simply matches no one).
+            'ticket_staff_group_report' => ['nullable', 'string', 'max:100'],
+            'ticket_staff_group_admin_application' => ['nullable', 'string', 'max:100'],
+            'ticket_staff_group_ban_appeal' => ['nullable', 'string', 'max:100'],
         ]);
 
         if ($validator->fails()) {

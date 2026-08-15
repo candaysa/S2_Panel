@@ -210,6 +210,7 @@ return [
         'category_reports' => 'Reports',
         'category_applications' => 'Admin applications',
         'category_appeals' => 'Ban appeals',
+        'category_label' => 'Category',
     ],
     'reports' => [
         'new_ticket' => 'New ticket',
@@ -515,8 +516,10 @@ return [
         'tab_stats' => 'Site totals',
         'tab_tickets' => 'Tickets',
         'ticket_staff_title' => 'Ticket staff',
-        'ticket_staff_subtitle' => 'Admins with any of these flags see every report, admin application, and ban appeal — not just their own. Deciding a ticket (approve/reject) always requires admin.root, regardless of this setting.',
+        'ticket_staff_subtitle' => 'Pick one admin group per category - its members see every ticket in that category, not just their own. Reports and admin applications often want different groups (a moderation group can triage reports; only a root-level group should see admin applications). Deciding a ticket (approve/reject) always requires admin.root, regardless of this setting.',
         'ticket_staff_empty' => 'No flags selected — only the owner sees every ticket.',
+        'ticket_staff_owner_only' => 'Owner only',
+        'ticket_staff_no_groups' => 'No admin groups exist yet - create one from the Groups page first.',
     ],
 
     'admins' => [

@@ -210,6 +210,7 @@ return [
         'category_reports' => 'Raporlar',
         'category_applications' => 'Yönetici başvuruları',
         'category_appeals' => 'Ban itirazları',
+        'category_label' => 'Kategori',
     ],
     'reports' => [
         'new_ticket' => 'Yeni talep',
@@ -515,8 +516,10 @@ return [
         'tab_stats' => 'Site toplamları',
         'tab_tickets' => 'Talepler',
         'ticket_staff_title' => 'Talep yetkilileri',
-        'ticket_staff_subtitle' => 'Bu bayraklardan herhangi birine sahip yöneticiler yalnızca kendi talepleri değil, tüm raporları, yönetici başvurularını ve ban itirazlarını görür. Bir talebe karar vermek (onay/red) bu ayardan bağımsız olarak her zaman admin.root gerektirir.',
+        'ticket_staff_subtitle' => 'Her kategori için bir admin grubu seçin - o grubun üyeleri, sadece kendi taleplerini değil o kategorideki tüm talepleri görür. Raporlar ile yönetici başvuruları genelde farklı gruplar ister (bir moderasyon grubu raporları elleyebilir; yönetici başvurularını sadece root seviyesindeki bir grup görmeli). Bir talebe karar vermek (onay/red) bu ayardan bağımsız olarak her zaman admin.root gerektirir.',
         'ticket_staff_empty' => 'Hiçbir bayrak seçilmedi — tüm talepleri yalnızca sahip görür.',
+        'ticket_staff_owner_only' => 'Sadece sahip',
+        'ticket_staff_no_groups' => 'Henüz admin grubu yok - önce Gruplar sayfasından bir tane oluşturun.',
     ],
 
     'admins' => [

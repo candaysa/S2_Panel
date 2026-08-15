@@ -115,8 +115,6 @@ Route::middleware('steam.auth')->group(function (): void {
         Route::view('/webhooks', 'webhooks.index')->name('webhooks.page');
         Route::view('/modules', 'modules.index')->name('modules.page');
         Route::view('/settings', 'settings.index')->name('settings.page');
-        Route::get('/settings/tickets', fn () => view('settings.tickets', [
-            'flags' => \App\Modules\Admin\App\Http\Controllers\AdminController::FLAGS,
-        ]))->name('settings.tickets.page');
+        Route::view('/settings/tickets', 'settings.tickets')->name('settings.tickets.page');
     });
 });

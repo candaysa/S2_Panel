@@ -210,6 +210,7 @@ return [
         'category_reports' => 'Meldungen',
         'category_applications' => 'Admin-Bewerbungen',
         'category_appeals' => 'Bann-Einsprüche',
+        'category_label' => 'Kategorie',
     ],
     'reports' => [
         'new_ticket' => 'Neues Ticket',
@@ -515,8 +516,10 @@ return [
         'tab_stats' => 'Gesamtzahlen',
         'tab_tickets' => 'Tickets',
         'ticket_staff_title' => 'Ticket-Personal',
-        'ticket_staff_subtitle' => 'Admins mit einem dieser Flags sehen jede Meldung, Admin-Bewerbung und jeden Bann-Einspruch - nicht nur ihre eigenen. Eine Entscheidung (annehmen/ablehnen) erfordert unabhängig von dieser Einstellung immer admin.root.',
+        'ticket_staff_subtitle' => 'Wähle pro Kategorie eine Admin-Gruppe - ihre Mitglieder sehen jedes Ticket in dieser Kategorie, nicht nur ihre eigenen. Meldungen und Admin-Bewerbungen brauchen oft unterschiedliche Gruppen (eine Moderations-Gruppe kann Meldungen sichten; nur eine Gruppe auf Root-Ebene sollte Admin-Bewerbungen sehen). Eine Entscheidung (annehmen/ablehnen) erfordert unabhängig von dieser Einstellung immer admin.root.',
         'ticket_staff_empty' => 'Kein Flag ausgewählt - nur der Inhaber sieht alle Tickets.',
+        'ticket_staff_owner_only' => 'Nur Inhaber',
+        'ticket_staff_no_groups' => 'Es gibt noch keine Admin-Gruppen - erstelle zuerst eine auf der Gruppen-Seite.',
     ],
 
     'admins' => [
