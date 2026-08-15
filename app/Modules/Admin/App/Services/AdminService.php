@@ -4,6 +4,7 @@ namespace App\Modules\Admin\App\Services;
 
 use App\Modules\Admin\App\Models\AdminAdmin;
 use App\Modules\Admin\App\Models\AdminGroup;
+use App\Modules\Admin\App\Models\AdminPlaytime;
 use App\Modules\Admin\Events\AdminCreated;
 use App\Modules\Admin\Events\AdminDisabled;
 use App\Modules\Admin\Events\AdminUpdated;
@@ -11,7 +12,9 @@ use App\Modules\Audit\App\Services\AuditService;
 use App\Support\Flags;
 use App\Support\SteamId;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
+use Throwable;
 
 /**
  * Admin management (C3). All mutations run through here so business rules,
@@ -28,36 +31,102 @@ class AdminService
     {
     }
 
+    /** Columns a caller may sort by, mapped to what actually gets ordered on. */
+    private const SORTABLE = [
+        'id' => 'admin_admins.id',
+        'name' => 'admin_admins.name',
+        'steamid' => 'admin_admins.steamid',
+        'flags' => 'admin_admins.flags',
+        'groups' => 'admin_admins.groups',
+        'immunity' => 'admin_admins.immunity',
+        'expires_at' => 'admin_admins.expires_at',
+        'created_at' => 'admin_admins.created_at',
+        'playtime' => 'admin_playtime.playtime_minutes',
+    ];
+
     /**
-     * List admins with optional name/steamid search and status filter.
+     * List admins with optional name/steamid search, status filter and sort.
      *
      * @return LengthAwarePaginator<int, AdminAdmin>
      */
-    public function list(?string $search = null, ?bool $active = null, int $perPage = 25): LengthAwarePaginator
-    {
+    public function list(
+        ?string $search = null,
+        ?bool $active = null,
+        int $perPage = 25,
+        string $sort = 'id',
+        string $dir = 'desc',
+    ): LengthAwarePaginator {
         $query = AdminAdmin::query();
+        $column = self::SORTABLE[$sort] ?? self::SORTABLE['id'];
+        $dir = $dir === 'asc' ? 'asc' : 'desc';
+
+        // Sorting by playtime needs the same join list() -> playtimeFor()
+        // would otherwise do as a second query; joining here instead of
+        // filtering in PHP is what lets ORDER BY + LIMIT stay in the
+        // database rather than sorting the whole table in memory.
+        if ($sort === 'playtime') {
+            try {
+                if (\Illuminate\Support\Facades\Schema::connection('swiftly')->hasTable('admin_playtime')) {
+                    $query->leftJoin('admin_playtime', 'admin_playtime.steamid', '=', 'admin_admins.steamid')
+                        ->select('admin_admins.*');
+                } else {
+                    $column = self::SORTABLE['id'];
+                }
+            } catch (Throwable) {
+                $column = self::SORTABLE['id'];
+            }
+        }
 
         if ($search !== null && $search !== '') {
             $query->where(function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%");
+                $q->where('admin_admins.name', 'like', "%{$search}%");
 
                 if (SteamId::isValid($search)) {
-                    $q->orWhere('steamid', (int) SteamId::parse($search)->steamId64());
+                    $q->orWhere('admin_admins.steamid', (int) SteamId::parse($search)->steamId64());
                 }
             });
         }
 
         if ($active === true) {
             $query->where(function ($q): void {
-                $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                $q->whereNull('admin_admins.expires_at')->orWhere('admin_admins.expires_at', '>', now());
             });
         } elseif ($active === false) {
             $query->where(function ($q): void {
-                $q->whereNotNull('expires_at')->where('expires_at', '<=', now());
+                $q->whereNotNull('admin_admins.expires_at')->where('admin_admins.expires_at', '<=', now());
             });
         }
 
-        return $query->orderByDesc('id')->paginate($perPage);
+        return $query->orderBy($column, $dir)->paginate($perPage);
+    }
+
+    /**
+     * Attach admin_playtime.playtime_minutes to a page of admins, keyed by
+     * steamid.
+     *
+     * admin_playtime is a separate Swiftly plugin table - some installs run
+     * it, some don't - so a missing table degrades to "no playtime data"
+     * rather than a 500. One query for the whole page, not one per row.
+     *
+     * @param  iterable<AdminAdmin>  $admins
+     * @return array<string, int>
+     */
+    public function playtimeFor(iterable $admins): array
+    {
+        try {
+            if (! Schema::connection('swiftly')->hasTable('admin_playtime')) {
+                return [];
+            }
+
+            $ids = collect($admins)->pluck('steamid')->map(fn ($v) => (string) $v)->all();
+
+            return AdminPlaytime::query()
+                ->whereIn('steamid', $ids)
+                ->pluck('playtime_minutes', 'steamid')
+                ->all();
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     /**
@@ -65,7 +134,104 @@ class AdminService
      */
     public function groups()
     {
-        return AdminGroup::query()->orderBy('name')->get();
+        $groups = AdminGroup::query()->orderBy('name')->get();
+
+        // One count query for every group's membership rather than N+1 - a
+        // FIND_IN_SET per group against the (typically small) admin table.
+        $counts = $groups->mapWithKeys(function (AdminGroup $g): array {
+            return [$g->name => AdminAdmin::query()->whereRaw('FIND_IN_SET(?, groups)', [$g->name])->count()];
+        });
+
+        return $groups->map(function (AdminGroup $g) use ($counts): AdminGroup {
+            $g->setAttribute('member_count', $counts[$g->name] ?? 0);
+
+            return $g;
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function createGroup(array $data): AdminGroup
+    {
+        $name = trim((string) ($data['name'] ?? ''));
+
+        if ($name === '') {
+            throw new InvalidArgumentException('group_name_required');
+        }
+
+        if (AdminGroup::query()->where('name', $name)->exists()) {
+            throw new InvalidArgumentException('group_already_exists');
+        }
+
+        $group = AdminGroup::query()->create([
+            'name' => $name,
+            'flags' => $this->csv($data['flags'] ?? null),
+            'immunity' => (int) ($data['immunity'] ?? 0),
+        ]);
+
+        $this->audit->log('admin_group.created', 'admin_group', $name, [
+            'flags' => $group->flags,
+            'immunity' => $group->immunity,
+        ]);
+
+        return $group;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function updateGroup(string $name, array $data): AdminGroup
+    {
+        $group = AdminGroup::query()->where('name', $name)->first();
+
+        if ($group === null) {
+            throw new InvalidArgumentException('group_not_found');
+        }
+
+        $group->update([
+            'flags' => $this->csv($data['flags'] ?? $group->flags),
+            'immunity' => (int) ($data['immunity'] ?? $group->immunity),
+        ]);
+
+        // Every admin carrying this group has its flags cached; the group's
+        // own flags just changed underneath them, so those caches are now
+        // wrong until they naturally expire. Forgetting them here is the
+        // difference between "takes effect now" and "takes effect in five
+        // minutes, silently".
+        AdminAdmin::query()
+            ->whereRaw('FIND_IN_SET(?, groups)', [$name])
+            ->pluck('steamid')
+            ->each(fn ($id) => Flags::forget((int) $id));
+
+        $this->audit->log('admin_group.updated', 'admin_group', $name, [
+            'flags' => $group->flags,
+            'immunity' => $group->immunity,
+        ]);
+
+        return $group->refresh();
+    }
+
+    /**
+     * Groups are deleted outright, unlike admins - a group has no history of
+     * its own worth preserving, and Swiftly treats an admin's reference to a
+     * deleted group name as simply absent.
+     */
+    public function deleteGroup(string $name): void
+    {
+        $group = AdminGroup::query()->where('name', $name)->first();
+
+        if ($group === null) {
+            throw new InvalidArgumentException('group_not_found');
+        }
+
+        $members = AdminAdmin::query()->whereRaw('FIND_IN_SET(?, groups)', [$name])->pluck('steamid');
+
+        $group->delete();
+
+        $members->each(fn ($id) => Flags::forget((int) $id));
+
+        $this->audit->log('admin_group.deleted', 'admin_group', $name);
     }
 
     /**
