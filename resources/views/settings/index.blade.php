@@ -1,111 +1,10 @@
 <x-layout.app :title="__('i18n::messages.nav.settings')">
-    <div
-        x-data="{
-            loading: true,
-            saving: false,
-            error: false,
-            saved: false,
-            form: { site_name: '', site_description: '', default_locale: 'en', timezone: '', brand_color: '#00ffe3' },
-            logoUploading: false,
-            faviconUploading: false,
-            resettingColor: false,
-            applyBrandColor() {
-                document.documentElement.style.setProperty('--color-brand', this.form.brand_color);
-            },
-            async resetBrandColor() {
-                this.resettingColor = true;
-                this.error = false;
-                try {
-                    const res = await fetch('/api/settings/brand-color/reset', {
-                        method: 'POST',
-                        headers: {
-                            Accept: 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                        },
-                    });
-                    if (!res.ok) throw new Error('request_failed');
-                    const body = await res.json();
-                    this.form.brand_color = body.data.brand_color;
-                    this.applyBrandColor();
-                } catch (e) {
-                    this.error = true;
-                } finally {
-                    this.resettingColor = false;
-                }
-            },
-            async init() {
-                try {
-                    const res = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
-                    if (!res.ok) throw new Error('request_failed');
-                    const body = await res.json();
-                    Object.assign(this.form, body.data);
-                } catch (e) {
-                    this.error = true;
-                } finally {
-                    this.loading = false;
-                }
-            },
-            async save() {
-                this.saving = true;
-                this.saved = false;
-                this.error = false;
-                try {
-                    const res = await fetch('/api/settings', {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            Accept: 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                        },
-                        body: JSON.stringify(this.form),
-                    });
-                    if (!res.ok) throw new Error('request_failed');
-                    const body = await res.json();
-                    this.saved = true;
-
-                    // Every label on the page was rendered server-side in the
-                    // previous locale, so a language change only takes effect
-                    // on a fresh render. Reloading here is what removes the
-                    // "why is it still English until I press F5" step.
-                    if (body.meta?.locale_changed) {
-                        setTimeout(() => window.location.reload(), 500);
-                    }
-                } catch (e) {
-                    this.error = true;
-                } finally {
-                    this.saving = false;
-                }
-            },
-            async upload(kind, event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                const flag = kind === 'logo' ? 'logoUploading' : 'faviconUploading';
-                this[flag] = true;
-                this.error = false;
-                try {
-                    const data = new FormData();
-                    data.append('file', file);
-                    const res = await fetch(`/api/settings/${kind}`, {
-                        method: 'POST',
-                        headers: {
-                            Accept: 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
-                        },
-                        body: data,
-                    });
-                    if (!res.ok) throw new Error('request_failed');
-                    const body = await res.json();
-                    this.form[kind] = body.data.path;
-                } catch (e) {
-                    this.error = true;
-                } finally {
-                    this[flag] = false;
-                    event.target.value = '';
-                }
-            },
-        }"
-        x-init="init()"
-    >
+    {{-- The component lives in a pushed <script> rather than inline in
+         x-data. An inline attribute is delimited by double quotes, so a
+         single " anywhere inside it - even in a code comment - closes the
+         attribute early and dumps the rest of the component onto the page as
+         text. That is exactly what happened here. --}}
+    <div x-data="settingsPage()" x-init="init()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.settings') }}</h1>
 
         <div x-show="loading" x-cloak class="mt-6 text-sm text-ink-faint">
@@ -268,4 +167,112 @@
             <p class="mt-3 text-xs text-ink-faint">{{ __('i18n::messages.backup.warning') }}</p>
         </div>
     </div>
+
+    @push('scripts')
+        <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
+            window.settingsPage = () => ({
+                loading: true,
+                saving: false,
+                error: false,
+                saved: false,
+                form: { site_name: '', site_description: '', default_locale: 'en', timezone: 'UTC', brand_color: '#00ffe3' },
+                logoUploading: false,
+                faviconUploading: false,
+                resettingColor: false,
+
+                csrf() {
+                    return document.querySelector('meta[name=csrf-token]').content;
+                },
+
+                applyBrandColor() {
+                    document.documentElement.style.setProperty('--color-brand', this.form.brand_color);
+                },
+
+                async resetBrandColor() {
+                    this.resettingColor = true;
+                    this.error = false;
+                    try {
+                        const res = await fetch('/api/settings/brand-color/reset', {
+                            method: 'POST',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                        });
+                        if (!res.ok) throw new Error('request_failed');
+                        const body = await res.json();
+                        this.form.brand_color = body.data.brand_color;
+                        this.applyBrandColor();
+                    } catch (e) {
+                        this.error = true;
+                    } finally {
+                        this.resettingColor = false;
+                    }
+                },
+
+                async init() {
+                    try {
+                        const res = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
+                        if (!res.ok) throw new Error('request_failed');
+                        const body = await res.json();
+                        Object.assign(this.form, body.data);
+                    } catch (e) {
+                        this.error = true;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async save() {
+                    this.saving = true;
+                    this.saved = false;
+                    this.error = false;
+                    try {
+                        const res = await fetch('/api/settings', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                            body: JSON.stringify(this.form),
+                        });
+                        if (!res.ok) throw new Error('request_failed');
+                        const body = await res.json();
+                        this.saved = true;
+
+                        // Every label was rendered server-side in the previous
+                        // locale, so a language change only lands on a fresh
+                        // render - reload once rather than leaving the owner to
+                        // press F5 themselves.
+                        if (body.meta?.locale_changed) {
+                            setTimeout(() => window.location.reload(), 500);
+                        }
+                    } catch (e) {
+                        this.error = true;
+                    } finally {
+                        this.saving = false;
+                    }
+                },
+
+                async upload(kind, event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const flag = kind === 'logo' ? 'logoUploading' : 'faviconUploading';
+                    this[flag] = true;
+                    this.error = false;
+                    try {
+                        const data = new FormData();
+                        data.append('file', file);
+                        const res = await fetch(`/api/settings/${kind}`, {
+                            method: 'POST',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                            body: data,
+                        });
+                        if (!res.ok) throw new Error('request_failed');
+                        const body = await res.json();
+                        this.form[kind] = body.data.path;
+                    } catch (e) {
+                        this.error = true;
+                    } finally {
+                        this[flag] = false;
+                        event.target.value = '';
+                    }
+                },
+            });
+        </script>
+    @endpush
 </x-layout.app>

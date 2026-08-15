@@ -464,4 +464,16 @@ return [
         'disabled' => 'Désactivé',
         'groups_subtitle' => "Groupes définis par le plugin d'administration. Les droits accordés ici s'appliquent à tous les admins du groupe.",
     ],
+
+    'api_errors' => [
+        'invalid_steam_link' => 'Cela ne ressemble pas à un lien de profil Steam valide.',
+        'steam_link_required' => 'Saisissez le lien du profil Steam du joueur.',
+        'player_name_required' => 'Saisissez un nom de joueur.',
+        'rcon_not_configured' => 'Aucun mot de passe RCON enregistré pour ce serveur. Ajoutez-en un dans Serveurs.',
+        'server_not_found' => 'Serveur introuvable.',
+        'rcon_unreachable' => "Le serveur n'a pas répondu à la connexion RCON.",
+        'validation_failed' => 'Veuillez vérifier les champs signalés.',
+        'invalid_input' => "Cette saisie n'a pas été acceptée.",
+        'forbidden' => "Vous n'avez pas la permission de faire cela.",
+    ],
 ];

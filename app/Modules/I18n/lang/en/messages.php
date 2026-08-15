@@ -464,4 +464,16 @@ return [
         'disabled' => 'Disabled',
         'groups_subtitle' => 'Groups defined by the admin plugin. Flags granted here apply to every admin in the group.',
     ],
+
+    'api_errors' => [
+        'invalid_steam_link' => 'That does not look like a valid Steam profile link.',
+        'steam_link_required' => 'Enter the player’s Steam profile link.',
+        'player_name_required' => 'Enter a player name.',
+        'rcon_not_configured' => 'No RCON password saved for this server. Add one in Servers.',
+        'server_not_found' => 'Server not found.',
+        'rcon_unreachable' => 'The server did not answer the RCON connection.',
+        'validation_failed' => 'Please check the highlighted fields.',
+        'invalid_input' => 'That input was not accepted.',
+        'forbidden' => 'You do not have permission to do that.',
+    ],
 ];

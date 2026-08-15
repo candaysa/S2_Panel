@@ -84,7 +84,7 @@ class AuthController
         if ($user === null) {
             $user = User::query()->create([
                 'steam_id' => $steamId64,
-                'name' => $socialUser->getName() ?? $socialUser->getNickname() ?? 'Player',
+                'name' => $socialUser->getNickname() ?: ($socialUser->getName() ?: 'Player'),
                 'avatar' => $socialUser->getAvatar(),
                 'is_owner' => $isOwner,
             ]);
@@ -92,7 +92,7 @@ class AuthController
             UserRegistered::dispatch($user);
         } else {
             $user->update([
-                'name' => $socialUser->getName() ?? $socialUser->getNickname() ?? $user->name,
+                'name' => $socialUser->getNickname() ?: ($socialUser->getName() ?: $user->name),
                 'avatar' => $socialUser->getAvatar() ?? $user->avatar,
                 'is_owner' => $user->is_owner || $isOwner,
             ]);

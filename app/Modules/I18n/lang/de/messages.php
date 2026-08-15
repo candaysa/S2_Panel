@@ -464,4 +464,16 @@ return [
         'disabled' => 'Deaktiviert',
         'groups_subtitle' => 'Im Admin-Plugin definierte Gruppen. Hier vergebene Rechte gelten für alle Admins der Gruppe.',
     ],
+
+    'api_errors' => [
+        'invalid_steam_link' => 'Das sieht nicht nach einem gültigen Steam-Profillink aus.',
+        'steam_link_required' => 'Steam-Profillink des Spielers eingeben.',
+        'player_name_required' => 'Spielernamen eingeben.',
+        'rcon_not_configured' => 'Für diesen Server ist kein RCON-Passwort hinterlegt. Unter Server hinzufügen.',
+        'server_not_found' => 'Server nicht gefunden.',
+        'rcon_unreachable' => 'Der Server hat auf die RCON-Verbindung nicht geantwortet.',
+        'validation_failed' => 'Bitte die markierten Felder prüfen.',
+        'invalid_input' => 'Diese Eingabe wurde nicht akzeptiert.',
+        'forbidden' => 'Dazu fehlt Ihnen die Berechtigung.',
+    ],
 ];

@@ -9,7 +9,7 @@
  * Every navigation and every API call goes to the network first.
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const ASSET_CACHE = `s2panel-assets-${VERSION}`;
 const SHELL_CACHE = `s2panel-shell-${VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -32,6 +32,12 @@ self.addEventListener('activate', (event) => {
             ))
             .then(() => self.clients.claim()),
     );
+});
+
+// The page calls update() on every load; when that finds a new worker we
+// want it live now, not after every tab using the old one has closed.
+self.addEventListener('message', (event) => {
+    if (event.data === 'skipWaiting') self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {

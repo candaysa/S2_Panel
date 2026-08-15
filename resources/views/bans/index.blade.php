@@ -45,8 +45,8 @@
             <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.bans') }}</h1>
             <input
                 type="search"
-                x-model.debounce.400ms="search"
-                @input="load()"
+                x-model="search"
+                @input.debounce.350ms="load()"
                 placeholder="{{ __('i18n::messages.common.search') }}"
                 class="w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none sm:w-64"
             >

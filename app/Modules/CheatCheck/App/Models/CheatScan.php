@@ -47,7 +47,12 @@ class CheatScan extends Model
             'risk_score' => 'integer',
             'high_count' => 'integer',
             'medium_count' => 'integer',
-            'admin_steamid' => 'integer',
+            // SteamID64 exceeds JavaScript's safe integer range, so a
+            // JSON number silently loses its last digit in the browser
+            // and every profile link built from it points at a
+            // different account. It is an identifier, never an
+            // arithmetic value - keep it a string on the wire.
+            'admin_steamid' => 'string',
             'is_partial' => 'boolean',
             'was_elevated' => 'boolean',
         ];
