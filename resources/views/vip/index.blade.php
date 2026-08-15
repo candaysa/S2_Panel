@@ -147,8 +147,8 @@
         <div class="mt-4 flex flex-wrap items-center gap-3">
             <input
                 type="search"
-                x-model.debounce.400ms="search"
-                @input="load()"
+                x-model="search"
+                @input.debounce.350ms="load()"
                 placeholder="{{ __('i18n::messages.common.search') }}"
                 class="w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none sm:w-64"
             >

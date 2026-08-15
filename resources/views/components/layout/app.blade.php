@@ -82,12 +82,35 @@
     @stack('scripts')
 
     <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
+        // Reason codes the API returns in `errors`, translated once per page
+        // so window.apiError() can render them (see resources/js/app.js).
+        window.apiMessages = @js(__('i18n::messages.api_errors'));
+
         // Registered after load so it never competes with the first paint.
-        // The worker itself caches only hashed build assets and an offline
-        // page - see public/sw.js for why nothing else is cached.
+        // The worker caches only hashed build assets and an offline page.
+        //
+        // updateViaCache:'none' stops the browser serving sw.js itself from
+        // HTTP cache, and an explicit update() on every load means a new
+        // deploy is picked up on the next navigation rather than whenever
+        // the browser feels like revalidating. Without these two, a stale
+        // worker kept handing out the previous build's CSS after a deploy.
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').catch(() => {});
+                navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+                    .then((reg) => {
+                        reg.update();
+
+                        // A worker that has taken over mid-session is serving
+                        // the old build; reload once, guarded so two tabs
+                        // cannot bounce each other forever.
+                        let reloaded = false;
+                        navigator.serviceWorker.addEventListener('controllerchange', () => {
+                            if (reloaded) return;
+                            reloaded = true;
+                            window.location.reload();
+                        });
+                    })
+                    .catch(() => {});
             });
         }
     </script>

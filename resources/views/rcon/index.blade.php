@@ -42,7 +42,11 @@
                     body: JSON.stringify(body),
                 });
                 const data = await res.json().catch(() => ({}));
-                if (!res.ok) throw new Error(data.message || 'request_failed');
+                if (!res.ok) {
+                    // "invalid_input" is the envelope; the useful part
+                    // (rcon_not_configured, server_not_found, ...) is in errors.
+                    throw new Error(window.apiError(res, data, @js(__('i18n::messages.common.error'))));
+                }
                 return data;
             },
 

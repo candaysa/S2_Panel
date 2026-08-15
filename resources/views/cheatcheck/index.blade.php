@@ -72,7 +72,12 @@
                     });
                     const body = await res.json();
                     if (res.status === 429) { this.actionError = @js(__('i18n::messages.cheat_check.rate_limited')); return; }
-                    if (!res.ok) throw new Error('request_failed');
+                    if (!res.ok) {
+                        // 422 here is almost always the Steam URL: say which
+                        // field is wrong rather than "something went wrong".
+                        this.actionError = window.apiError(res, body, @js(__('i18n::messages.common.error')));
+                        return;
+                    }
                     this.issued = body.meta;
                     this.copied = false;
                     this.newScan = { player_name: '', steam_link: '', discord_id: '' };

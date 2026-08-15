@@ -42,10 +42,25 @@ class CheatCheckController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // People paste "steamcommunity.com/id/foo" far more often than they
+        // type the scheme, and a bare `url` rule rejects that with a 422 that
+        // reads as "the whole form is broken". Normalise first, validate after.
+        if (is_string($request->input('steam_link'))) {
+            $link = trim((string) $request->input('steam_link'));
+
+            if ($link !== '' && ! preg_match('#^https?://#i', $link)) {
+                $request->merge(['steam_link' => 'https://'.ltrim($link, '/')]);
+            }
+        }
+
         $validator = Validator::make($request->all(), [
             'player_name' => 'required|string|max:128',
             'steam_link' => 'required|url|max:512',
             'discord_id' => 'nullable|string|max:128',
+        ], [
+            'steam_link.url' => 'invalid_steam_link',
+            'steam_link.required' => 'steam_link_required',
+            'player_name.required' => 'player_name_required',
         ]);
 
         if ($validator->fails()) {

@@ -464,4 +464,16 @@ return [
         'disabled' => 'Devre dışı',
         'groups_subtitle' => 'Yetkili eklentisinde tanımlı gruplar. Buradaki yetkiler gruptaki tüm yetkililere uygulanır.',
     ],
+
+    'api_errors' => [
+        'invalid_steam_link' => 'Bu geçerli bir Steam profil bağlantısına benzemiyor.',
+        'steam_link_required' => 'Oyuncunun Steam profil bağlantısını girin.',
+        'player_name_required' => 'Oyuncu adı girin.',
+        'rcon_not_configured' => 'Bu sunucu için RCON şifresi kayıtlı değil. Sunucular sayfasından ekleyin.',
+        'server_not_found' => 'Sunucu bulunamadı.',
+        'rcon_unreachable' => 'Sunucu RCON bağlantısına yanıt vermedi.',
+        'validation_failed' => 'Lütfen işaretli alanları kontrol edin.',
+        'invalid_input' => 'Bu giriş kabul edilmedi.',
+        'forbidden' => 'Bunu yapma yetkiniz yok.',
+    ],
 ];

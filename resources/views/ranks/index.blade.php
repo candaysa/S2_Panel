@@ -26,8 +26,8 @@
                 </span>
                 <input
                     type="search"
-                    x-model.debounce.400ms="search"
-                    @input="load(true)"
+                    x-model="search"
+                    @input.debounce.350ms="load(true)"
                     placeholder="{{ __('i18n::messages.ranks.search_placeholder') }}"
                     class="w-full rounded-lg border border-line bg-surface py-2 pl-9 pr-3 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none"
                 >

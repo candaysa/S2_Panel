@@ -31,7 +31,12 @@ class AdminAdmin extends Model
     protected function casts(): array
     {
         return [
-            'steamid' => 'integer',
+            // SteamID64 exceeds JavaScript's safe integer range, so a
+            // JSON number silently loses its last digit in the browser
+            // and every profile link built from it points at a
+            // different account. It is an identifier, never an
+            // arithmetic value - keep it a string on the wire.
+            'steamid' => 'string',
             'immunity' => 'integer',
             'expires_at' => 'datetime',
         ];
