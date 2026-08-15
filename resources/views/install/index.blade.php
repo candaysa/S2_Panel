@@ -36,10 +36,12 @@
         class="m-auto w-full max-w-2xl"
         x-data="{
             step: 1,
-            steps: ['locale', 'database', 'steam', 'complete'],
+            steps: ['locale', 'database', 'rcon', 'steam', 'complete'],
             loading: false,
             error: null,
             integrations: [],
+            rconServers: [],
+            rconLoaded: false,
 
             // Progress is restored from the server, which records each step in
             // .env as it commits. Keeping it in the browser alone meant a
@@ -55,6 +57,11 @@
                     // Fall back to step 1: a wizard that starts over is
                     // recoverable, one that will not render is not.
                 }
+                // A refresh lands back on whatever step .env recorded - if
+                // that is the RCON step or later, the server list for it
+                // still needs fetching, since only submitDatabase() does
+                // that otherwise.
+                if (this.step >= 3) await this.loadRconServers();
             },
 
             restoring: false,
@@ -65,6 +72,8 @@
             siteName: '',
 
             db: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
+
+            rcon: { password: '' },
 
             steam: { api_key: '', owner_steam_id: '' },
 
@@ -133,6 +142,7 @@
                     // rather than blocking: not every server runs every
                     // plugin, and the matching module can stay switched off.
                     this.integrations = (res.meta?.integrations ?? []).filter(i => !i.satisfied);
+                    await this.loadRconServers();
                     this.step = 3;
                 } catch (e) {
                     // A single connection is submitted now, so naming it back
@@ -145,12 +155,40 @@
                 }
             },
 
+            // Servers the plugin has already registered, fetched fresh from
+            // the database just configured - this is what the RCON step
+            // offers to apply a password to. An empty list (plugin never
+            // ran yet, or the credentials were wrong) just skips ahead.
+            async loadRconServers() {
+                try {
+                    const res = await fetch('/api/install/servers', { headers: { Accept: 'application/json' } });
+                    if (res.ok) this.rconServers = (await res.json()).data ?? [];
+                } catch (e) {
+                    this.rconServers = [];
+                } finally {
+                    this.rconLoaded = true;
+                }
+            },
+
+            async submitRcon() {
+                this.loading = true;
+                this.error = null;
+                try {
+                    await this.post('/api/install/rcon', this.rcon);
+                    this.step = 4;
+                } catch (e) {
+                    this.error = '{{ __('i18n::messages.install.generic_error') }}';
+                } finally {
+                    this.loading = false;
+                }
+            },
+
             async submitSteam() {
                 this.loading = true;
                 this.error = null;
                 try {
                     await this.post('/api/install/steam', this.steam);
-                    this.step = 4;
+                    this.step = 5;
                 } catch (e) {
                     this.error = '{{ __('i18n::messages.install.generic_error') }}';
                 } finally {
@@ -331,8 +369,50 @@
                 </div>
             </div>
 
-            {{-- Step 3: Steam & Owner --}}
+            {{-- Step 3: RCON --}}
             <div x-show="step === 3" x-cloak>
+                <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.step_rcon') }}</h2>
+                <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.rcon_hint') }}</p>
+
+                <template x-if="rconLoaded && rconServers.length === 0">
+                    <p class="mt-4 rounded-lg bg-surface-raised px-3 py-2.5 text-sm text-ink-faint">
+                        {{ __('i18n::messages.install.rcon_no_servers') }}
+                    </p>
+                </template>
+
+                <template x-if="rconServers.length > 0">
+                    <div>
+                        <input
+                            type="password"
+                            x-model="rcon.password"
+                            placeholder="{{ __('i18n::messages.install.rcon_password') }}"
+                            class="mt-4 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none"
+                        >
+                        <p class="mt-2 text-xs text-ink-faint">
+                            {{ __('i18n::messages.install.rcon_applies_to') }}
+                            <span x-text="rconServers.map(s => s.server_ip + ':' + s.server_port).join(', ')"></span>
+                        </p>
+                    </div>
+                </template>
+
+                <div class="mt-6 flex gap-3">
+                    <button type="button" @click="step = 2" class="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
+                        {{ __('i18n::messages.install.back') }}
+                    </button>
+                    <button
+                        type="button"
+                        :disabled="loading"
+                        @click="submitRcon()"
+                        class="inline-flex flex-1 items-center justify-center rounded-lg bg-brand-strong px-4 py-2.5 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                        <span x-show="!loading">{{ __('i18n::messages.install.next') }}</span>
+                        <span x-show="loading" x-cloak>{{ __('i18n::messages.common.loading') }}</span>
+                    </button>
+                </div>
+            </div>
+
+            {{-- Step 4: Steam & Owner --}}
+            <div x-show="step === 4" x-cloak>
                 <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.step_steam') }}</h2>
                 <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.steam_hint') }}</p>
 
@@ -345,7 +425,7 @@
                 </div>
 
                 <div class="mt-6 flex gap-3">
-                    <button type="button" @click="step = 2" class="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
+                    <button type="button" @click="step = 3" class="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
                         {{ __('i18n::messages.install.back') }}
                     </button>
                     <button
@@ -360,13 +440,13 @@
                 </div>
             </div>
 
-            {{-- Step 4: Complete --}}
-            <div x-show="step === 4" x-cloak>
+            {{-- Step 5: Complete --}}
+            <div x-show="step === 5" x-cloak>
                 <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.install.complete_title') }}</h2>
                 <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.install.complete_body') }}</p>
 
                 <div class="mt-6 flex gap-3">
-                    <button type="button" @click="step = 3" class="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
+                    <button type="button" @click="step = 4" class="inline-flex items-center justify-center rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
                         {{ __('i18n::messages.install.back') }}
                     </button>
                     <button
@@ -381,10 +461,10 @@
                 </div>
             </div>
 
-            {{-- Plugin tables the database is missing. Shown from the Steam
+            {{-- Plugin tables the database is missing. Shown from the RCON
                  step onward so it stays visible past the screen that produced
                  it, and styled as a warning because installation continues. --}}
-            <div x-show="integrations.length && step > 2 && step < 4" x-cloak class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+            <div x-show="integrations.length && step > 2 && step < 5" x-cloak class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
                 <p class="text-sm font-medium text-amber-400">{{ __('i18n::messages.install.deps_missing_title') }}</p>
                 <p class="mt-0.5 text-xs text-amber-400/80">{{ __('i18n::messages.install.deps_missing_body') }}</p>
                 <ul class="mt-2 space-y-1">
