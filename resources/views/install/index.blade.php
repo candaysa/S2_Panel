@@ -72,6 +72,7 @@
             siteName: '',
 
             db: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
+            adminPlugin: 'cs2_admin',
 
             rcon: { password: '' },
 
@@ -137,7 +138,7 @@
                 this.loading = true;
                 this.error = null;
                 try {
-                    const res = await this.post('/api/install/database', { connection: this.db });
+                    const res = await this.post('/api/install/database', { connection: this.db, admin_plugin: this.adminPlugin });
                     // Missing plugin tables are surfaced on the next screen
                     // rather than blocking: not every server runs every
                     // plugin, and the matching module can stay switched off.
@@ -351,6 +352,26 @@
                     <input type="text" x-model="db.database" placeholder="{{ __('i18n::messages.install.db_database') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
                     <input type="text" x-model="db.username" placeholder="{{ __('i18n::messages.install.db_username') }}" class="rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
                     <input type="password" x-model="db.password" placeholder="{{ __('i18n::messages.install.db_password') }}" class="col-span-2 rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none sm:col-span-4">
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-ink-muted">{{ __('i18n::messages.install.admin_plugin') }}</label>
+                    <p class="mt-0.5 text-xs text-ink-faint">{{ __('i18n::messages.install.admin_plugin_hint') }}</p>
+                    <div class="relative mt-1.5">
+                        <select
+                            x-model="adminPlugin"
+                            class="w-full appearance-none rounded-lg border border-line bg-canvas px-3 py-2.5 pr-10 text-sm text-ink focus:border-brand-strong focus:outline-none"
+                        >
+                            <option value="cs2_admin">CS2_Admin</option>
+                            <option value="swiftly_admins">{{ __('i18n::messages.install.admin_plugin_swiftly') }}</option>
+                        </select>
+                        <svg class="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </div>
+                    <p x-show="adminPlugin === 'swiftly_admins'" x-cloak class="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                        {{ __('i18n::messages.install.admin_plugin_experimental') }}
+                    </p>
                 </div>
 
                 <div class="mt-6 flex gap-3">

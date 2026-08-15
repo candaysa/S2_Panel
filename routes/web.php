@@ -99,7 +99,9 @@ Route::middleware('steam.auth')->group(function (): void {
     // and only the data was withheld, which showed players the shape of
     // tools they have no business seeing. Each gate mirrors the matching
     // Routes/api.php exactly; the sidebar hides these for the same set.
-    Route::view('/admins', 'admin.index')->middleware('flag:admin.root')->name('admins.page');
+    Route::get('/admins', fn () => view('admin.index', [
+        'adminPlugin' => app(\App\Modules\Settings\App\Services\SettingService::class)->get('admin_plugin', 'cs2_admin'),
+    ]))->middleware('flag:admin.root')->name('admins.page');
     Route::view('/groups', 'admin.groups')->middleware('flag:admin.root')->name('groups.page');
     Route::view('/bans', 'bans.index')
         ->middleware('flag:admin.ban,admin.mute,admin.kick,admin.generic')

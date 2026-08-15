@@ -165,6 +165,11 @@ class InstallController
             'connection.database' => 'required|string',
             'connection.username' => 'required|string',
             'connection.password' => 'nullable|string',
+            // Which admin plugin owns the permission/admin/group data on
+            // this database - see config/settings.php's `admin_plugin` and
+            // App\Support\AdminPlugin\AdminManagerInterface. Asked here,
+            // once, rather than auto-detected from table presence.
+            'admin_plugin' => 'nullable|string|in:cs2_admin,swiftly_admins',
         ]);
 
         if ($validator->fails()) {
@@ -172,6 +177,7 @@ class InstallController
         }
 
         $data = $request->input('connection');
+        $adminPlugin = (string) $request->input('admin_plugin', 'cs2_admin');
 
         // Probe once. Every connection points at the same server, so testing
         // each one separately would report a single wrong password five times.
@@ -183,7 +189,9 @@ class InstallController
         // absent so a wrong-but-valid database is caught here instead of
         // surfacing later as an empty page. Advisory only - not every server
         // runs every plugin.
-        $integrations = $this->dependencies->inspect(self::PROBE_CONNECTION);
+        $integrations = $this->dependencies->inspect(self::PROBE_CONNECTION, $adminPlugin);
+
+        app(SettingService::class)->set('admin_plugin', $adminPlugin);
 
         // Only .env is written. The live connections are deliberately left
         // alone: "panel" is what the session and cache drivers use, so
