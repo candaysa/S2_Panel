@@ -26,6 +26,15 @@ return [
         // app.css derive from this via color-mix(), so overriding just
         // this one hex re-tints every accent surface in the panel.
         'brand_color' => '#00ffe3',
+        // Which Swiftly flags see every ticket (reports, admin applications,
+        // ban appeals) instead of only their own. Stored comma-joined, same
+        // convention as admin_admins.flags. Previously hardcoded to
+        // 'admin.generic' inside ReportController/AppealController - moved
+        // here so an owner can widen or narrow ticket-staff access without
+        // a code change. Deciding a ticket (close/approve/reject) still
+        // requires admin.root regardless of this setting; that line is not
+        // owner-configurable on purpose - see TicketAccess::canDecide().
+        'ticket_staff_flags' => 'admin.generic',
     ],
 
     'whitelist' => [
@@ -34,6 +43,7 @@ return [
         'default_locale',
         'timezone',
         'brand_color',
+        'ticket_staff_flags',
     ],
 
     'upload_path' => public_path('uploads'),

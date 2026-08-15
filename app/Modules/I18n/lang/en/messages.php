@@ -14,8 +14,7 @@ return [
         'ranks' => 'Ranks',
         'skins' => 'Skins',
         'servers' => 'Servers',
-        'reports' => 'Reports',
-        'appeals' => 'Appeals',
+        'tickets' => 'Tickets',
         'cheat_check' => 'Cheat check',
         'rcon' => 'RCON',
         'audit' => 'Audit log',
@@ -169,6 +168,12 @@ return [
         'expires' => 'Expires',
         'never' => 'Never',
         'status' => 'Status',
+    ],
+    'tickets' => [
+        'subtitle' => 'Reports, admin applications, and ban appeals in one place.',
+        'category_reports' => 'Reports',
+        'category_applications' => 'Admin applications',
+        'category_appeals' => 'Ban appeals',
     ],
     'reports' => [
         'new_ticket' => 'New ticket',
@@ -458,6 +463,10 @@ return [
         'default_locale' => 'Default language',
         'tab_general' => 'General',
         'tab_stats' => 'Site totals',
+        'tab_tickets' => 'Tickets',
+        'ticket_staff_title' => 'Ticket staff',
+        'ticket_staff_subtitle' => 'Admins with any of these flags see every report, admin application, and ban appeal — not just their own. Deciding a ticket (approve/reject) always requires admin.root, regardless of this setting.',
+        'ticket_staff_empty' => 'No flags selected — only the owner sees every ticket.',
     ],
 
     'admins' => [

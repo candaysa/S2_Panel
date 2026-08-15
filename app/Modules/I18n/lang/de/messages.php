@@ -14,8 +14,7 @@ return [
         'ranks' => 'Ränge',
         'skins' => 'Skins',
         'servers' => 'Server',
-        'reports' => 'Meldungen',
-        'appeals' => 'Einspruch',
+        'tickets' => 'Tickets',
         'cheat_check' => 'Cheat-Prüfung',
         'rcon' => 'RCON',
         'audit' => 'Protokoll',
@@ -169,6 +168,12 @@ return [
         'expires' => 'Läuft ab',
         'never' => 'Nie',
         'status' => 'Status',
+    ],
+    'tickets' => [
+        'subtitle' => 'Meldungen, Admin-Bewerbungen und Bann-Einsprüche an einem Ort.',
+        'category_reports' => 'Meldungen',
+        'category_applications' => 'Admin-Bewerbungen',
+        'category_appeals' => 'Bann-Einsprüche',
     ],
     'reports' => [
         'new_ticket' => 'Neues Ticket',
@@ -458,6 +463,10 @@ return [
         'default_locale' => 'Standardsprache',
         'tab_general' => 'Allgemein',
         'tab_stats' => 'Gesamtzahlen',
+        'tab_tickets' => 'Tickets',
+        'ticket_staff_title' => 'Ticket-Personal',
+        'ticket_staff_subtitle' => 'Admins mit einem dieser Flags sehen jede Meldung, Admin-Bewerbung und jeden Bann-Einspruch - nicht nur ihre eigenen. Eine Entscheidung (annehmen/ablehnen) erfordert unabhängig von dieser Einstellung immer admin.root.',
+        'ticket_staff_empty' => 'Kein Flag ausgewählt - nur der Inhaber sieht alle Tickets.',
     ],
 
     'admins' => [

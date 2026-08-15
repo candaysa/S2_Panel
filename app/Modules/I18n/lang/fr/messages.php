@@ -14,8 +14,7 @@ return [
         'ranks' => 'Rangs',
         'skins' => 'Skins',
         'servers' => 'Serveurs',
-        'reports' => 'Signalements',
-        'appeals' => 'Recours',
+        'tickets' => 'Tickets',
         'cheat_check' => 'Contrôle triche',
         'rcon' => 'RCON',
         'audit' => 'Journal d\'audit',
@@ -169,6 +168,12 @@ return [
         'expires' => 'Expire',
         'never' => 'Jamais',
         'status' => 'Statut',
+    ],
+    'tickets' => [
+        'subtitle' => 'Signalements, candidatures d\'administrateur et appels de bannissement au même endroit.',
+        'category_reports' => 'Signalements',
+        'category_applications' => 'Candidatures admin',
+        'category_appeals' => 'Appels de bannissement',
     ],
     'reports' => [
         'new_ticket' => 'Nouveau ticket',
@@ -458,6 +463,10 @@ return [
         'default_locale' => 'Langue par défaut',
         'tab_general' => 'Général',
         'tab_stats' => 'Totaux du site',
+        'tab_tickets' => 'Tickets',
+        'ticket_staff_title' => 'Équipe des tickets',
+        'ticket_staff_subtitle' => 'Les admins possédant l\'un de ces drapeaux voient tous les signalements, candidatures admin et appels de bannissement - pas seulement les leurs. Décider d\'un ticket (approuver/rejeter) exige toujours admin.root, indépendamment de ce réglage.',
+        'ticket_staff_empty' => 'Aucun drapeau sélectionné - seul le propriétaire voit tous les tickets.',
     ],
 
     'admins' => [

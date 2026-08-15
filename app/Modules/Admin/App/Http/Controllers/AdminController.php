@@ -34,7 +34,7 @@ class AdminController
      * same set the previous panel hardcoded. New flags only exist if the
      * plugin adds them, so keeping this in sync is a manual step either way.
      */
-    private const FLAGS = [
+    public const FLAGS = [
         'admin.root', 'admin.generic', 'admin.ban', 'admin.mute',
         'admin.kick', 'admin.cheats', 'admin.rcon', 'admin.vip',
     ];

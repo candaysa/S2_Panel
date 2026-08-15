@@ -33,9 +33,12 @@ class Appeal extends Model
             // and every profile link built from it points at a
             // different account. It is an identifier, never an
             // arithmetic value - keep it a string on the wire.
+            // decided_by is missed by the audit sweep that fixed the same
+            // bug elsewhere: AppealService::decide() stores the deciding
+            // admin's steam_id here, not a panel user id, despite the name.
             'steamid' => 'string',
+            'decided_by' => 'string',
             'ban_id' => 'integer',
-            'decided_by' => 'integer',
             'decided_at' => 'datetime',
         ];
     }
