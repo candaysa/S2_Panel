@@ -331,6 +331,7 @@ return [
         'no_data' => 'Ничего не надето.',
         'choose_weapon' => 'Выберите оружие для скина',
         'choose_paint' => 'Выберите узор',
+        'default_paint' => 'По умолчанию (без узора)',
         'wear' => 'Износ',
         'seed' => 'Сид узора',
         'stattrak' => 'StatTrak™',

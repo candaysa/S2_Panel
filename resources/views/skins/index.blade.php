@@ -40,34 +40,87 @@
                                 <button
                                     type="button"
                                     @click="openWeapon(w)"
-                                    class="rounded-lg border border-line bg-surface p-3 text-left text-sm transition-colors hover:bg-surface-raised"
+                                    class="overflow-hidden rounded-lg border border-line bg-surface text-left text-sm transition-colors hover:bg-surface-raised"
                                 >
-                                    <span class="block truncate font-medium text-ink" x-text="w.label"></span>
-                                    <span
-                                        class="mt-1 block truncate text-xs"
-                                        :class="equippedWeapon(w) ? 'text-brand-strong' : 'text-ink-faint'"
-                                        x-text="equippedWeapon(w) ? equippedWeapon(w).paint_label : @js(__('i18n::messages.skins.no_data'))"
-                                    ></span>
+                                    {{-- Preview art, when the equipped paint has one - see
+                                         skinImageUrl(). Not every weapon+paint pair has an
+                                         image available, so a broken load just hides the
+                                         image and falls back to the label alone. --}}
+                                    <div class="flex h-20 items-center justify-center bg-canvas" x-show="equippedWeapon(w)">
+                                        <img
+                                            :src="skinImageUrl(w.name, equippedWeapon(w)?.weapon_paint_id)"
+                                            alt=""
+                                            loading="lazy"
+                                            class="max-h-full max-w-full object-contain p-1.5"
+                                            @@error="$el.parentElement.style.display = 'none'"
+                                        >
+                                    </div>
+                                    <div class="p-3">
+                                        <span class="block truncate font-medium text-ink" x-text="w.label"></span>
+                                        <span
+                                            class="mt-1 block truncate text-xs"
+                                            :class="equippedWeapon(w) ? 'text-brand-strong' : 'text-ink-faint'"
+                                            x-text="equippedWeapon(w) ? equippedWeapon(w).paint_label : @js(__('i18n::messages.skins.no_data'))"
+                                        ></span>
+                                    </div>
                                 </button>
                             </template>
                         </div>
                     </template>
 
                     <template x-if="selectedWeapon">
-                        <div class="max-w-lg">
+                        <div class="max-w-2xl">
                             <button type="button" @click="selectedWeapon = null" class="text-sm text-ink-muted hover:text-ink">
                                 ← {{ __('i18n::messages.skins.back') }}
                             </button>
 
                             <h2 class="mt-2 text-lg font-semibold text-ink" x-text="selectedWeapon.label"></h2>
 
+                            {{-- Live preview of whatever paint is currently picked below,
+                                 not necessarily saved yet. --}}
+                            <div class="mt-3 flex h-40 items-center justify-center rounded-lg border border-line bg-canvas" x-show="weaponForm.weapon_paint_id">
+                                <img
+                                    :src="skinImageUrl(selectedWeapon.name, weaponForm.weapon_paint_id)"
+                                    alt=""
+                                    class="max-h-full max-w-full object-contain p-3"
+                                    @@error="$el.style.display = 'none'"
+                                    @load="$el.style.display = ''"
+                                >
+                            </div>
+
                             <label class="mt-4 block text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.choose_paint') }}</label>
-                            <select x-model.number="weaponForm.weapon_paint_id" class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                                <option :value="0">—</option>
+                            <div class="mt-2 grid max-h-80 grid-cols-3 gap-2 overflow-y-auto rounded-lg border border-line bg-canvas p-2 sm:grid-cols-4">
+                                <button
+                                    type="button"
+                                    @click="weaponForm.weapon_paint_id = 0"
+                                    class="rounded-lg border p-2 text-center text-xs transition-colors"
+                                    :class="weaponForm.weapon_paint_id === 0 ? 'border-brand-strong bg-brand-soft text-brand-strong' : 'border-line bg-surface text-ink-muted hover:bg-surface-raised'"
+                                >
+                                    {{ __('i18n::messages.skins.default_paint') }}
+                                </button>
                                 <template x-for="p in paints" :key="p.index">
-                                    <option :value="p.index" x-text="p.label"></option>
+                                    <button
+                                        type="button"
+                                        @click="weaponForm.weapon_paint_id = p.index"
+                                        class="overflow-hidden rounded-lg border text-left text-xs transition-colors"
+                                        :class="weaponForm.weapon_paint_id === p.index ? 'border-brand-strong bg-brand-soft' : 'border-line bg-surface hover:bg-surface-raised'"
+                                    >
+                                        <div class="flex h-14 items-center justify-center bg-canvas">
+                                            <img
+                                                :src="skinImageUrl(selectedWeapon.name, p.index)"
+                                                alt=""
+                                                loading="lazy"
+                                                class="max-h-full max-w-full object-contain p-1"
+                                                @@error="$el.style.visibility = 'hidden'"
+                                            >
+                                        </div>
+                                        <div class="flex items-center gap-1 p-1.5">
+                                            <span class="size-1.5 shrink-0 rounded-full" :style="p.rarity_color ? 'background:' + p.rarity_color : ''"></span>
+                                            <span class="truncate" :class="weaponForm.weapon_paint_id === p.index ? 'text-brand-strong' : 'text-ink-muted'" x-text="p.label"></span>
+                                        </div>
+                                    </button>
                                 </template>
-                            </select>
+                            </div>
 
                             <div class="mt-4 grid grid-cols-2 gap-4">
                                 <div>
@@ -151,6 +204,19 @@
 
                 csrf() {
                     return document.querySelector('meta[name=csrf-token]').content;
+                },
+
+                // Weapon defindex/paint IDs are Valve's own numbering (the
+                // catalog itself comes straight from the game's item schema
+                // - see CatalogService), not anything CS2_Skin invented, so
+                // preview art keyed the same way from a different weapon-skin
+                // project's asset set lines up with our own data too. Not
+                // every combination has an image; the <img> tags this feeds
+                // hide themselves on a failed load rather than showing a
+                // broken-image icon.
+                skinImageUrl(weaponName, paintId) {
+                    if (!weaponName || !paintId) return '';
+                    return `https://raw.githubusercontent.com/Nereziel/cs2-WeaponPaints/main/website/img/skins/${weaponName}-${paintId}.png`;
                 },
 
                 async fetchJson(url) {

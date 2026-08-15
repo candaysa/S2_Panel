@@ -331,6 +331,7 @@ return [
         'no_data' => 'Nichts ausgerüstet.',
         'choose_weapon' => 'Waffe zum Skinnen wählen',
         'choose_paint' => 'Ein Muster wählen',
+        'default_paint' => 'Standard (kein Muster)',
         'wear' => 'Abnutzung',
         'seed' => 'Muster-Seed',
         'stattrak' => 'StatTrak™',

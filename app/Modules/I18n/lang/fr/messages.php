@@ -331,6 +331,7 @@ return [
         'no_data' => 'Rien d\'équipé.',
         'choose_weapon' => 'Choisissez une arme à personnaliser',
         'choose_paint' => 'Choisissez un motif',
+        'default_paint' => 'Par défaut (aucun motif)',
         'wear' => 'Usure',
         'seed' => 'Graine de motif',
         'stattrak' => 'StatTrak™',
