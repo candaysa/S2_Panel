@@ -1,58 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.audit')">
-    <div
-        x-data="{
-            loading: true,
-            forbidden: false,
-            error: false,
-            action: '',
-            sort: 'created_at',
-            dir: 'desc',
-            logs: [],
-
-            async load() {
-                this.loading = true;
-                this.error = false;
-                this.forbidden = false;
-                try {
-                    const url = new URL('/api/audit', window.location.origin);
-                    if (this.action) url.searchParams.set('action', this.action);
-                    url.searchParams.set('sort', this.sort);
-                    url.searchParams.set('dir', this.dir);
-                    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-                    if (res.status === 403) { this.forbidden = true; return; }
-                    if (!res.ok) throw new Error('request_failed');
-                    const body = await res.json();
-                    this.logs = body.data;
-                } catch (e) {
-                    this.error = true;
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            sortBy(key) {
-                if (this.sort === key) { this.dir = this.dir === 'asc' ? 'desc' : 'asc'; }
-                else { this.sort = key; this.dir = key === 'actor_name' || key === 'action' ? 'asc' : 'desc'; }
-                this.load();
-            },
-
-            formatDate(value) {
-                return value ? new Date(value).toLocaleString() : '—';
-            },
-
-            // Prefer the live Steam profile the API overlays onto every row
-            // (App\Modules\Audit\App\Http\Controllers\AuditController::index)
-            // over the historical snapshot: a nickname can change after the
-            // action, and one real bug briefly stored the profile's "real
-            // name" bio instead of the handle in the snapshot itself.
-            actorName(log) {
-                return log.actor_current_name || log.actor_name || '—';
-            },
-
-            init() { this.load(); },
-        }"
-        x-init="init()"
-    >
+    <div x-data="auditPage()" x-init="init()">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.audit') }}</h1>
             <input
@@ -108,4 +55,60 @@
             <p x-show="error" x-cloak class="px-4 py-8 text-center text-sm text-red-400">{{ __('i18n::messages.common.error') }}</p>
         </div>
     </div>
+
+    @push('scripts')
+        <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
+            window.auditPage = () => ({
+                loading: true,
+                forbidden: false,
+                error: false,
+                action: '',
+                sort: 'created_at',
+                dir: 'desc',
+                logs: [],
+
+                async load() {
+                    this.loading = true;
+                    this.error = false;
+                    this.forbidden = false;
+                    try {
+                        const url = new URL('/api/audit', window.location.origin);
+                        if (this.action) url.searchParams.set('action', this.action);
+                        url.searchParams.set('sort', this.sort);
+                        url.searchParams.set('dir', this.dir);
+                        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+                        if (res.status === 403) { this.forbidden = true; return; }
+                        if (!res.ok) throw new Error('request_failed');
+                        const body = await res.json();
+                        this.logs = body.data;
+                    } catch (e) {
+                        this.error = true;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                sortBy(key) {
+                    if (this.sort === key) { this.dir = this.dir === 'asc' ? 'desc' : 'asc'; }
+                    else { this.sort = key; this.dir = key === 'actor_name' || key === 'action' ? 'asc' : 'desc'; }
+                    this.load();
+                },
+
+                formatDate(value) {
+                    return value ? new Date(value).toLocaleString() : '—';
+                },
+
+                // Prefer the live Steam profile the API overlays onto every row
+                // (App\Modules\Audit\App\Http\Controllers\AuditController::index)
+                // over the historical snapshot: a nickname can change after the
+                // action, and one real bug briefly stored the profile's real-name
+                // bio instead of the handle in the snapshot itself.
+                actorName(log) {
+                    return log.actor_current_name || log.actor_name || '—';
+                },
+
+                init() { this.load(); },
+            });
+        </script>
+    @endpush
 </x-layout.app>
