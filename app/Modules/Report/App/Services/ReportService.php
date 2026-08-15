@@ -146,13 +146,14 @@ class ReportService
     /**
      * Tickets a user is involved with (reporter or author of a reply).
      */
-    public function myTickets(User $user, ?string $status = null, int $perPage = 25): LengthAwarePaginator
+    public function myTickets(User $user, ?string $status = null, int $perPage = 25, ?string $ticketType = null): LengthAwarePaginator
     {
         $reporter = (int) $user->steam_id;
 
         return Report::query()
             ->where('reporter_steamid', $reporter)
             ->when($status !== null, fn ($q) => $q->where('status', $status))
+            ->when($ticketType !== null, fn ($q) => $q->where('ticket_type', $ticketType))
             ->with('replies')
             ->latest('id')
             ->paginate($perPage);
@@ -161,10 +162,11 @@ class ReportService
     /**
      * All tickets, newest first (staff view).
      */
-    public function all(?string $status = null, int $perPage = 25): LengthAwarePaginator
+    public function all(?string $status = null, int $perPage = 25, ?string $ticketType = null): LengthAwarePaginator
     {
         return Report::query()
             ->when($status !== null, fn ($q) => $q->where('status', $status))
+            ->when($ticketType !== null, fn ($q) => $q->where('ticket_type', $ticketType))
             ->with('replies')
             ->latest('id')
             ->paginate($perPage);

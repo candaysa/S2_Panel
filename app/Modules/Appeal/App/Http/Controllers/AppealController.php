@@ -7,21 +7,21 @@ use App\Modules\Appeal\App\Models\Appeal;
 use App\Modules\Appeal\App\Services\AppealService;
 use App\Models\User;
 use App\Support\Api;
-use App\Support\Flags;
+use App\Support\TicketAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
-use Throwable;
 
 /**
  * Ban appeal endpoints (C9).
  *
  * Any authenticated player with an ACTIVE ban may file one PENDING appeal.
- * Players manage their own appeals; staff (admin.generic) see everything;
- * deciding (PENDING -> APPROVED/REJECTED) requires the superadmin flag
- * (admin.root) because it is the panel-side decision signal for unbanning.
+ * Players manage their own appeals; staff - whichever flags Settings >
+ * Tickets names, see TicketAccess - see everything; deciding
+ * (PENDING -> APPROVED/REJECTED) always requires admin.root because it is
+ * the panel-side decision signal for unbanning, independent of that setting.
  */
 class AppealController extends Controller
 {
@@ -33,7 +33,7 @@ class AppealController extends Controller
     {
         $user = Auth::user();
 
-        $staff = $this->isStaff($user);
+        $staff = TicketAccess::isStaff($user);
 
         $query = Appeal::query()
             ->when(! $staff, fn ($q) => $q->where('steamid', (int) $user->steam_id))
@@ -138,7 +138,7 @@ class AppealController extends Controller
     }
 
     /**
-     * Owner of the appeal or any staff (admin.generic). Fail-closed.
+     * Owner of the appeal, or any configured ticket-staff flag. Fail-closed.
      */
     private function canManage(User $user, Appeal $appeal): bool
     {
@@ -150,15 +150,6 @@ class AppealController extends Controller
             return true;
         }
 
-        return $this->isStaff($user);
-    }
-
-    private function isStaff(User $user): bool
-    {
-        try {
-            return Flags::hasFlag((int) $user->steam_id, 'admin.generic');
-        } catch (Throwable) {
-            return false;
-        }
+        return TicketAccess::isStaff($user);
     }
 }

@@ -80,8 +80,13 @@ Route::middleware('steam.auth')->group(function (): void {
     // sidebar hides these for guests but never for a plain logged-in player.
     Route::view('/vip', 'vip.index')->name('vip.page');
     Route::view('/skins', 'skins.index')->name('skins.page');
-    Route::view('/reports', 'reports.index')->name('reports.page');
-    Route::view('/appeals', 'appeals.index')->name('appeals.page');
+
+    // Reports, admin applications, and ban appeals share one page (a
+    // category dropdown switches between them); canDecide is resolved
+    // server-side once here rather than re-derived per fetch client-side.
+    Route::get('/tickets', fn () => view('tickets.index', [
+        'canDecide' => \App\Support\TicketAccess::canDecide(auth()->user()),
+    ]))->name('tickets.page');
 
     // Staff pages. The page itself now carries the same flag its API
     // requires, so a signed-in player cannot open an RCON console or a ban
@@ -103,5 +108,8 @@ Route::middleware('steam.auth')->group(function (): void {
         Route::view('/webhooks', 'webhooks.index')->name('webhooks.page');
         Route::view('/modules', 'modules.index')->name('modules.page');
         Route::view('/settings', 'settings.index')->name('settings.page');
+        Route::get('/settings/tickets', fn () => view('settings.tickets', [
+            'flags' => \App\Modules\Admin\App\Http\Controllers\AdminController::FLAGS,
+        ]))->name('settings.tickets.page');
     });
 });

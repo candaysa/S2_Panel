@@ -21,7 +21,7 @@
             </template>
         </div>
 
- && tab === 'general'" x-cloak class="mt-6 text-sm text-ink-faint">
+<div x-show="loading" x-cloak class="mt-6 text-sm text-ink-faint">
             {{ __('i18n::messages.common.loading') }}
         </div>
 

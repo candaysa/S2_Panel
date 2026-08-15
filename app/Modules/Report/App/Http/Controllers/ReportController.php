@@ -7,21 +7,20 @@ use App\Modules\Report\App\Models\Report;
 use App\Modules\Report\App\Services\ReportService;
 use App\Models\User;
 use App\Support\Api;
-use App\Support\Flags;
+use App\Support\TicketAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use InvalidArgumentException;
-use Throwable;
 
 /**
  * Report/ticket endpoints (C8).
  *
  * Visibility model: every authenticated user opens tickets (player report or
- * admin application) and reads/replies to their own; staff (admin.generic)
- * see and manage everything. Closing requires the superadmin flag
- * (admin.root), destroying requires an admin flag.
+ * admin application) and reads/replies to their own; staff - whichever flags
+ * Settings > Tickets names, see TicketAccess - see and manage everything.
+ * Closing always requires admin.root regardless of that setting.
  */
 class ReportController extends Controller
 {
@@ -33,13 +32,15 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        $staff = $this->isStaff($user);
+        $staff = TicketAccess::isStaff($user);
 
         $perPage = min((int) $request->query('per_page', 25), 100);
+        $ticketType = $request->query('ticket_type');
+        $ticketType = in_array($ticketType, ['report', 'admin_application'], true) ? (string) $ticketType : null;
 
         $tickets = $staff
-            ? $this->reports->all($request->query('status'), $perPage)
-            : $this->reports->myTickets($user, $request->query('status'), $perPage);
+            ? $this->reports->all($request->query('status'), $perPage, $ticketType)
+            : $this->reports->myTickets($user, $request->query('status'), $perPage, $ticketType);
 
         return Api::success($tickets->items(), [
             'pagination' => [
@@ -173,7 +174,7 @@ class ReportController extends Controller
     }
 
     /**
-     * Owner, reporter or any staff (admin.generic). Fail-closed.
+     * Owner, reporter, or any configured ticket-staff flag. Fail-closed.
      */
     private function canManage(User $user, Report $report): bool
     {
@@ -185,15 +186,6 @@ class ReportController extends Controller
             return true;
         }
 
-        return $this->isStaff($user);
-    }
-
-    private function isStaff(User $user): bool
-    {
-        try {
-            return Flags::hasFlag((int) $user->steam_id, 'admin.generic');
-        } catch (Throwable) {
-            return false;
-        }
+        return TicketAccess::isStaff($user);
     }
 }

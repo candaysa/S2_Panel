@@ -57,6 +57,9 @@ class SettingsController
             // hand-kept list, so it cannot drift out of date.
             'timezone' => ['nullable', 'string', 'max:64', Rule::in(timezone_identifiers_list())],
             'brand_color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            // Comma-joined flag names (e.g. "admin.generic,admin.root"),
+            // same convention as admin_admins.flags - see TicketAccess.
+            'ticket_staff_flags' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9_.,]*$/i'],
         ]);
 
         if ($validator->fails()) {

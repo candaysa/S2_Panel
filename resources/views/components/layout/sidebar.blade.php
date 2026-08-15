@@ -21,8 +21,7 @@
             ['stats.page', __('i18n::messages.nav.stats'), 'chart', null],
         ]],
         [__('i18n::messages.nav.section_community'), [
-            ['reports.page', __('i18n::messages.nav.reports'), 'flag', 'auth'],
-            ['appeals.page', __('i18n::messages.nav.appeals'), 'scale', 'auth'],
+            ['tickets.page', __('i18n::messages.nav.tickets'), 'flag', 'auth'],
             ['vip.page', __('i18n::messages.nav.vip'), 'star', 'auth'],
             ['skins.page', __('i18n::messages.nav.skins'), 'palette', 'auth'],
         ]],

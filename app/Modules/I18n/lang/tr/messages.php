@@ -14,8 +14,7 @@ return [
         'ranks' => 'Sıralamalar',
         'skins' => 'Skinler',
         'servers' => 'Sunucular',
-        'reports' => 'Raporlar',
-        'appeals' => 'İtirazlar',
+        'tickets' => 'Biletler',
         'cheat_check' => 'Hile kontrolü',
         'rcon' => 'RCON',
         'audit' => 'İşlem kaydı',
@@ -169,6 +168,12 @@ return [
         'expires' => 'Bitiş',
         'never' => 'Süresiz',
         'status' => 'Durum',
+    ],
+    'tickets' => [
+        'subtitle' => 'Raporlar, yönetici başvuruları ve ban itirazları tek yerde.',
+        'category_reports' => 'Raporlar',
+        'category_applications' => 'Yönetici başvuruları',
+        'category_appeals' => 'Ban itirazları',
     ],
     'reports' => [
         'new_ticket' => 'Yeni talep',
@@ -458,6 +463,10 @@ return [
         'default_locale' => 'Varsayılan dil',
         'tab_general' => 'Genel',
         'tab_stats' => 'Site toplamları',
+        'tab_tickets' => 'Talepler',
+        'ticket_staff_title' => 'Talep yetkilileri',
+        'ticket_staff_subtitle' => 'Bu bayraklardan herhangi birine sahip yöneticiler yalnızca kendi talepleri değil, tüm raporları, yönetici başvurularını ve ban itirazlarını görür. Bir talebe karar vermek (onay/red) bu ayardan bağımsız olarak her zaman admin.root gerektirir.',
+        'ticket_staff_empty' => 'Hiçbir bayrak seçilmedi — tüm talepleri yalnızca sahip görür.',
     ],
 
     'admins' => [

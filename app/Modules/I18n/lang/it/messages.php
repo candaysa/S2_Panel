@@ -14,8 +14,7 @@ return [
         'ranks' => 'Rank',
         'skins' => 'Skin',
         'servers' => 'Server',
-        'reports' => 'Segnalazioni',
-        'appeals' => 'Ricerche',
+        'tickets' => 'Ticket',
         'cheat_check' => 'Controllo cheat',
         'rcon' => 'RCON',
         'audit' => 'Registro attività',
@@ -169,6 +168,12 @@ return [
         'expires' => 'Scade',
         'never' => 'Mai',
         'status' => 'Stato',
+    ],
+    'tickets' => [
+        'subtitle' => 'Segnalazioni, candidature da admin e ricorsi ban in un unico posto.',
+        'category_reports' => 'Segnalazioni',
+        'category_applications' => 'Candidature admin',
+        'category_appeals' => 'Ricorsi ban',
     ],
     'reports' => [
         'new_ticket' => 'Nuovo ticket',
@@ -458,6 +463,10 @@ return [
         'default_locale' => 'Lingua predefinita',
         'tab_general' => 'Generale',
         'tab_stats' => 'Totali del sito',
+        'tab_tickets' => 'Ticket',
+        'ticket_staff_title' => 'Staff ticket',
+        'ticket_staff_subtitle' => 'Gli admin con uno di questi flag vedono tutte le segnalazioni, le candidature da admin e i ricorsi ban, non solo i propri. Decidere un ticket (approvare/rifiutare) richiede sempre admin.root, indipendentemente da questa impostazione.',
+        'ticket_staff_empty' => 'Nessun flag selezionato — solo il proprietario vede tutti i ticket.',
     ],
 
     'admins' => [

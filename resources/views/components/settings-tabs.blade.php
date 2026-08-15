@@ -12,6 +12,7 @@
 @php
     $tabs = [
         ['general', __('i18n::messages.settings.tab_general'), route('settings.page')],
+        ['tickets', __('i18n::messages.settings.tab_tickets'), route('settings.tickets.page')],
         ['modules', __('i18n::messages.nav.modules'), route('modules.page')],
         ['webhooks', __('i18n::messages.nav.webhooks'), route('webhooks.page')],
     ];
