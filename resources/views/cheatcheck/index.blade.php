@@ -1,157 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.cheat_check')">
-    <div
-        x-data="{
-            loading: true,
-            forbidden: false,
-            error: false,
-            status: 'all',
-            search: '',
-            scans: [],
-            selected: null,
-            findings: [],
-            selectedLoading: false,
-            actionError: '',
-            showNewForm: false,
-            newScan: { player_name: '', steam_link: '', discord_id: '' },
-            creating: false,
-            issued: null,
-            copied: false,
-
-            async load() {
-                this.loading = true;
-                this.error = false;
-                this.forbidden = false;
-                try {
-                    const url = new URL('/api/cheat-check', window.location.origin);
-                    if (this.status !== 'all') url.searchParams.set('status', this.status);
-                    if (this.search.trim()) url.searchParams.set('search', this.search.trim());
-                    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-                    if (res.status === 403) { this.forbidden = true; return; }
-                    if (!res.ok) throw new Error('request_failed');
-                    this.scans = (await res.json()).data;
-                } catch (e) {
-                    this.error = true;
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            csrf() {
-                return document.querySelector('meta[name=csrf-token]').content;
-            },
-
-            async open(scan) {
-                this.selected = scan;
-                this.findings = [];
-                this.selectedLoading = true;
-                this.actionError = '';
-                try {
-                    const res = await fetch(`/api/cheat-check/${scan.id}`, { headers: { Accept: 'application/json' } });
-                    if (!res.ok) throw new Error('request_failed');
-                    const body = await res.json();
-                    this.selected = body.data.scan;
-                    this.findings = body.data.findings;
-                } catch (e) {
-                    this.actionError = @js(__('i18n::messages.common.error'));
-                } finally {
-                    this.selectedLoading = false;
-                }
-            },
-
-            close() { this.selected = null; this.findings = []; },
-
-            async submitNewScan() {
-                if (!this.newScan.player_name.trim() || !this.newScan.steam_link.trim()) return;
-                this.creating = true;
-                this.actionError = '';
-                try {
-                    const res = await fetch('/api/cheat-check', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                        body: JSON.stringify(this.newScan),
-                    });
-                    const body = await res.json();
-                    if (res.status === 429) { this.actionError = @js(__('i18n::messages.cheat_check.rate_limited')); return; }
-                    if (!res.ok) {
-                        // 422 here is almost always the Steam URL: say which
-                        // field is wrong rather than "something went wrong".
-                        this.actionError = window.apiError(res, body, @js(__('i18n::messages.common.error')));
-                        return;
-                    }
-                    this.issued = body.meta;
-                    this.copied = false;
-                    this.newScan = { player_name: '', steam_link: '', discord_id: '' };
-                    this.showNewForm = false;
-                    await this.load();
-                } catch (e) {
-                    this.actionError = @js(__('i18n::messages.common.error'));
-                } finally {
-                    this.creating = false;
-                }
-            },
-
-            async copyCommand() {
-                try {
-                    await navigator.clipboard.writeText(this.issued.command);
-                    this.copied = true;
-                    setTimeout(() => { this.copied = false; }, 2000);
-                } catch (e) {
-                    this.$refs.command.select();
-                }
-            },
-
-            async destroyScan() {
-                if (!confirm(@js(__('i18n::messages.cheat_check.delete_confirm')))) return;
-                this.actionError = '';
-                try {
-                    const res = await fetch(`/api/cheat-check/${this.selected.id}`, {
-                        method: 'DELETE',
-                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                    });
-                    if (res.status === 403) { this.actionError = @js(__('i18n::messages.common.forbidden')); return; }
-                    if (!res.ok) throw new Error('request_failed');
-                    this.close();
-                    await this.load();
-                } catch (e) {
-                    this.actionError = @js(__('i18n::messages.common.error'));
-                }
-            },
-
-            statusClass(status) {
-                return {
-                    cheat: 'bg-red-500/15 text-red-400',
-                    suspicious: 'bg-amber-500/15 text-amber-400',
-                    clean: 'bg-emerald-500/15 text-emerald-400',
-                    pending: 'bg-brand-soft text-brand-strong',
-                }[status] ?? 'bg-surface-raised text-ink-faint';
-            },
-
-            riskClass(risk) {
-                return {
-                    HIGH: 'bg-red-500/15 text-red-400',
-                    MEDIUM: 'bg-amber-500/15 text-amber-400',
-                    LOW: 'bg-surface-raised text-ink-muted',
-                }[risk] ?? 'bg-surface-raised text-ink-faint';
-            },
-
-            statusLabel(status) {
-                return {
-                    pending: @js(__('i18n::messages.cheat_check.status_pending')),
-                    clean: @js(__('i18n::messages.cheat_check.status_clean')),
-                    suspicious: @js(__('i18n::messages.cheat_check.status_suspicious')),
-                    cheat: @js(__('i18n::messages.cheat_check.status_cheat')),
-                    error: @js(__('i18n::messages.cheat_check.status_error')),
-                }[status] ?? status;
-            },
-
-            formatDate(value) {
-                return value ? new Date(value).toLocaleString() : '—';
-            },
-
-            init() { this.load(); },
-        }"
-        x-init="init()"
-    >
+    <div x-data="cheatCheckPage()" x-init="init()">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.cheat_check') }}</h1>
@@ -346,4 +194,159 @@
             </div>
         </div>
     </div>
+
+    @push('scripts')
+        <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
+            window.cheatCheckPage = () => ({
+                loading: true,
+                forbidden: false,
+                error: false,
+                status: 'all',
+                search: '',
+                scans: [],
+                selected: null,
+                findings: [],
+                selectedLoading: false,
+                actionError: '',
+                showNewForm: false,
+                newScan: { player_name: '', steam_link: '', discord_id: '' },
+                creating: false,
+                issued: null,
+                copied: false,
+
+                async load() {
+                    this.loading = true;
+                    this.error = false;
+                    this.forbidden = false;
+                    try {
+                        const url = new URL('/api/cheat-check', window.location.origin);
+                        if (this.status !== 'all') url.searchParams.set('status', this.status);
+                        if (this.search.trim()) url.searchParams.set('search', this.search.trim());
+                        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+                        if (res.status === 403) { this.forbidden = true; return; }
+                        if (!res.ok) throw new Error('request_failed');
+                        this.scans = (await res.json()).data;
+                    } catch (e) {
+                        this.error = true;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                csrf() {
+                    return document.querySelector('meta[name=csrf-token]').content;
+                },
+
+                async open(scan) {
+                    this.selected = scan;
+                    this.findings = [];
+                    this.selectedLoading = true;
+                    this.actionError = '';
+                    try {
+                        const res = await fetch(`/api/cheat-check/${scan.id}`, { headers: { Accept: 'application/json' } });
+                        if (!res.ok) throw new Error('request_failed');
+                        const body = await res.json();
+                        this.selected = body.data.scan;
+                        this.findings = body.data.findings;
+                    } catch (e) {
+                        this.actionError = @js(__('i18n::messages.common.error'));
+                    } finally {
+                        this.selectedLoading = false;
+                    }
+                },
+
+                close() { this.selected = null; this.findings = []; },
+
+                async submitNewScan() {
+                    if (!this.newScan.player_name.trim() || !this.newScan.steam_link.trim()) return;
+                    this.creating = true;
+                    this.actionError = '';
+                    try {
+                        const res = await fetch('/api/cheat-check', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                            body: JSON.stringify(this.newScan),
+                        });
+                        const body = await res.json();
+                        if (res.status === 429) { this.actionError = @js(__('i18n::messages.cheat_check.rate_limited')); return; }
+                        if (!res.ok) {
+                            // 422 here is almost always the Steam URL: say
+                            // which field is wrong rather than a generic error.
+                            this.actionError = window.apiError(res, body, @js(__('i18n::messages.common.error')));
+                            return;
+                        }
+                        this.issued = body.meta;
+                        this.copied = false;
+                        this.newScan = { player_name: '', steam_link: '', discord_id: '' };
+                        this.showNewForm = false;
+                        await this.load();
+                    } catch (e) {
+                        this.actionError = @js(__('i18n::messages.common.error'));
+                    } finally {
+                        this.creating = false;
+                    }
+                },
+
+                async copyCommand() {
+                    try {
+                        await navigator.clipboard.writeText(this.issued.command);
+                        this.copied = true;
+                        setTimeout(() => { this.copied = false; }, 2000);
+                    } catch (e) {
+                        this.$refs.command.select();
+                    }
+                },
+
+                async destroyScan() {
+                    if (!confirm(@js(__('i18n::messages.cheat_check.delete_confirm')))) return;
+                    this.actionError = '';
+                    try {
+                        const res = await fetch(`/api/cheat-check/${this.selected.id}`, {
+                            method: 'DELETE',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                        });
+                        if (res.status === 403) { this.actionError = @js(__('i18n::messages.common.forbidden')); return; }
+                        if (!res.ok) throw new Error('request_failed');
+                        this.close();
+                        await this.load();
+                    } catch (e) {
+                        this.actionError = @js(__('i18n::messages.common.error'));
+                    }
+                },
+
+                statusClass(status) {
+                    return {
+                        cheat: 'bg-red-500/15 text-red-400',
+                        suspicious: 'bg-amber-500/15 text-amber-400',
+                        clean: 'bg-emerald-500/15 text-emerald-400',
+                        pending: 'bg-brand-soft text-brand-strong',
+                    }[status] ?? 'bg-surface-raised text-ink-faint';
+                },
+
+                riskClass(risk) {
+                    return {
+                        HIGH: 'bg-red-500/15 text-red-400',
+                        MEDIUM: 'bg-amber-500/15 text-amber-400',
+                        LOW: 'bg-surface-raised text-ink-muted',
+                    }[risk] ?? 'bg-surface-raised text-ink-faint';
+                },
+
+                statusLabel(status) {
+                    return {
+                        pending: @js(__('i18n::messages.cheat_check.status_pending')),
+                        clean: @js(__('i18n::messages.cheat_check.status_clean')),
+                        suspicious: @js(__('i18n::messages.cheat_check.status_suspicious')),
+                        cheat: @js(__('i18n::messages.cheat_check.status_cheat')),
+                        error: @js(__('i18n::messages.cheat_check.status_error')),
+                    }[status] ?? status;
+                },
+
+                formatDate(value) {
+                    return value ? new Date(value).toLocaleString() : '—';
+                },
+
+                init() { this.load(); },
+            });
+        </script>
+    @endpush
 </x-layout.app>
