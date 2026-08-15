@@ -117,6 +117,9 @@ return [
         'restore_success_title' => 'Backup ripristinato',
         'restore_success_body' => 'Tutti i dati del tuo backup sono al loro posto. Reindirizzamento al pannello…',
         'restore_pending_plugins' => 'Ricarica questi plugin dalla scheda Plugin per completarne il ripristino:',
+        'site_name' => 'Nome del pannello',
+        'site_name_placeholder' => 'La mia community CS2',
+        'site_name_hint' => 'Mostrato nella barra laterale, nella scheda del browser e quando il pannello viene installato come app. Modificabile in seguito nelle Impostazioni.',
     ],
     'backup' => [
         'title' => 'Backup',
@@ -453,6 +456,8 @@ return [
     'settings' => [
         'timezone' => 'Fuso orario',
         'default_locale' => 'Lingua predefinita',
+        'tab_general' => 'Generale',
+        'tab_stats' => 'Totali del sito',
     ],
 
     'admins' => [
@@ -475,5 +480,11 @@ return [
         'validation_failed' => 'Controlla i campi evidenziati.',
         'invalid_input' => 'Questo valore non è stato accettato.',
         'forbidden' => 'Non hai i permessi per farlo.',
+    ],
+
+    'errors' => [
+        'forbidden_title' => 'Non puoi aprire questa pagina',
+        'forbidden_body' => 'Questa sezione richiede un permesso admin che il tuo account non ha. Se sembra un errore, chiedi al proprietario del pannello di controllare i tuoi permessi.',
+        'back_to_dashboard' => 'Torna al pannello',
     ],
 ];

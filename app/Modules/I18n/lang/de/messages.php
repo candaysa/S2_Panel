@@ -117,6 +117,9 @@ return [
         'restore_success_title' => 'Backup wiederhergestellt',
         'restore_success_body' => 'Alles aus deinem Backup ist wiederhergestellt. Weiter zum Panel…',
         'restore_pending_plugins' => 'Lade diese Plugins über den Plugins-Tab erneut hoch, um die Wiederherstellung abzuschließen:',
+        'site_name' => 'Panel-Name',
+        'site_name_placeholder' => 'Meine CS2-Community',
+        'site_name_hint' => 'Erscheint in der Seitenleiste, im Browser-Tab und wenn das Panel als App installiert wird. Später in den Einstellungen änderbar.',
     ],
     'backup' => [
         'title' => 'Backup',
@@ -453,6 +456,8 @@ return [
     'settings' => [
         'timezone' => 'Zeitzone',
         'default_locale' => 'Standardsprache',
+        'tab_general' => 'Allgemein',
+        'tab_stats' => 'Gesamtzahlen',
     ],
 
     'admins' => [
@@ -475,5 +480,11 @@ return [
         'validation_failed' => 'Bitte die markierten Felder prüfen.',
         'invalid_input' => 'Diese Eingabe wurde nicht akzeptiert.',
         'forbidden' => 'Dazu fehlt Ihnen die Berechtigung.',
+    ],
+
+    'errors' => [
+        'forbidden_title' => 'Diese Seite können Sie nicht öffnen',
+        'forbidden_body' => 'Dieser Bereich benötigt ein Admin-Recht, das Ihr Konto nicht hat. Falls das nicht stimmt, lassen Sie Ihre Rechte vom Panel-Inhaber prüfen.',
+        'back_to_dashboard' => 'Zurück zum Dashboard',
     ],
 ];

@@ -83,16 +83,20 @@ Route::middleware('steam.auth')->group(function (): void {
     Route::view('/reports', 'reports.index')->name('reports.page');
     Route::view('/appeals', 'appeals.index')->name('appeals.page');
 
-    // Staff pages - each one's API additionally requires a specific flag
-    // (see the matching Routes/api.php); the page shell itself only needs a
-    // session so a signed-in non-staff user gets the API's 403 rather than a
-    // login redirect they've already passed.
-    Route::view('/admins', 'admin.index')->name('admins.page');
-    Route::view('/groups', 'admin.groups')->name('groups.page');
-    Route::view('/bans', 'bans.index')->name('bans.page');
-    Route::view('/rcon', 'rcon.index')->name('rcon.page');
-    Route::view('/audit', 'audit.index')->name('audit.page');
-    Route::view('/cheat-check', 'cheatcheck.index')->name('cheatcheck.page');
+    // Staff pages. The page itself now carries the same flag its API
+    // requires, so a signed-in player cannot open an RCON console or a ban
+    // list at all - previously the shell rendered for anyone with a session
+    // and only the data was withheld, which showed players the shape of
+    // tools they have no business seeing. Each gate mirrors the matching
+    // Routes/api.php exactly; the sidebar hides these for the same set.
+    Route::view('/admins', 'admin.index')->middleware('flag:admin.root')->name('admins.page');
+    Route::view('/groups', 'admin.groups')->middleware('flag:admin.root')->name('groups.page');
+    Route::view('/bans', 'bans.index')
+        ->middleware('flag:admin.ban,admin.mute,admin.kick,admin.generic')
+        ->name('bans.page');
+    Route::view('/rcon', 'rcon.index')->middleware('flag:admin.rcon')->name('rcon.page');
+    Route::view('/audit', 'audit.index')->middleware('flag:admin.root')->name('audit.page');
+    Route::view('/cheat-check', 'cheatcheck.index')->middleware('flag:admin.generic')->name('cheatcheck.page');
 
     Route::middleware('owner.only')->group(function (): void {
         Route::view('/health', 'health.index')->name('health.page');

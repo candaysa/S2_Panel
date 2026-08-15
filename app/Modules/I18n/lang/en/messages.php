@@ -117,6 +117,9 @@ return [
         'restore_success_title' => 'Backup restored',
         'restore_success_body' => 'Everything from your backup is in place. Continuing to the panel…',
         'restore_pending_plugins' => 'Re-upload these plugins from the Plugins tab to finish restoring them:',
+        'site_name' => 'Panel name',
+        'site_name_placeholder' => 'My CS2 Community',
+        'site_name_hint' => 'Shown in the sidebar, the browser tab and when the panel is installed as an app. You can change it later in Settings.',
     ],
     'backup' => [
         'title' => 'Backup',
@@ -453,6 +456,8 @@ return [
     'settings' => [
         'timezone' => 'Timezone',
         'default_locale' => 'Default language',
+        'tab_general' => 'General',
+        'tab_stats' => 'Site totals',
     ],
 
     'admins' => [
@@ -475,5 +480,11 @@ return [
         'validation_failed' => 'Please check the highlighted fields.',
         'invalid_input' => 'That input was not accepted.',
         'forbidden' => 'You do not have permission to do that.',
+    ],
+
+    'errors' => [
+        'forbidden_title' => 'You cannot open this page',
+        'forbidden_body' => 'This area needs an admin flag your account does not have. If that looks wrong, ask the panel owner to check your permissions.',
+        'back_to_dashboard' => 'Back to dashboard',
     ],
 ];

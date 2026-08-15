@@ -117,6 +117,9 @@ return [
         'restore_success_title' => 'Sauvegarde restaurée',
         'restore_success_body' => 'Tout votre backup est en place. Redirection vers le panneau…',
         'restore_pending_plugins' => "Réimportez ces extensions depuis l'onglet Extensions pour terminer leur restauration :",
+        'site_name' => 'Nom du panel',
+        'site_name_placeholder' => 'Ma communauté CS2',
+        'site_name_hint' => "Affiché dans la barre latérale, l'onglet du navigateur et lorsque le panel est installé comme application. Modifiable ensuite dans les Réglages.",
     ],
     'backup' => [
         'title' => 'Sauvegarde',
@@ -453,6 +456,8 @@ return [
     'settings' => [
         'timezone' => 'Fuseau horaire',
         'default_locale' => 'Langue par défaut',
+        'tab_general' => 'Général',
+        'tab_stats' => 'Totaux du site',
     ],
 
     'admins' => [
@@ -475,5 +480,11 @@ return [
         'validation_failed' => 'Veuillez vérifier les champs signalés.',
         'invalid_input' => "Cette saisie n'a pas été acceptée.",
         'forbidden' => "Vous n'avez pas la permission de faire cela.",
+    ],
+
+    'errors' => [
+        'forbidden_title' => 'Vous ne pouvez pas ouvrir cette page',
+        'forbidden_body' => "Cette section requiert un droit d'administration que votre compte n'a pas. Si cela semble incorrect, demandez au propriétaire du panel de vérifier vos permissions.",
+        'back_to_dashboard' => 'Retour au tableau de bord',
     ],
 ];

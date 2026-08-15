@@ -117,6 +117,9 @@ return [
         'restore_success_title' => 'Yedek geri yüklendi',
         'restore_success_body' => 'Yedeğinizdeki her şey yerinde. Panele yönlendiriliyorsunuz…',
         'restore_pending_plugins' => 'Bu eklentileri tamamlamak için Eklentiler sekmesinden yeniden yükleyin:',
+        'site_name' => 'Panel adı',
+        'site_name_placeholder' => 'CS2 Topluluğum',
+        'site_name_hint' => "Kenar çubuğunda, tarayıcı sekmesinde ve panel uygulama olarak kurulduğunda görünür. Daha sonra Ayarlar'dan değiştirebilirsiniz.",
     ],
     'backup' => [
         'title' => 'Yedekleme',
@@ -453,6 +456,8 @@ return [
     'settings' => [
         'timezone' => 'Zaman dilimi',
         'default_locale' => 'Varsayılan dil',
+        'tab_general' => 'Genel',
+        'tab_stats' => 'Site toplamları',
     ],
 
     'admins' => [
@@ -475,5 +480,11 @@ return [
         'validation_failed' => 'Lütfen işaretli alanları kontrol edin.',
         'invalid_input' => 'Bu giriş kabul edilmedi.',
         'forbidden' => 'Bunu yapma yetkiniz yok.',
+    ],
+
+    'errors' => [
+        'forbidden_title' => 'Bu sayfayı açamazsınız',
+        'forbidden_body' => 'Bu bölüm hesabınızda bulunmayan bir yetki bayrağı gerektiriyor. Bir hata olduğunu düşünüyorsanız panel sahibinden yetkilerinizi kontrol etmesini isteyin.',
+        'back_to_dashboard' => 'Panele dön',
     ],
 ];

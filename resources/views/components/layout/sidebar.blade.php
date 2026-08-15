@@ -14,8 +14,11 @@
         [__('i18n::messages.nav.section_menu'), [
             ['dashboard', __('i18n::messages.nav.dashboard'), 'home', null],
             ['servers.page', __('i18n::messages.nav.servers'), 'server', null],
-            ['stats.page', __('i18n::messages.nav.stats'), 'chart', null],
             ['ranks.page', __('i18n::messages.nav.ranks'), 'trophy', null],
+            // Stats sits last in this group: it is the least-visited of the
+            // four and reads as a drill-down from the dashboard rather than a
+            // starting point.
+            ['stats.page', __('i18n::messages.nav.stats'), 'chart', null],
         ]],
         [__('i18n::messages.nav.section_community'), [
             ['reports.page', __('i18n::messages.nav.reports'), 'flag', 'auth'],
@@ -80,9 +83,9 @@
     x-transition:leave-end="-translate-x-full"
     class="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-surface border-r border-line lg:static lg:flex lg:translate-x-0"
 >
-    <div class="flex items-center gap-3 px-5 py-4 border-b border-line">
-        <img src="{{ $siteLogo }}" alt="{{ $siteName }}" class="size-8 shrink-0 object-contain">
-        <span class="text-base font-semibold text-ink truncate">{{ $siteName }}</span>
+    <div class="flex items-center gap-3 px-5 py-5 border-b border-line">
+        <img src="{{ $siteLogo }}" alt="{{ $siteName }}" class="size-10 shrink-0 object-contain">
+        <span class="text-lg font-semibold tracking-tight text-ink truncate">{{ $siteName }}</span>
         <x-theme-toggle class="ml-auto" />
     </div>
 
@@ -126,31 +129,6 @@
                 <x-icon name="bell" class="size-5 shrink-0" />
                 {{ __('i18n::messages.nav.health') }}
             </a>
-
-            <a
-                href="{{ route('webhooks.page') }}"
-                @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
-                    'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('webhooks.page'),
-                    'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('webhooks.page'),
-                ])
-            >
-                <x-icon name="webhook" class="size-5 shrink-0" />
-                {{ __('i18n::messages.nav.webhooks') }}
-            </a>
-
-            <a
-                href="{{ route('modules.page') }}"
-                @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
-                    'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('modules.page'),
-                    'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('modules.page'),
-                ])
-            >
-                <x-icon name="puzzle" class="size-5 shrink-0" />
-                {{ __('i18n::messages.nav.modules') }}
-            </a>
-
 
             <a
                 href="{{ route('settings.page') }}"

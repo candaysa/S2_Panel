@@ -62,6 +62,7 @@
             restoreDone: null,
 
             locale: '{{ app()->getLocale() }}',
+            siteName: '',
 
             db: { host: '127.0.0.1', port: '3306', database: '', username: '', password: '' },
 
@@ -97,7 +98,7 @@
                 this.loading = true;
                 this.error = null;
                 try {
-                    await this.post('/api/install/locale', { locale: this.locale });
+                    await this.post('/api/install/locale', { locale: this.locale, site_name: this.siteName });
                     window.location.reload();
                 } catch (e) {
                     this.error = '{{ __('i18n::messages.install.generic_error') }}';
@@ -114,7 +115,7 @@
                 this.loading = true;
                 this.error = null;
                 try {
-                    await this.post('/api/install/locale', { locale: this.locale });
+                    await this.post('/api/install/locale', { locale: this.locale, site_name: this.siteName });
                     this.step = 2;
                 } catch (e) {
                     this.error = '{{ __('i18n::messages.install.generic_error') }}';
@@ -269,6 +270,21 @@
                     >
                         <path d="m6 9 6 6 6-6" />
                     </svg>
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-ink-muted" for="site_name">
+                        {{ __('i18n::messages.install.site_name') }}
+                    </label>
+                    <input
+                        id="site_name"
+                        type="text"
+                        x-model="siteName"
+                        :disabled="loading"
+                        placeholder="{{ __('i18n::messages.install.site_name_placeholder') }}"
+                        class="mt-1 w-full rounded-lg border border-line bg-canvas px-3 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none disabled:opacity-50"
+                    >
+                    <p class="mt-1 text-xs text-ink-faint">{{ __('i18n::messages.install.site_name_hint') }}</p>
                 </div>
 
                 <button

@@ -7,7 +7,21 @@
     <div x-data="settingsPage()" x-init="init()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.settings') }}</h1>
 
-        <div x-show="loading" x-cloak class="mt-6 text-sm text-ink-faint">
+        <x-settings-tabs current="general" />
+
+        {{-- Site totals live here rather than as their own page: they are a
+             glance at how much the panel is holding, which is a settings-time
+             question, not something to navigate to. --}}
+        <div x-show="!loading" x-cloak class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <template x-for="stat in siteStats" :key="stat.label">
+                <div class="rounded-xl border border-line bg-surface p-4">
+                    <p class="text-[11px] uppercase tracking-wider text-ink-faint" x-text="stat.label"></p>
+                    <p class="mt-1 text-xl font-semibold text-ink" x-text="stat.value"></p>
+                </div>
+            </template>
+        </div>
+
+ && tab === 'general'" x-cloak class="mt-6 text-sm text-ink-faint">
             {{ __('i18n::messages.common.loading') }}
         </div>
 
@@ -151,7 +165,7 @@
             {{ __('i18n::messages.common.error') }}
         </p>
 
-        <div x-show="!loading" x-cloak class="mt-8 max-w-xl rounded-xl border border-line bg-surface p-5">
+        <div x-show="!loading" x-cloak class="mt-6 max-w-xl rounded-xl border border-line bg-surface p-5">
             <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.backup.title') }}</h2>
             <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.backup.subtitle') }}</p>
             <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.backup.plugins_note') }}</p>
@@ -207,12 +221,30 @@
                     }
                 },
 
+                counts: { servers: null, bans: null, mutes: null, admins: null },
+
+                get siteStats() {
+                    const t = @js(__('i18n::messages.dashboard'));
+                    const n = (v) => v === null || v === undefined ? '—' : v.toLocaleString();
+                    return [
+                        { label: t.card_servers, value: n(this.counts.servers) },
+                        { label: t.card_admins, value: n(this.counts.admins) },
+                        { label: t.card_bans, value: n(this.counts.bans) },
+                        { label: t.card_mutes, value: n(this.counts.mutes) },
+                    ];
+                },
+
                 async init() {
                     try {
                         const res = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
                         if (!res.ok) throw new Error('request_failed');
                         const body = await res.json();
                         Object.assign(this.form, body.data);
+
+                        // Reuse the dashboard aggregate rather than counting
+                        // the same rows a second time.
+                        const d = await fetch('/api/dashboard', { headers: { Accept: 'application/json' } });
+                        if (d.ok) this.counts = (await d.json()).data.counts;
                     } catch (e) {
                         this.error = true;
                     } finally {

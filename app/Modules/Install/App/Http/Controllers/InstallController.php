@@ -106,6 +106,11 @@ class InstallController
     {
         $validator = Validator::make($request->all(), [
             'locale' => 'required|string|in:en,tr,de,fr,it,ru',
+            // Asked here rather than left to a post-install trip to Settings:
+            // the name appears in the sidebar, the browser tab and the PWA
+            // manifest, so a fresh install that still says "S2 Panel"
+            // everywhere looks unconfigured on first login.
+            'site_name' => 'nullable|string|max:120',
         ]);
 
         if ($validator->fails()) {
@@ -116,6 +121,12 @@ class InstallController
 
         $request->session()->put('locale', $locale);
         app(SettingService::class)->set('default_locale', $locale);
+
+        $siteName = trim((string) $request->input('site_name', ''));
+
+        if ($siteName !== '') {
+            app(SettingService::class)->set('site_name', $siteName);
+        }
 
         // Recorded like every other step. Without this a refresh right after
         // choosing a language restarted the wizard, because nothing on the
