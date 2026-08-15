@@ -90,6 +90,8 @@
     >
         <div class="flex flex-wrap items-center justify-between gap-4">
             <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.webhooks') }}</h1>
+
+        <x-settings-tabs current="webhooks" />
             <button type="button" @click="showForm = !showForm" class="inline-flex items-center rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90">
                 {{ __('i18n::messages.webhooks.add_webhook') }}
             </button>

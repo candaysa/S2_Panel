@@ -3,6 +3,8 @@
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.modules.title') }}</h1>
         <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.modules.subtitle') }}</p>
 
+        <x-settings-tabs current="modules" />
+
         <p x-show="error" x-cloak class="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" x-text="error"></p>
 
         {{-- Two tabs rather than two pages: an installed plugin is
