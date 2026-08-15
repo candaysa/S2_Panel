@@ -331,6 +331,7 @@ return [
         'no_data' => 'Niente equipaggiato.',
         'choose_weapon' => 'Scegli un\'arma da personalizzare',
         'choose_paint' => 'Scegli un motivo',
+        'default_paint' => 'Predefinito (nessun motivo)',
         'wear' => 'Usura',
         'seed' => 'Seed del motivo',
         'stattrak' => 'StatTrak™',

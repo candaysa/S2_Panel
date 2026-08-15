@@ -331,6 +331,7 @@ return [
         'no_data' => 'Nothing equipped.',
         'choose_weapon' => 'Choose a weapon to skin',
         'choose_paint' => 'Choose a paint',
+        'default_paint' => 'Default (no paint)',
         'wear' => 'Wear',
         'seed' => 'Pattern seed',
         'stattrak' => 'StatTrak™',

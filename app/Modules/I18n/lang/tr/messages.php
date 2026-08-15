@@ -331,6 +331,7 @@ return [
         'no_data' => 'Hiçbir şey kuşanılmamış.',
         'choose_weapon' => 'Skin vermek için bir silah seç',
         'choose_paint' => 'Bir desen seç',
+        'default_paint' => 'Varsayılan (desensiz)',
         'wear' => 'Aşınma',
         'seed' => 'Desen tohumu',
         'stattrak' => 'StatTrak™',
