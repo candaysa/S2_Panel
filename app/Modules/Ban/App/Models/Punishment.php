@@ -16,6 +16,20 @@ abstract class Punishment extends Model
 
     public $timestamps = false;
 
+    /**
+     * `status` is not consistently the literal string 'active' in real
+     * data - CS2_Admin has apparently used two different conventions over
+     * its history, both present in the same table at once: older rows
+     * spell it out ('active', 'expired', 'unmuted'), newer ones use a
+     * numeric BanStatus/MuteStatus code (confirmed against live data:
+     * status=1 rows are 100% permanent and untouched, status=2 rows are
+     * 100% correlated with an unban/unmute date being set, status=3 rows
+     * are 100% correlated with expires_at already in the past). Checking
+     * for 'active' alone against this data undercounted active
+     * bans/mutes by roughly 40x - see the 2026-08-15 dashboard fix.
+     */
+    private const ACTIVE_STATUSES = ['active', '1'];
+
     protected function casts(): array
     {
         return [
@@ -40,7 +54,7 @@ abstract class Punishment extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where(fn (Builder $q): Builder => $q
-            ->whereNull('status')->orWhere('status', 'active'))
+            ->whereNull('status')->orWhereIn('status', self::ACTIVE_STATUSES))
             ->where(fn (Builder $q): Builder => $q
                 ->whereNull('expires_at')->orWhere('expires_at', '>', now()));
     }
@@ -51,7 +65,7 @@ abstract class Punishment extends Model
     public function scopeExpired(Builder $query): Builder
     {
         return $query->where(fn (Builder $q): Builder => $q
-            ->whereNotNull('status')->where('status', '!=', 'active')
+            ->whereNotNull('status')->whereNotIn('status', self::ACTIVE_STATUSES)
             ->orWhere(fn (Builder $q): Builder => $q
                 ->whereNotNull('expires_at')->where('expires_at', '<=', now())));
     }

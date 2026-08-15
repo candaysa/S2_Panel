@@ -6,30 +6,40 @@
             {{ __('i18n::messages.common.error') }}
         </p>
 
-        {{-- Counters. Each card carries its own accent so the four read as
-             distinct figures at a glance instead of one grey block; the tint
-             is tied to meaning (bans red, mutes amber) rather than decoration. --}}
+        {{-- Counters. Each card carries its own border/accent so the four
+             read as distinct figures at a glance instead of one grey block;
+             the tint is tied to meaning (bans red, mutes amber) rather than
+             decoration. Bans/mutes additionally show an "N active" pill -
+             the count on its own can't tell a moderator whether that is
+             every ban this server has ever issued or just the ones still
+             in force. --}}
         <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             @foreach ([
-                ['servers', 'server', __('i18n::messages.dashboard.card_servers'), 'text-emerald-400', 'bg-emerald-500/10', 'from-emerald-500/[0.07]'],
-                ['bans', 'ban', __('i18n::messages.dashboard.card_bans'), 'text-red-400', 'bg-red-500/10', 'from-red-500/[0.07]'],
-                ['mutes', 'mute', __('i18n::messages.dashboard.card_mutes'), 'text-amber-400', 'bg-amber-500/10', 'from-amber-500/[0.07]'],
-                ['admins', 'users', __('i18n::messages.dashboard.card_admins'), 'text-sky-400', 'bg-sky-500/10', 'from-sky-500/[0.07]'],
-            ] as [$key, $icon, $label, $fg, $chip, $wash])
-                <div class="relative overflow-hidden rounded-xl border border-line bg-surface bg-gradient-to-br {{ $wash }} to-transparent p-4 sm:p-5">
+                ['servers', 'server', __('i18n::messages.dashboard.card_servers'), 'text-emerald-400', 'bg-emerald-500/10', 'border-emerald-500/30', false],
+                ['bans', 'ban', __('i18n::messages.dashboard.card_bans'), 'text-red-400', 'bg-red-500/10', 'border-red-500/30', true],
+                ['mutes', 'mute', __('i18n::messages.dashboard.card_mutes'), 'text-amber-400', 'bg-amber-500/10', 'border-amber-500/30', true],
+                ['admins', 'users', __('i18n::messages.dashboard.card_admins'), 'text-sky-400', 'bg-sky-500/10', 'border-sky-500/30', false],
+            ] as [$key, $icon, $label, $fg, $chip, $ring, $hasActive])
+                <div class="relative overflow-hidden rounded-xl border bg-surface p-4 {{ $ring }} sm:p-5">
                     <div class="flex items-start justify-between gap-2">
-                        <span class="text-[11px] font-medium uppercase tracking-wider text-ink-faint sm:text-xs">{{ $label }}</span>
-                        <span class="flex size-8 shrink-0 items-center justify-center rounded-lg {{ $chip }}">
+                        <span
+                            x-show="{{ $hasActive ? 'true' : 'false' }} && !loading && counts.{{ $key }}"
+                            x-cloak
+                            class="rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $chip }} {{ $fg }}"
+                            x-text="stat(counts.{{ $key }}?.active) + ' ' + activeLabel"
+                        ></span>
+                        <span class="flex size-8 shrink-0 items-center justify-center rounded-lg {{ $chip }} ml-auto">
                             <x-icon name="{{ $icon }}" class="size-4 {{ $fg }}" />
                         </span>
                     </div>
-                    <p class="mt-2 text-2xl font-semibold text-ink sm:text-3xl" x-text="loading ? '·' : stat(counts.{{ $key }})"></p>
+                    <p class="mt-2 text-2xl font-semibold text-ink sm:text-3xl" x-text="loading ? '·' : stat({{ $hasActive ? "counts.{$key}?.total" : "counts.{$key}" }})"></p>
+                    <span class="text-[11px] font-medium uppercase tracking-wider text-ink-faint sm:text-xs">{{ $label }}</span>
                 </div>
             @endforeach
         </div>
 
         {{-- Servers: live cards, not a bare id list --}}
-        <div class="mt-6 rounded-xl border border-line bg-surface">
+        <div class="mt-6 rounded-xl border border-emerald-500/30 bg-surface">
             <div class="flex items-center justify-between border-b border-line px-5 py-3.5">
                 <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.nav.servers') }}</h2>
                 <a href="{{ route('servers.page') }}" class="text-xs text-ink-faint transition-colors hover:text-brand-strong">{{ __('i18n::messages.dashboard.view_all') }}</a>
@@ -191,6 +201,7 @@
                 canViewBanDetail: false,
                 tierLabels: @js(__('i18n::messages.rank_tiers')),
                 t: @js(__('i18n::messages.ranks')),
+                activeLabel: @js(__('i18n::messages.bans.status_active')),
 
                 async init() {
                     try {

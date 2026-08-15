@@ -47,8 +47,11 @@ class DashboardController extends Controller
         return Api::success([
             'counts' => [
                 'servers' => $this->count('server', fn (): int => AdminServer::query()->count()),
-                'bans' => $this->count('ban', fn (): int => AdminBan::query()->active()->count()),
-                'mutes' => $this->count('ban', fn (): int => AdminMute::query()->active()->count()),
+                // total + active, not active alone - a moderator reading
+                // "522" with no context can't tell if that's every ban this
+                // server has ever issued or just the ones still in force.
+                'bans' => $this->countPair('ban', fn () => AdminBan::query()),
+                'mutes' => $this->countPair('ban', fn () => AdminMute::query()),
                 'admins' => $this->count('admin', fn (): int => AdminAdmin::query()->count()),
             ],
             // id/hostname/address were never real columns on admin_servers -
@@ -158,6 +161,30 @@ class DashboardController extends Controller
         } catch (Throwable) {
             // Typically the plugin's tables are absent - the installer warns
             // about exactly this. Not worth a log line on every page load.
+            return null;
+        }
+    }
+
+    /**
+     * Total and active counts for a punishment table (bans/mutes) in one
+     * call - null (the whole pair, not per-field) on the same terms as
+     * count() above: module off, or the query itself failing.
+     *
+     * @param  callable(): \Illuminate\Database\Eloquent\Builder  $baseQuery
+     * @return array{total: int, active: int}|null
+     */
+    private function countPair(string $module, callable $baseQuery): ?array
+    {
+        if (! $this->modules->isEnabled($module)) {
+            return null;
+        }
+
+        try {
+            return [
+                'total' => $baseQuery()->count(),
+                'active' => $baseQuery()->active()->count(),
+            ];
+        } catch (Throwable) {
             return null;
         }
     }
