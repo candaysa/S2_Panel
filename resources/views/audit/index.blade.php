@@ -5,6 +5,8 @@
             forbidden: false,
             error: false,
             action: '',
+            sort: 'created_at',
+            dir: 'desc',
             logs: [],
 
             async load() {
@@ -14,6 +16,8 @@
                 try {
                     const url = new URL('/api/audit', window.location.origin);
                     if (this.action) url.searchParams.set('action', this.action);
+                    url.searchParams.set('sort', this.sort);
+                    url.searchParams.set('dir', this.dir);
                     const res = await fetch(url, { headers: { Accept: 'application/json' } });
                     if (res.status === 403) { this.forbidden = true; return; }
                     if (!res.ok) throw new Error('request_failed');
@@ -26,8 +30,23 @@
                 }
             },
 
+            sortBy(key) {
+                if (this.sort === key) { this.dir = this.dir === 'asc' ? 'desc' : 'asc'; }
+                else { this.sort = key; this.dir = key === 'actor_name' || key === 'action' ? 'asc' : 'desc'; }
+                this.load();
+            },
+
             formatDate(value) {
                 return value ? new Date(value).toLocaleString() : '—';
+            },
+
+            // Prefer the live Steam profile the API overlays onto every row
+            // (App\Modules\Audit\App\Http\Controllers\AuditController::index)
+            // over the historical snapshot: a nickname can change after the
+            // action, and one real bug briefly stored the profile's "real
+            // name" bio instead of the handle in the snapshot itself.
+            actorName(log) {
+                return log.actor_current_name || log.actor_name || '—';
             },
 
             init() { this.load(); },
@@ -49,16 +68,30 @@
             <table class="w-full text-left text-sm">
                 <thead class="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-faint">
                     <tr>
-                        <th class="px-4 py-3">{{ __('i18n::messages.audit.actor') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.audit.action') }}</th>
+                        <th class="px-4 py-3"><x-sort-th key="actor_name" :label="__('i18n::messages.audit.actor')" /></th>
+                        <th class="px-4 py-3"><x-sort-th key="action" :label="__('i18n::messages.audit.action')" /></th>
                         <th class="px-4 py-3">{{ __('i18n::messages.audit.target') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.audit.when') }}</th>
+                        <th class="px-4 py-3"><x-sort-th key="created_at" :label="__('i18n::messages.audit.when')" /></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-line-soft">
                     <template x-for="log in logs" :key="log.id">
                         <tr class="text-ink-muted">
-                            <td class="px-4 py-3 text-ink" x-text="log.actor_name || '—'"></td>
+                            <td class="px-4 py-3">
+                                <a
+                                    :href="log.actor_steamid ? 'https://steamcommunity.com/profiles/' + log.actor_steamid : null"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="flex items-center gap-2.5"
+                                >
+                                    <img x-show="log.actor_avatar" :src="log.actor_avatar" alt="" loading="lazy" class="size-7 shrink-0 rounded-full object-cover ring-1 ring-line">
+                                    <span x-show="!log.actor_avatar" class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-faint" x-text="actorName(log).charAt(0).toUpperCase()"></span>
+                                    <span class="min-w-0">
+                                        <span class="block truncate font-medium text-ink transition-colors hover:text-brand-strong" x-text="actorName(log)"></span>
+                                        <span class="block truncate font-mono text-[11px] text-ink-faint" x-text="log.actor_steamid"></span>
+                                    </span>
+                                </a>
+                            </td>
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center rounded-full bg-surface-raised px-2.5 py-0.5 font-mono text-xs" x-text="log.action"></span>
                             </td>

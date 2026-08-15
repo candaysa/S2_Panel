@@ -7,6 +7,8 @@
             search: '',
             type: 'ban',
             status: 'active',
+            sort: 'id',
+            dir: 'desc',
             rows: [],
             types: [
                 { key: 'ban', label: @js(__('i18n::messages.bans.type_ban')) },
@@ -22,6 +24,8 @@
                     const url = new URL('/api/bans', window.location.origin);
                     url.searchParams.set('type', this.type);
                     url.searchParams.set('status', this.status);
+                    url.searchParams.set('sort', this.sort);
+                    url.searchParams.set('dir', this.dir);
                     if (this.search) url.searchParams.set('search', this.search);
                     const res = await fetch(url, { headers: { Accept: 'application/json' } });
                     if (res.status === 403) { this.forbidden = true; return; }
@@ -33,6 +37,11 @@
                 } finally {
                     this.loading = false;
                 }
+            },
+            sortBy(key) {
+                if (this.sort === key) { this.dir = this.dir === 'asc' ? 'desc' : 'asc'; }
+                else { this.sort = key; this.dir = key === 'target_name' || key === 'admin_name' ? 'asc' : 'desc'; }
+                this.load();
             },
             init() { this.load(); },
             formatDate(value) {
@@ -80,12 +89,12 @@
             <table class="w-full text-left text-sm">
                 <thead class="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-faint">
                     <tr>
-                        <th class="px-4 py-3">{{ __('i18n::messages.bans.target') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.bans.admin') }}</th>
+                        <th class="px-4 py-3"><x-sort-th key="target_name" :label="__('i18n::messages.bans.target')" /></th>
+                        <th class="px-4 py-3"><x-sort-th key="admin_name" :label="__('i18n::messages.bans.admin')" /></th>
                         <th class="px-4 py-3">{{ __('i18n::messages.bans.reason') }}</th>
                         <th class="px-4 py-3">{{ __('i18n::messages.bans.scope') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.bans.created') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.bans.expires') }}</th>
+                        <th class="px-4 py-3"><x-sort-th key="created_at" :label="__('i18n::messages.bans.created')" /></th>
+                        <th class="px-4 py-3"><x-sort-th key="expires_at" :label="__('i18n::messages.bans.expires')" /></th>
                         <th class="px-4 py-3" x-show="type !== 'warn'">{{ __('i18n::messages.bans.status') }}</th>
                     </tr>
                 </thead>

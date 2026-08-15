@@ -41,11 +41,11 @@
                 <thead class="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-faint">
                     <tr>
                         <th class="px-4 py-3">{{ __('i18n::messages.ranks.position') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.ranks.player') }}</th>
+                        <th class="px-4 py-3"><x-sort-th key="name" :label="__('i18n::messages.ranks.player')" /></th>
                         <th class="px-4 py-3">{{ __('i18n::messages.ranks.rank') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.ranks.points') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.ranks.kills') }}</th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.ranks.time_on_server') }}</th>
+                        <th class="px-4 py-3"><x-sort-th key="value" :label="__('i18n::messages.ranks.points')" /></th>
+                        <th class="px-4 py-3"><x-sort-th key="kills" :label="__('i18n::messages.ranks.kills')" /></th>
+                        <th class="px-4 py-3"><x-sort-th key="playtime" :label="__('i18n::messages.ranks.time_on_server')" /></th>
                         <th class="px-4 py-3">{{ __('i18n::messages.ranks.kd') }}</th>
                         <th class="px-4 py-3"></th>
                     </tr>
@@ -195,6 +195,14 @@
                 perPage: 50,
                 total: 0,
                 lastPage: 1,
+                sort: 'value',
+                dir: 'desc',
+
+                sortBy(key) {
+                    if (this.sort === key) { this.dir = this.dir === 'asc' ? 'desc' : 'asc'; }
+                    else { this.sort = key; this.dir = key === 'name' ? 'asc' : 'desc'; }
+                    this.load(true);
+                },
 
                 async load(resetPage = false) {
                     // Any change to the filter has to send the reader back to
@@ -207,6 +215,8 @@
                         const url = new URL('/api/ranks', window.location.origin);
                         url.searchParams.set('per_page', String(this.perPage));
                         url.searchParams.set('page', String(this.page));
+                        url.searchParams.set('sort', this.sort);
+                        url.searchParams.set('dir', this.dir);
                         if (this.search) url.searchParams.set('search', this.search);
                         const res = await fetch(url, { headers: { Accept: 'application/json' } });
                         if (!res.ok) throw new Error('request_failed');
