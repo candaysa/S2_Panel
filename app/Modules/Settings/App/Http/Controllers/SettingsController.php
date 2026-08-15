@@ -16,14 +16,26 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * Panel settings (C14). Owner-only: the settings table is a sensitive store
  * and logo/favicon uploads write into the public web root.
  *
- * GET  /api/settings          – all settings
- * PUT  /api/settings          – update whitelisted keys
- * POST /api/settings/logo     – upload logo image
- * POST /api/settings/favicon  – upload favicon image
- * GET  /api/settings/backup   – download a full backup.zip
+ * GET  /api/settings              – all settings
+ * PUT  /api/settings              – update whitelisted keys
+ * POST /api/settings/logo         – upload logo image
+ * POST /api/settings/favicon      – upload favicon image
+ * PUT  /api/settings/theme        – set the full color palette override
+ * POST /api/settings/theme/reset  – drop it, back to app.css factory colors
+ * GET  /api/settings/backup       – download a full backup.zip
  */
 class SettingsController
 {
+    /**
+     * Every token an owner may override, matching the custom properties
+     * app.css defines under @theme (dark) and :root[data-theme='light'].
+     * brand_color is deliberately not here - it already has its own
+     * setting/reset endpoint and color-mix() derivation.
+     */
+    private const THEME_TOKENS = [
+        'surface', 'surface_raised', 'canvas', 'line', 'line_soft', 'ink', 'ink_muted', 'ink_faint',
+    ];
+
     public function __construct(private readonly SettingService $settings)
     {
     }
@@ -112,6 +124,68 @@ class SettingsController
         $this->settings->forget('brand_color');
 
         return Api::success(['brand_color' => $this->settings->get('brand_color')]);
+    }
+
+    /**
+     * PUT /api/settings/theme
+     *
+     * Body: { dark: {token: hex, ...}, light: {token: hex, ...} }, both
+     * optional and every token within them optional - only the tokens
+     * actually present are stored, so a page that only ever edited "ink"
+     * cannot accidentally blank out colors it never touched.
+     */
+    public function updateTheme(Request $request): JsonResponse
+    {
+        $rules = [];
+
+        foreach (['dark', 'light'] as $mode) {
+            foreach (self::THEME_TOKENS as $token) {
+                $rules["{$mode}.{$token}"] = ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'];
+            }
+        }
+
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            return Api::error(Api::MSG_VALIDATION_FAILED, $validator->errors()->toArray(), 422);
+        }
+
+        $current = (array) $this->settings->get('theme_colors', []);
+
+        foreach (['dark', 'light'] as $mode) {
+            $submitted = (array) $request->input($mode, []);
+
+            foreach (self::THEME_TOKENS as $token) {
+                if (! array_key_exists($token, $submitted)) {
+                    continue;
+                }
+
+                $value = $submitted[$token];
+
+                if ($value === null || $value === '') {
+                    unset($current[$mode][$token]);
+                } elseif (preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value) === 1) {
+                    $current[$mode][$token] = $value;
+                }
+            }
+        }
+
+        $this->settings->set('theme_colors', $current, Auth::id());
+
+        return Api::success($current);
+    }
+
+    /**
+     * POST /api/settings/theme/reset
+     *
+     * Drops every override at once, back to app.css's factory palette -
+     * same "start over" convention as resetBrandColor() below.
+     */
+    public function resetTheme(): JsonResponse
+    {
+        $this->settings->forget('theme_colors');
+
+        return Api::success(['theme_colors' => $this->settings->get('theme_colors', [])]);
     }
 
     public function uploadLogo(Request $request): JsonResponse

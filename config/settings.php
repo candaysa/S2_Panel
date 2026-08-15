@@ -26,6 +26,14 @@ return [
         // app.css derive from this via color-mix(), so overriding just
         // this one hex re-tints every accent surface in the panel.
         'brand_color' => '#00ffe3',
+        // Full palette override, on top of brand_color above. Shape:
+        // {"dark": {"surface": "#...", ...}, "light": {...}}, one entry per
+        // App\Modules\Settings\App\Http\Controllers\SettingsController::THEME_TOKENS
+        // per mode - both optional, missing keys simply keep app.css's
+        // factory value. Not in `whitelist`/validated by the generic
+        // update() below (a hex-per-token shape doesn't fit those simple
+        // rules) - see updateTheme()/resetTheme().
+        'theme_colors' => [],
         // Which admin GROUP sees every ticket in a category (reports, admin
         // applications, ban appeals) instead of only their own - one group
         // per category, not one shared flag list, so e.g. a generic
