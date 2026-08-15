@@ -7,63 +7,59 @@
 
         <p x-show="error" x-cloak class="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" x-text="error"></p>
 
-        {{-- Two tabs rather than two pages: an installed plugin is
-             structurally identical to a built-in module (same base provider,
-             same enable gate), so splitting them across the sidebar made the
-             panel look like it had two unrelated features. --}}
+        {{-- Modules and Docs, not Built-in/Plugins - a built-in module and an
+             installed plugin are the same thing under the hood (same base
+             provider, same enable gate), so splitting them across tabs made
+             the panel look like it had two unrelated features for no reason. --}}
         <div class="mt-5 flex gap-1 border-b border-line">
             <button
                 type="button"
-                @click="tab = 'builtin'"
+                @click="tab = 'modules'"
                 class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
-                :class="tab === 'builtin' ? 'border-brand-strong text-brand-strong' : 'border-transparent text-ink-muted hover:text-ink'"
+                :class="tab === 'modules' ? 'border-brand-strong text-brand-strong' : 'border-transparent text-ink-muted hover:text-ink'"
             >
-                {{ __('i18n::messages.modules.tab_builtin') }}
-                <span class="ml-1.5 rounded-full bg-surface-raised px-1.5 py-0.5 text-xs text-ink-faint" x-text="modules.length"></span>
+                {{ __('i18n::messages.modules.tab_modules') }}
             </button>
             <button
                 type="button"
-                @click="tab = 'plugins'"
+                @click="tab = 'docs'"
                 class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
-                :class="tab === 'plugins' ? 'border-brand-strong text-brand-strong' : 'border-transparent text-ink-muted hover:text-ink'"
+                :class="tab === 'docs' ? 'border-brand-strong text-brand-strong' : 'border-transparent text-ink-muted hover:text-ink'"
             >
-                {{ __('i18n::messages.modules.tab_plugins') }}
-                <span class="ml-1.5 rounded-full bg-surface-raised px-1.5 py-0.5 text-xs text-ink-faint" x-text="plugins.length"></span>
+                {{ __('i18n::messages.modules.tab_docs') }}
             </button>
         </div>
 
-        <p x-show="loading" x-cloak class="mt-6 text-sm text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
+        {{-- ================= MODULES TAB ================= --}}
+        <div x-show="tab === 'modules'" x-cloak>
+            {{-- Admin plugin: which schema Admins/Bans/RCON read from. Not a
+                 whitelisted Settings field on purpose (see config/settings.php)
+                 - this is the one deliberate way to change it, gated behind
+                 its own confirmation rather than a generic settings form. --}}
+            <div class="mt-5 rounded-xl border border-line bg-surface p-5">
+                <p class="font-medium text-ink">{{ __('i18n::messages.modules.admin_plugin_title') }}</p>
+                <p class="mt-0.5 text-sm text-ink-muted">{{ __('i18n::messages.modules.admin_plugin_hint') }}</p>
 
-        {{-- Built-in modules --}}
-        <div x-show="!loading && tab === 'builtin'" x-cloak class="mt-5 space-y-3">
-            <template x-for="module in modules" :key="module.key">
-                <div class="flex items-center justify-between gap-4 rounded-xl border border-line bg-surface p-5">
-                    <div class="min-w-0">
-                        <p class="font-medium text-ink" x-text="moduleName(module.key)"></p>
-                        <p class="mt-0.5 text-sm text-ink-muted" x-text="moduleDescription(module.key)"></p>
-                    </div>
-                    <button
-                        type="button"
-                        role="switch"
-                        :aria-checked="module.enabled.toString()"
-                        @click="toggleModule(module)"
-                        :disabled="pending[module.key]"
-                        class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50"
-                        :class="module.enabled ? 'bg-brand-strong' : 'bg-surface-raised'"
-                    >
-                        <span class="inline-block size-4 rounded-full bg-canvas transition-transform" :class="module.enabled ? 'translate-x-6' : 'translate-x-1'"></span>
-                    </button>
+                <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <template x-for="opt in adminPluginOptions" :key="opt.key">
+                        <button
+                            type="button"
+                            :disabled="adminPluginSaving"
+                            @click="setAdminPlugin(opt.key)"
+                            class="rounded-lg px-3 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+                            :class="adminPlugin === opt.key ? 'bg-brand-strong text-canvas' : 'border border-line text-ink-muted hover:bg-surface-raised hover:text-ink'"
+                        >
+                            <span x-text="opt.label"></span>
+                        </button>
+                    </template>
                 </div>
-            </template>
 
-            <p x-show="modules.length === 0" class="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-ink-faint">
-                {{ __('i18n::messages.common.empty') }}
-            </p>
-        </div>
+                <p x-show="adminPlugin === 'swiftly_admins'" x-cloak class="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                    {{ __('i18n::messages.admins.swiftly_admins_notice') }}
+                </p>
+            </div>
 
-        {{-- Installed plugins --}}
-        <div x-show="!loading && tab === 'plugins'" x-cloak class="mt-5">
-            <div class="rounded-xl border border-dashed border-line bg-surface p-5">
+            <div class="mt-5 rounded-xl border border-dashed border-line bg-surface p-5">
                 <p class="text-sm font-medium text-ink">{{ __('i18n::messages.plugins.upload_title') }}</p>
                 <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.plugins.upload_hint') }}</p>
                 <input
@@ -76,30 +72,41 @@
                 <p x-show="uploading" x-cloak class="mt-2 text-xs text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
             </div>
 
-            <div class="mt-3 space-y-3">
-                <template x-for="plugin in plugins" :key="plugin.key">
+            <p x-show="loading" x-cloak class="mt-6 text-sm text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
+
+            {{-- One list: the 3 owner-toggleable built-in features, then
+                 every installed plugin, sorted by name. --}}
+            <div x-show="!loading" x-cloak class="mt-5 space-y-3">
+                <template x-for="item in combined" :key="item.key">
                     <div class="flex items-center justify-between gap-4 rounded-xl border border-line bg-surface p-5">
                         <div class="min-w-0">
                             <div class="flex flex-wrap items-center gap-2">
-                                <p class="font-medium text-ink" x-text="plugin.name || plugin.key"></p>
-                                <span x-show="plugin.version" class="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-ink-faint" x-text="'v' + plugin.version"></span>
+                                <p class="font-medium text-ink" x-text="item.name"></p>
+                                <span
+                                    class="rounded-full px-2 py-0.5 text-xs font-medium"
+                                    :class="item.origin === 'plugin' ? 'bg-brand-soft text-brand-strong' : 'bg-surface-raised text-ink-faint'"
+                                    x-text="item.origin === 'plugin' ? @js(__('i18n::messages.modules.badge_plugin')) : @js(__('i18n::messages.modules.badge_builtin'))"
+                                ></span>
+                                <span x-show="item.version" class="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-ink-faint" x-text="'v' + item.version"></span>
                             </div>
-                            <p class="mt-0.5 text-sm text-ink-muted" x-text="plugin.description || plugin.key"></p>
+                            <p class="mt-0.5 text-sm text-ink-muted" x-text="item.description"></p>
                         </div>
                         <div class="flex shrink-0 items-center gap-2">
                             <button
                                 type="button"
                                 role="switch"
-                                :aria-checked="plugin.enabled.toString()"
-                                @click="togglePlugin(plugin)"
-                                class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
-                                :class="plugin.enabled ? 'bg-brand-strong' : 'bg-surface-raised'"
+                                :aria-checked="item.enabled.toString()"
+                                @click="toggle(item)"
+                                :disabled="pending[item.key]"
+                                class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50"
+                                :class="item.enabled ? 'bg-brand-strong' : 'bg-surface-raised'"
                             >
-                                <span class="inline-block size-4 rounded-full bg-canvas transition-transform" :class="plugin.enabled ? 'translate-x-6' : 'translate-x-1'"></span>
+                                <span class="inline-block size-4 rounded-full bg-canvas transition-transform" :class="item.enabled ? 'translate-x-6' : 'translate-x-1'"></span>
                             </button>
                             <button
                                 type="button"
-                                @click="uninstall(plugin)"
+                                x-show="item.origin === 'plugin'"
+                                @click="uninstall(item)"
                                 class="rounded-lg p-2 text-ink-faint transition-colors hover:bg-red-500/10 hover:text-red-400"
                                 :title="@js(__('i18n::messages.plugins.uninstall'))"
                             >
@@ -109,10 +116,100 @@
                     </div>
                 </template>
 
-                <p x-show="plugins.length === 0" class="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-ink-faint">
-                    {{ __('i18n::messages.plugins.none_installed') }}
+                <p x-show="combined.length === 0" class="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-ink-faint">
+                    {{ __('i18n::messages.common.empty') }}
                 </p>
             </div>
+        </div>
+
+        {{-- ================= DOCS TAB ================= --}}
+        <div x-show="tab === 'docs'" x-cloak class="mt-6 max-w-3xl space-y-8">
+            <section>
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.intro_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.intro_body') }}</p>
+            </section>
+
+            <section>
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.structure_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.structure_body') }}</p>
+                <pre class="mt-3 overflow-x-auto rounded-lg bg-surface-raised p-4 font-mono text-xs text-ink-muted">YourModule/
+  YourModuleServiceProvider.php
+  App/
+    Http/Controllers/
+    Models/
+    Services/
+  Database/
+    Migrations/
+  Routes/
+    api.php
+  plugin.json          <span class="text-ink-faint"># {{ __('i18n::messages.modules.docs.structure_manifest_note') }}</span></pre>
+            </section>
+
+            <section>
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.provider_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.provider_body') }}</p>
+                <pre class="mt-3 overflow-x-auto rounded-lg bg-surface-raised p-4 font-mono text-xs text-ink-muted">&lt;?php
+
+namespace App\Modules\YourModule;
+
+use App\Support\ModuleServiceProvider;
+
+class YourModuleServiceProvider extends ModuleServiceProvider
+{
+    public function moduleKey(): string
+    {
+        return 'your_module';
+    }
+
+    protected function registerModule(): void
+    {
+        // container bindings, if any
+    }
+
+    protected function bootModule(): void
+    {
+        // usually empty - routes and migrations are wired automatically
+    }
+}</pre>
+            </section>
+
+            <section>
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.routes_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.routes_body') }}</p>
+            </section>
+
+            <section>
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.migrations_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.migrations_body') }}</p>
+            </section>
+
+            <section>
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.manifest_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.manifest_body') }}</p>
+                <pre class="mt-3 overflow-x-auto rounded-lg bg-surface-raised p-4 font-mono text-xs text-ink-muted">{
+  "key": "your_module",
+  "name": "Your Module",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "description": "What this module does."
+}</pre>
+                <p class="mt-2 text-xs text-ink-faint">{{ __('i18n::messages.modules.docs.naming_body') }}</p>
+            </section>
+
+            <section>
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.packaging_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.packaging_body') }}</p>
+            </section>
+
+            <section>
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.install_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.install_body') }}</p>
+            </section>
+
+            <section class="rounded-xl border border-amber-500/30 bg-amber-500/10 p-5">
+                <h2 class="text-lg font-semibold text-amber-400">{{ __('i18n::messages.modules.docs.security_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-amber-400/90">{{ __('i18n::messages.modules.docs.security_body') }}</p>
+            </section>
         </div>
     </div>
 
@@ -121,11 +218,18 @@
             window.modulesPage = () => ({
                 loading: true,
                 error: '',
-                tab: 'builtin',
+                tab: 'modules',
                 modules: [],
                 plugins: [],
                 pending: {},
                 uploading: false,
+                adminPlugin: 'cs2_admin',
+                adminPluginSaving: false,
+
+                adminPluginOptions: [
+                    { key: 'cs2_admin', label: 'CS2_Admin' },
+                    { key: 'swiftly_admins', label: @js(__('i18n::messages.install.admin_plugin_swiftly')) },
+                ],
 
                 names: {
                     vip: @js(__('i18n::messages.modules.items.vip.name')),
@@ -138,16 +242,35 @@
                     rank: @js(__('i18n::messages.modules.items.rank.description')),
                 },
 
+                // Built-in toggleable modules and installed plugins, merged
+                // into one alphabetised list - see the tab comment above.
+                get combined() {
+                    const builtins = this.modules.map((m) => ({
+                        key: 'module:' + m.key,
+                        rawKey: m.key,
+                        origin: 'builtin',
+                        name: this.names[m.key] ?? m.key,
+                        description: this.descriptions[m.key] ?? '',
+                        version: null,
+                        enabled: m.enabled,
+                    }));
+                    const plugins = this.plugins.map((p) => ({
+                        key: 'plugin:' + p.key,
+                        rawKey: p.key,
+                        origin: 'plugin',
+                        name: p.name || p.key,
+                        description: p.description || p.key,
+                        version: p.version,
+                        enabled: p.enabled,
+                    }));
+                    return [...builtins, ...plugins].sort((a, b) => a.name.localeCompare(b.name));
+                },
+
                 csrf() {
                     return document.querySelector('meta[name=csrf-token]').content;
                 },
 
-                moduleName(key) { return this.names[key] ?? key; },
-                moduleDescription(key) { return this.descriptions[key] ?? ''; },
-
                 async init() {
-                    // Both lists load together; the tabs only choose what is
-                    // shown, so switching them never waits on a request.
                     await Promise.all([this.loadModules(), this.loadPlugins()]);
                     this.loading = false;
                 },
@@ -156,7 +279,9 @@
                     try {
                         const res = await fetch('/api/modules', { headers: { Accept: 'application/json' } });
                         if (!res.ok) throw new Error('request_failed');
-                        this.modules = (await res.json()).data;
+                        const body = await res.json();
+                        this.modules = body.data;
+                        this.adminPlugin = body.meta?.admin_plugin ?? 'cs2_admin';
                     } catch (e) {
                         this.error = @js(__('i18n::messages.common.error'));
                     }
@@ -172,22 +297,48 @@
                     }
                 },
 
-                async toggleModule(module) {
-                    const next = !module.enabled;
-                    this.pending[module.key] = true;
+                async toggle(item) {
+                    const next = !item.enabled;
+                    this.pending[item.key] = true;
                     this.error = '';
                     try {
-                        const res = await fetch(`/api/modules/${module.key}`, {
+                        const url = item.origin === 'plugin' ? `/api/plugins/${item.rawKey}` : `/api/modules/${item.rawKey}`;
+                        const res = await fetch(url, {
                             method: 'PUT',
                             headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
                             body: JSON.stringify({ enabled: next }),
                         });
                         if (!res.ok) throw new Error('request_failed');
-                        module.enabled = next;
+                        item.enabled = next;
+                        // item comes from a computed getter (combined), so the
+                        // underlying source array needs the same write too.
+                        const list = item.origin === 'plugin' ? this.plugins : this.modules;
+                        const src = list.find((x) => x.key === item.rawKey);
+                        if (src) src.enabled = next;
                     } catch (e) {
                         this.error = @js(__('i18n::messages.common.error'));
                     } finally {
-                        delete this.pending[module.key];
+                        delete this.pending[item.key];
+                    }
+                },
+
+                async setAdminPlugin(plugin) {
+                    if (plugin === this.adminPlugin) return;
+                    if (!confirm(@js(__('i18n::messages.modules.admin_plugin_confirm')))) return;
+                    this.adminPluginSaving = true;
+                    this.error = '';
+                    try {
+                        const res = await fetch('/api/modules/admin-plugin', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                            body: JSON.stringify({ plugin }),
+                        });
+                        if (!res.ok) throw new Error('request_failed');
+                        this.adminPlugin = plugin;
+                    } catch (e) {
+                        this.error = @js(__('i18n::messages.common.error'));
+                    } finally {
+                        this.adminPluginSaving = false;
                     }
                 },
 
@@ -215,26 +366,11 @@
                     }
                 },
 
-                async togglePlugin(plugin) {
-                    this.error = '';
-                    try {
-                        const res = await fetch(`/api/plugins/${plugin.key}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                            body: JSON.stringify({ enabled: !plugin.enabled }),
-                        });
-                        if (!res.ok) throw new Error('request_failed');
-                        plugin.enabled = !plugin.enabled;
-                    } catch (e) {
-                        this.error = @js(__('i18n::messages.common.error'));
-                    }
-                },
-
-                async uninstall(plugin) {
+                async uninstall(item) {
                     if (!confirm(@js(__('i18n::messages.plugins.uninstall_confirm')))) return;
                     this.error = '';
                     try {
-                        const res = await fetch(`/api/plugins/${plugin.key}`, {
+                        const res = await fetch(`/api/plugins/${item.rawKey}`, {
                             method: 'DELETE',
                             headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
                         });

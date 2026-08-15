@@ -16,5 +16,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('api/modules')->middleware(['steam.auth', 'owner.only'])->group(function (): void {
     Route::get('/', [ModuleController::class, 'index'])->name('modules.index');
+    // Must be registered before the {key} wildcard below, or "admin-plugin"
+    // would be swallowed as a module key instead.
+    Route::put('admin-plugin', [ModuleController::class, 'updateAdminPlugin'])->name('modules.admin-plugin');
     Route::put('{key}', [ModuleController::class, 'update'])->name('modules.update');
 });
