@@ -25,13 +25,22 @@ class BanController
         $search = $request->query('search');
         $status = (string) $request->query('status', 'active');
         $perPage = min((int) $request->query('per_page', 25), 100);
+        $sort = (string) $request->query('sort', 'id');
+        $dir = (string) $request->query('dir', 'desc');
 
         if (! in_array($status, ['active', 'expired', 'all'], true)) {
             return Api::error(Api::MSG_INVALID_INPUT, ['status' => ['invalid_status']], 422);
         }
 
         try {
-            $punishments = $this->bans->list($type, $search !== null ? (string) $search : null, $status, $perPage);
+            $punishments = $this->bans->list(
+                $type,
+                $search !== null ? (string) $search : null,
+                $status,
+                $perPage,
+                $sort,
+                $dir,
+            );
         } catch (InvalidArgumentException) {
             return Api::error(Api::MSG_INVALID_INPUT, ['type' => ['invalid_ban_type']], 422);
         }

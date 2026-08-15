@@ -26,18 +26,31 @@ class RankService
     {
     }
 
+    /** Columns a caller may sort the VIEW by. Standing (`position`) never changes. */
+    private const SORTABLE = ['value', 'name', 'kills', 'deaths', 'playtime'];
+
     /**
-     * Leaderboard – descending value (the plugin's own index order).
+     * Leaderboard, viewable in any column order but always numbered by true
+     * standing.
      *
-     * Each row carries its true leaderboard position, not its offset in the
-     * current page: paginating or searching must not renumber everyone from 1
-     * again. The tier badge is attached here too, so the list and the profile
-     * can never disagree about what rank a points total means.
+     * `position` is computed from points alone regardless of `$sort` - it
+     * answers "where does this player actually rank", which stays true no
+     * matter which column the table is currently displayed sorted by.
+     * Sorting the view by kills and having row 1 read "#847" is correct: it
+     * says the top killer is the server's 847th-best player by points, which
+     * is exactly the kind of thing sorting by kills is for surfacing.
+     * Paginating or searching must not renumber anyone from 1 either way.
+     * The tier badge is attached here too, so the list and the profile can
+     * never disagree about what rank a points total means.
      *
      * @return LengthAwarePaginator<int, RankPlayer>
      */
-    public function leaderboard(?string $search = null, int $perPage = 25): LengthAwarePaginator
-    {
+    public function leaderboard(
+        ?string $search = null,
+        int $perPage = 25,
+        string $sort = 'value',
+        string $dir = 'desc',
+    ): LengthAwarePaginator {
         $query = RankPlayer::query()
             ->select('*')
             ->selectRaw('(SELECT COUNT(*) + 1 FROM rank_base AS peer WHERE peer.value > rank_base.value) AS position');
@@ -52,7 +65,10 @@ class RankService
             });
         }
 
-        $players = $query->orderByDesc('value')->orderBy('steam')->paginate($perPage);
+        $column = in_array($sort, self::SORTABLE, true) ? $sort : 'value';
+        $dir = $dir === 'asc' ? 'asc' : 'desc';
+
+        $players = $query->orderBy($column, $dir)->orderBy('steam')->paginate($perPage);
 
         // One Steam API call for the whole page rather than one per row -
         // see SteamProfiles. Missing profiles simply render without an

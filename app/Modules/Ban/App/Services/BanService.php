@@ -28,6 +28,9 @@ class BanService
         'warn' => AdminWarn::class,
     ];
 
+    /** Columns a caller may sort by. Anything else falls back to 'id'. */
+    private const SORTABLE = ['id', 'target_name', 'admin_name', 'created_at', 'expires_at'];
+
     public static function types(): array
     {
         return array_keys(self::MODELS);
@@ -41,6 +44,8 @@ class BanService
         ?string $search = null,
         string $status = 'active',
         int $perPage = 25,
+        string $sort = 'id',
+        string $dir = 'desc',
     ): LengthAwarePaginator {
         $model = self::MODELS[$type] ?? throw new InvalidArgumentException('invalid_ban_type');
 
@@ -62,6 +67,9 @@ class BanService
             $query->active();
         }
 
-        return $query->orderByDesc('id')->paginate($perPage);
+        $column = in_array($sort, self::SORTABLE, true) ? $sort : 'id';
+        $dir = $dir === 'asc' ? 'asc' : 'desc';
+
+        return $query->orderBy($column, $dir)->paginate($perPage);
     }
 }

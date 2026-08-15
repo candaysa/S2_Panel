@@ -26,8 +26,10 @@ class RankController
     {
         $search = $request->query('search');
         $perPage = min((int) $request->query('per_page', 25), 100);
+        $sort = (string) $request->query('sort', 'value');
+        $dir = (string) $request->query('dir', 'desc');
 
-        $players = $this->ranks->leaderboard($search !== null ? (string) $search : null, $perPage);
+        $players = $this->ranks->leaderboard($search !== null ? (string) $search : null, $perPage, $sort, $dir);
 
         return Api::success($players->items(), [
             'pagination' => [
