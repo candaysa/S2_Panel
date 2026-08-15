@@ -18,7 +18,15 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api/admin')->middleware(['steam.auth', 'flag:admin.root'])->group(function (): void {
     Route::get('/', [AdminController::class, 'index'])->name('admin.index');
     Route::post('/', [AdminController::class, 'store'])->name('admin.store');
-    Route::get('groups', [AdminController::class, 'groups'])->name('admin.groups');
     Route::put('{id}', [AdminController::class, 'update'])->name('admin.update')->whereNumber('id');
     Route::delete('{id}', [AdminController::class, 'destroy'])->name('admin.destroy')->whereNumber('id');
+
+    // group name is the primary key Swiftly itself uses (admin_admins.groups
+    // stores names, not ids), so it's the route parameter rather than a
+    // surrogate id - {id} above is numeric-constrained precisely so it
+    // never swallows a group name here.
+    Route::get('groups', [AdminController::class, 'groups'])->name('admin.groups');
+    Route::post('groups', [AdminController::class, 'storeGroup'])->name('admin.groups.store');
+    Route::put('groups/{name}', [AdminController::class, 'updateGroup'])->name('admin.groups.update');
+    Route::delete('groups/{name}', [AdminController::class, 'destroyGroup'])->name('admin.groups.destroy');
 });
