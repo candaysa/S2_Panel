@@ -9,6 +9,27 @@
     $siteFavicon = $settingService->get('favicon')
         ? asset($settingService->get('favicon'))
         : asset('favicon-32x32.png');
+
+    // Settings > Design overrides app.css's factory --color-* tokens. Same
+    // token map as SettingsController::THEME_TOKENS; kept as literal pairs
+    // here rather than importing that constant, since a Blade view has no
+    // clean way to reach into a controller class.
+    $themeTokenVars = [
+        'surface' => '--color-surface', 'surface_raised' => '--color-surface-raised',
+        'canvas' => '--color-canvas', 'line' => '--color-line', 'line_soft' => '--color-line-soft',
+        'ink' => '--color-ink', 'ink_muted' => '--color-ink-muted', 'ink_faint' => '--color-ink-faint',
+    ];
+    $themeColors = (array) $settingService->get('theme_colors', []);
+    $themeDark = (array) ($themeColors['dark'] ?? []);
+    $themeLight = (array) ($themeColors['light'] ?? []);
+
+    // brand_color has been readable/settable since Settings > Appearance
+    // existed, but nothing ever actually applied it anywhere except the PWA
+    // theme-color meta tag below and a client-side preview that only ran
+    // while the Settings page itself was open - every other page silently
+    // fell back to the factory teal. Included in the same override block as
+    // the palette above now that one exists.
+    $brandColor = (string) $settingService->get('brand_color', '#00ffe3');
 @endphp
 
 <!DOCTYPE html>
@@ -35,6 +56,32 @@
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @include('partials.head-theme')
+
+    {{-- Per-request color override (Settings > Design). !important because
+         it must beat app.css's own @theme block regardless of cascade
+         order; the palette portion is empty when nothing has been
+         customized, so the factory look is exactly what a fresh install
+         already looks like. brand_color always renders here since it has
+         no "is this the factory value" guard of its own upstream. --}}
+    <style>
+        :root {
+            --color-brand: {{ preg_match('/^#[0-9a-fA-F]{6}$/', $brandColor) ? $brandColor : '#00ffe3' }} !important;
+            @foreach ($themeDark as $token => $hex)
+                @if (isset($themeTokenVars[$token]) && preg_match('/^#[0-9a-fA-F]{6}$/', $hex))
+                    {{ $themeTokenVars[$token] }}: {{ $hex }} !important;
+                @endif
+            @endforeach
+        }
+        @if ($themeLight !== [])
+            :root[data-theme='light'] {
+                @foreach ($themeLight as $token => $hex)
+                    @if (isset($themeTokenVars[$token]) && preg_match('/^#[0-9a-fA-F]{6}$/', $hex))
+                        {{ $themeTokenVars[$token] }}: {{ $hex }} !important;
+                    @endif
+                @endforeach
+            }
+        @endif
+    </style>
 </head>
 <body
     x-data="{

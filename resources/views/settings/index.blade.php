@@ -117,36 +117,10 @@
                 </div>
             </div>
 
-            <div>
-                <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.theme.appearance') }}</h2>
-                <p class="mt-0.5 text-sm text-ink-muted">{{ __('i18n::messages.theme.appearance_subtitle') }}</p>
-
-                <div class="mt-3 flex items-center gap-3">
-                    <input
-                        type="color"
-                        x-model="form.brand_color"
-                        @input="applyBrandColor()"
-                        class="size-10 shrink-0 cursor-pointer rounded-lg border border-line bg-surface p-1"
-                        aria-label="{{ __('i18n::messages.theme.accent_color') }}"
-                    >
-                    <input
-                        type="text"
-                        x-model="form.brand_color"
-                        @input="applyBrandColor()"
-                        maxlength="7"
-                        class="w-28 rounded-lg border border-line bg-surface px-3 py-2 font-mono text-sm text-ink focus:border-brand-strong focus:outline-none"
-                    >
-                    <button
-                        type="button"
-                        :disabled="resettingColor"
-                        @click="resetBrandColor()"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink disabled:opacity-50"
-                    >
-                        <x-icon name="refresh" class="size-4" />
-                        {{ __('i18n::messages.theme.reset_default') }}
-                    </button>
-                </div>
-            </div>
+            <p class="text-sm text-ink-faint">
+                {{ __('i18n::messages.theme.moved_to_design') }}
+                <a href="{{ route('settings.design.page') }}" class="text-brand-strong hover:underline">{{ __('i18n::messages.settings.tab_design') }}</a>
+            </p>
 
             <div class="flex items-center gap-3">
                 <button
@@ -189,36 +163,12 @@
                 saving: false,
                 error: false,
                 saved: false,
-                form: { site_name: '', site_description: '', default_locale: 'en', timezone: 'UTC', brand_color: '#00ffe3' },
+                form: { site_name: '', site_description: '', default_locale: 'en', timezone: 'UTC' },
                 logoUploading: false,
                 faviconUploading: false,
-                resettingColor: false,
 
                 csrf() {
                     return document.querySelector('meta[name=csrf-token]').content;
-                },
-
-                applyBrandColor() {
-                    document.documentElement.style.setProperty('--color-brand', this.form.brand_color);
-                },
-
-                async resetBrandColor() {
-                    this.resettingColor = true;
-                    this.error = false;
-                    try {
-                        const res = await fetch('/api/settings/brand-color/reset', {
-                            method: 'POST',
-                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                        });
-                        if (!res.ok) throw new Error('request_failed');
-                        const body = await res.json();
-                        this.form.brand_color = body.data.brand_color;
-                        this.applyBrandColor();
-                    } catch (e) {
-                        this.error = true;
-                    } finally {
-                        this.resettingColor = false;
-                    }
                 },
 
                 counts: { servers: null, bans: null, mutes: null, admins: null },
