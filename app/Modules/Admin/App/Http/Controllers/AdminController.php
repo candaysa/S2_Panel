@@ -2,7 +2,7 @@
 
 namespace App\Modules\Admin\App\Http\Controllers;
 
-use App\Modules\Admin\App\Services\AdminService;
+use App\Support\AdminPlugin\AdminManagerInterface;
 use App\Support\Api;
 use App\Support\SteamProfiles;
 use App\Support\SteamId;
@@ -39,7 +39,7 @@ class AdminController
         'admin.kick', 'admin.cheats', 'admin.rcon', 'admin.vip',
     ];
 
-    public function __construct(private readonly AdminService $admins)
+    public function __construct(private readonly AdminManagerInterface $admins)
     {
     }
 

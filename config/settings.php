@@ -35,6 +35,15 @@ return [
         // requires admin.root regardless of this setting; that line is not
         // owner-configurable on purpose - see TicketAccess::canDecide().
         'ticket_staff_flags' => 'admin.generic',
+        // Which admin plugin owns the permission/admin/group data on the
+        // 'swiftly' connection: 'cs2_admin' (admin_admins/admin_groups,
+        // CSV columns) or 'swiftly_admins' (admins/groups, JSON-array
+        // columns - github.com/swiftlys2-plugins/admins). Chosen once at
+        // install time (InstallController), not auto-detected and not in
+        // `whitelist` below on purpose - flipping it post-install without a
+        // data migration would silently point every admin/ban query at the
+        // wrong schema. See App\Support\AdminPlugin\AdminManagerInterface.
+        'admin_plugin' => 'cs2_admin',
     ],
 
     'whitelist' => [

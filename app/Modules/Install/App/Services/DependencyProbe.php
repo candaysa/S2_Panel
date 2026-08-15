@@ -33,17 +33,30 @@ class DependencyProbe
     ];
 
     /**
+     * Same as the CS2_Admin 'admin' entry above, but for the official
+     * swiftlys2-plugins/admins schema (see App\Support\AdminPlugin) -
+     * substituted in when the install wizard's plugin choice says so.
+     */
+    private const SWIFTLY_ADMINS_REQUIREMENT = ['admins', 'groups', 'servers'];
+
+    /**
      * Inspect one connection and report each integration's state.
      *
      * @return array<int, array{key: string, satisfied: bool, missing: array<int, string>}>
      */
-    public function inspect(string $connection): array
+    public function inspect(string $connection, string $adminPlugin = 'cs2_admin'): array
     {
         $present = $this->tables($connection);
 
+        $requirements = self::REQUIREMENTS;
+
+        if ($adminPlugin === 'swiftly_admins') {
+            $requirements['admin'] = self::SWIFTLY_ADMINS_REQUIREMENT;
+        }
+
         $report = [];
 
-        foreach (self::REQUIREMENTS as $key => $required) {
+        foreach ($requirements as $key => $required) {
             $missing = array_values(array_filter(
                 $required,
                 fn (string $table): bool => ! in_array(strtolower($table), $present, true),

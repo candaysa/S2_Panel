@@ -9,23 +9,30 @@ use App\Modules\Admin\Events\AdminCreated;
 use App\Modules\Admin\Events\AdminDisabled;
 use App\Modules\Admin\Events\AdminUpdated;
 use App\Modules\Audit\App\Services\AuditService;
+use App\Support\AdminPlugin\AdminManagerInterface;
 use App\Support\Flags;
 use App\Support\SteamId;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 use Throwable;
 
 /**
- * Admin management (C3). All mutations run through here so business rules,
- * the flag cache invalidation, audit rows and module events stay in one
- * place.
+ * Admin management (C3) for the CS2_Admin plugin (admin_admins/
+ * admin_groups). All mutations run through here so business rules, the flag
+ * cache invalidation, audit rows and module events stay in one place.
  *
  * Project rule: NOTHING is ever deleted from the plugin database. "Removing"
  * an admin sets expires_at into the past – Swiftly and the panel ignore
  * expired rows, the row itself stays intact.
+ *
+ * See App\Support\AdminPlugin\SwiftlyAdminsService for the equivalent
+ * against the official swiftlys2-plugins/admins schema - AdminServiceProvider
+ * picks one to bind to AdminManagerInterface based on the `admin_plugin`
+ * setting.
  */
-class AdminService
+class AdminService implements AdminManagerInterface
 {
     public function __construct(private readonly AuditService $audit)
     {
@@ -129,10 +136,7 @@ class AdminService
         }
     }
 
-    /**
-     * @return \Illuminate\Support\Collection<int, AdminGroup>
-     */
-    public function groups()
+    public function groups(): Collection
     {
         $groups = AdminGroup::query()->orderBy('name')->get();
 
@@ -142,17 +146,17 @@ class AdminService
             return [$g->name => AdminAdmin::query()->whereRaw('FIND_IN_SET(?, groups)', [$g->name])->count()];
         });
 
-        return $groups->map(function (AdminGroup $g) use ($counts): AdminGroup {
+        return $groups->map(function (AdminGroup $g) use ($counts): array {
             $g->setAttribute('member_count', $counts[$g->name] ?? 0);
 
-            return $g;
+            return $g->toArray();
         });
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    public function createGroup(array $data): AdminGroup
+    public function createGroup(array $data): array
     {
         $name = trim((string) ($data['name'] ?? ''));
 
@@ -175,13 +179,13 @@ class AdminService
             'immunity' => $group->immunity,
         ]);
 
-        return $group;
+        return $group->toArray();
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    public function updateGroup(string $name, array $data): AdminGroup
+    public function updateGroup(string $name, array $data): array
     {
         $group = AdminGroup::query()->where('name', $name)->first();
 
@@ -209,7 +213,7 @@ class AdminService
             'immunity' => $group->immunity,
         ]);
 
-        return $group->refresh();
+        return $group->refresh()->toArray();
     }
 
     /**
@@ -237,7 +241,7 @@ class AdminService
     /**
      * @param  array<string, mixed>  $data
      */
-    public function create(array $data): AdminAdmin
+    public function create(array $data): array
     {
         $steamId64 = (int) SteamId::parse((string) $data['steamid'])->steamId64();
 
@@ -258,13 +262,13 @@ class AdminService
         $this->audit->log('admin.created', 'admin', (string) $steamId64, $this->auditDetails($admin));
         event(new AdminCreated($admin));
 
-        return $admin;
+        return $admin->toArray();
     }
 
     /**
      * @param  array<string, mixed>  $data
      */
-    public function update(int $id, array $data): AdminAdmin
+    public function update(int $id, array $data): array
     {
         $admin = AdminAdmin::query()->find($id);
 
@@ -296,13 +300,13 @@ class AdminService
         $this->audit->log('admin.updated', 'admin', (string) $steamId64, $this->auditDetails($admin));
         event(new AdminUpdated($admin));
 
-        return $admin->refresh();
+        return $admin->refresh()->toArray();
     }
 
     /**
      * Disable an admin without deleting the row (project rule).
      */
-    public function disable(int $id): AdminAdmin
+    public function disable(int $id): array
     {
         $admin = AdminAdmin::query()->find($id);
 
@@ -316,7 +320,7 @@ class AdminService
         $this->audit->log('admin.disabled', 'admin', (string) $admin->steamid, $this->auditDetails($admin));
         event(new AdminDisabled($admin));
 
-        return $admin->refresh();
+        return $admin->refresh()->toArray();
     }
 
     /**

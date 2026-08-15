@@ -17,6 +17,12 @@
             </div>
         </div>
 
+        @if (($adminPlugin ?? 'cs2_admin') === 'swiftly_admins')
+            <div class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-400">
+                {{ __('i18n::messages.admins.swiftly_admins_notice') }}
+            </div>
+        @endif
+
         <div class="mt-6 overflow-x-auto rounded-xl border border-line bg-surface">
             <table class="w-full text-left text-sm">
                 <thead class="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-faint">
