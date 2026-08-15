@@ -179,8 +179,8 @@
                     return [
                         { label: t.card_servers, value: n(this.counts.servers) },
                         { label: t.card_admins, value: n(this.counts.admins) },
-                        { label: t.card_bans, value: n(this.counts.bans) },
-                        { label: t.card_mutes, value: n(this.counts.mutes) },
+                        { label: t.card_bans, value: n(this.counts.bans?.total) },
+                        { label: t.card_mutes, value: n(this.counts.mutes?.total) },
                     ];
                 },
 
