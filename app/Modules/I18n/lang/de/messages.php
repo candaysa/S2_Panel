@@ -207,6 +207,9 @@ return [
         'expires_hint' => 'Leer lassen für dauerhaftes VIP.',
         'revoke' => 'Entziehen',
         'revoke_confirm' => 'Diese VIP-Gruppe entziehen? Kann nicht rückgängig gemacht werden.',
+        'status' => 'Status',
+        'active' => 'Aktiv',
+        'expired' => 'Abgelaufen',
     ],
     'ranks' => [
         'position' => '#',

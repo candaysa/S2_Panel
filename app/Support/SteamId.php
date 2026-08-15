@@ -63,6 +63,15 @@ final class SteamId
         throw new InvalidArgumentException("Unrecognized SteamID format: [{$value}]");
     }
 
+    /**
+     * Build directly from a raw AccountID/SteamID32 (VIPCore's account_id
+     * column, for example) - parse() only accepts already-formatted strings.
+     */
+    public static function fromAccountId(int $accountId): self
+    {
+        return new self($accountId);
+    }
+
     public static function isValid(string|int $value): bool
     {
         try {

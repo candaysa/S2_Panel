@@ -8,8 +8,10 @@ use App\Modules\Ban\App\Models\AdminMute;
 use App\Modules\Ban\App\Models\AdminWarn;
 use App\Modules\Ban\App\Models\Punishment;
 use App\Support\SteamId;
+use App\Support\SteamProfiles;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use InvalidArgumentException;
+use Throwable;
 
 /**
  * Read access to the Swiftly punishment tables (C4). The panel is a
@@ -70,6 +72,35 @@ class BanService
         $column = in_array($sort, self::SORTABLE, true) ? $sort : 'id';
         $dir = $dir === 'asc' ? 'asc' : 'desc';
 
-        return $query->orderBy($column, $dir)->paginate($perPage);
+        $paginator = $query->orderBy($column, $dir)->paginate($perPage);
+
+        $this->overlayAvatars($paginator);
+
+        return $paginator;
+    }
+
+    /**
+     * @param  LengthAwarePaginator<int, Punishment>  $paginator
+     */
+    private function overlayAvatars(LengthAwarePaginator $paginator): void
+    {
+        $rows = $paginator->getCollection();
+
+        if ($rows->isEmpty()) {
+            return;
+        }
+
+        try {
+            $profiles = SteamProfiles::many($rows->pluck('steamid')->unique()->all());
+        } catch (Throwable) {
+            $profiles = [];
+        }
+
+        $rows->transform(function (Punishment $row) use ($profiles): array {
+            $data = $row->toArray();
+            $data['avatar'] = $profiles[$row->steamid]['avatar'] ?? null;
+
+            return $data;
+        });
     }
 }
