@@ -131,9 +131,16 @@
                                 </div>
                                 <div class="relative h-full" x-show="previewMode === '3d'" x-cloak>
                                     <div x-ref="viewer3d" class="h-full w-full"></div>
-                                    <p x-show="loading3d" class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-ink-faint">
-                                        {{ __('i18n::messages.common.loading') }}
-                                    </p>
+                                    {{-- Real percentage, not a spinner: the model is a
+                                         multi-megabyte download, and a bar that visibly
+                                         moves is the difference between "loading" and
+                                         "frozen". --}}
+                                    <div x-show="loading3d" class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 px-8">
+                                        <span class="text-xs text-ink-faint" x-text="progress3d > 0 ? progress3d + '%' : @js(__('i18n::messages.common.loading'))"></span>
+                                        <span class="h-1 w-full max-w-[12rem] overflow-hidden rounded-full bg-surface-raised">
+                                            <span class="block h-full rounded-full bg-brand-strong transition-all" :style="'width:' + progress3d + '%'"></span>
+                                        </span>
+                                    </div>
                                     <p x-show="error3d" x-cloak class="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-ink-faint">
                                         {{ __('i18n::messages.skins.preview_3d_unavailable') }}
                                     </p>
@@ -371,6 +378,7 @@
                 },
                 previewMode: '2d',
                 loading3d: false,
+                progress3d: 0,
                 error3d: false,
                 viewer3d: null,
                 knife3d: { open: false, loading: false, error: false, label: '', viewer: null },
@@ -554,7 +562,10 @@
                     try {
                         const { webglSupported, mount } = await window.loadSkinViewer();
                         if (!webglSupported()) throw new Error('no_webgl');
-                        this.knife3d.viewer = await mount(this.$refs.knifeViewer3d, item.name);
+                        // Paint 0: knife models ship a single mesh and no
+                        // stored paint, so this renders the model's own
+                        // embedded textures.
+                        this.knife3d.viewer = await mount(this.$refs.knifeViewer3d, item.name, 0);
                     } catch (e) {
                         this.knife3d.error = true;
                     } finally {
@@ -567,6 +578,15 @@
                     this.knife3d.open = false;
                 },
 
+                // Which of the two meshes bundled in every gun .glb this paint
+                // belongs on - see the header note in skin-viewer.js. Comes
+                // from the item schema's UseLegacyModel via the catalog.
+                // Paint 0 (stock) is always the HD model.
+                paintIsLegacy(id) {
+                    if (!id) return false;
+                    return !!(this.paints.find((p) => p.index === id)?.legacy ?? this.paintNames[id]?.legacy);
+                },
+
                 // The GLB model only needs to (re)load when the weapon changes
                 // or the 3D tab is opened for the first time, not on every
                 // paint click - pickPaint() below re-textures the
@@ -575,6 +595,7 @@
                     if (this.viewer3d) return;
 
                     this.loading3d = true;
+                    this.progress3d = 0;
                     this.error3d = false;
                     try {
                         // Loaded via app.js's window.loadSkinViewer() rather than
@@ -585,7 +606,11 @@
                         // correct to resolve against in production.
                         const { webglSupported, mount } = await window.loadSkinViewer();
                         if (!webglSupported()) throw new Error('no_webgl');
-                        this.viewer3d = await mount(this.$refs.viewer3d, this.selectedWeapon.name, this.weaponForm.weapon_paint_id);
+                        const paintId = this.weaponForm.weapon_paint_id;
+                        this.viewer3d = await mount(this.$refs.viewer3d, this.selectedWeapon.name, paintId, {
+                            legacy: this.paintIsLegacy(paintId),
+                            onProgress: (ratio) => { this.progress3d = Math.round(ratio * 100); },
+                        });
                     } catch (e) {
                         this.error3d = true;
                     } finally {
@@ -595,7 +620,7 @@
 
                 pickPaint(id) {
                     this.weaponForm.weapon_paint_id = id;
-                    if (this.viewer3d) this.viewer3d.setPaint(id);
+                    if (this.viewer3d) this.viewer3d.setPaint(id, this.paintIsLegacy(id));
                 },
 
                 // Sticker/keychain slots are stored as semicolon-delimited
