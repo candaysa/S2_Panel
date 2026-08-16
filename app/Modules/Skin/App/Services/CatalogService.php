@@ -121,7 +121,11 @@ class CatalogService
                     }
 
                     $slim = $this->slim($entry, withRarity: true);
-                    $map[(int) $index] = ['label' => $slim['label'], 'rarity_color' => $slim['rarity_color']];
+                    $map[(int) $index] = [
+                        'label' => $slim['label'],
+                        'rarity_color' => $slim['rarity_color'],
+                        'legacy' => $slim['legacy'] ?? false,
+                    ];
                 }
             }
 
@@ -256,7 +260,7 @@ class CatalogService
 
     /**
      * @param  array<string, mixed>  $entry
-     * @return array{name: string, index: int|null, label: string, rarity_color?: ?string}
+     * @return array{name: string, index: int|null, label: string, rarity_color?: ?string, legacy?: bool}
      */
     private function slim(array $entry, bool $withRarity = false): array
     {
@@ -272,6 +276,18 @@ class CatalogService
 
         if ($withRarity) {
             $out['rarity_color'] = $entry['Rarity']['Color']['HexColor'] ?? null;
+        }
+
+        // Valve authored each finish against exactly one of the two weapon
+        // models the .glb files bundle (CS:GO-era "legacy" vs CS2 "hd"),
+        // and this schema flag records which. The 3D viewer needs it to
+        // show the right mesh - rendering both at once was what made
+        // skinned weapons look half-textured. Keyed off the field actually
+        // being present rather than a caller flag, so paintkits get it and
+        // the ~8,800 sticker entries (which share slim() but have no such
+        // concept) don't each carry a pointless "legacy":false.
+        if (array_key_exists('UseLegacyModel', $entry)) {
+            $out['legacy'] = (bool) $entry['UseLegacyModel'];
         }
 
         return $out;

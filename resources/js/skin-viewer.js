@@ -3,73 +3,57 @@
 // its loaders - a few hundred KB - are only fetched by someone who actually
 // opens a 3D preview, not on every page load.
 //
-// Models AND textures: real GLB exports of CS2's own weapon geometry, plus
-// the matching per-paint diffuse/metalness textures, both sourced from
-// LielXD/CS2-WeaponPaints-Website (MIT licensed, same public-CDN pattern
-// already used for the flat 2D preview images - see skinImageUrl() in
-// skins/index.blade.php). Filenames match our own weapon classnames 1:1
-// (weapon_ak47.glb, weapon_ak47/1449.png, ...), and the paint ids are the
-// same Valve paintkit numbering our own catalog already uses - that
-// project's PHP backend reads the paint id straight out of a
-// wp_player_skins.weapon_paint_id column, the same CS2_Skin schema we read
-// (verified: paint ids 801/1171/1207, already confirmed real AK-47 ids
-// against our own catalog earlier, all resolve to real texture files
-// there). Applying THIS project's own texture to THIS project's own model
-// is the correct pairing - both were authored together, unlike the flat
-// Nereziel preview image, which is a fixed-angle beauty render with its
-// own baked lighting and was never meant to be projected onto a different
-// model's UV unwrap.
+// Models AND textures come from LielXD/CS2-WeaponPaints-Website (MIT), the
+// same public-CDN pattern already used for the flat 2D preview images.
+// Filenames match our own weapon classnames 1:1 and the paint ids are the
+// same Valve paintkit numbering our own catalog uses, so no mapping layer
+// is needed.
 //
-// The base-texture application itself (plain `material.map` assignment
-// after traversing the scene, skipping the arm/scope meshes) mirrors that
-// project's own weaponviewer.js LoadTexture() - confirmed by reading its
-// source rather than guessing, since a wrong technique here (e.g. their
-// separate ProjectedMaterial-based sticker system, which is NOT what the
-// base skin uses) would look worse than no texture at all.
+// ---------------------------------------------------------------------
+// THE LEGACY/HD MESH SPLIT - the thing that made earlier builds render
+// wrong. Every gun .glb ships TWO complete, fully overlapping weapon
+// meshes as sibling root nodes:
 //
-// Lighting: the same repo also ships a studio environment.hdr, used here
-// via PMREMGenerator for real reflections on metal parts - a flat
-// ambient+directional setup alone leaves glossy/metallic materials looking
-// dull and plasticky.
+//     children[0]  "...vmdl_c.body_legacy"   (CS:GO-era geometry + UVs)
+//     children[1]  "...vmdl_c.body_hd"       (CS2 geometry + UVs)
+//
+// Only ONE is ever correct for a given paint, because Valve authored each
+// finish against one specific model - which is exactly what the item
+// schema's `UseLegacyModel` flag records (our own weapon_to_paintkits.json
+// already carries it; cross-checked against LielXD's independently
+// maintained list at 1800/1801 agreement). Rendering both at once is what
+// produced the half-textured, z-fighting mess: two sets of geometry in the
+// same space, only one of them wearing the skin texture.
+//
+// Both meshes are kept loaded and toggled with .visible instead of being
+// removed, so switching between a legacy-model paint and an HD-model paint
+// is instant rather than re-downloading a multi-MB .glb.
+//
+// Not every model has the split: taser, knives and gloves ship a single
+// root node, so the toggle simply no-ops there.
+// ---------------------------------------------------------------------
+//
+// Wear (float) and pattern seed are deliberately NOT simulated. Those
+// require CS2's own Source 2 composite shader plus the raw pattern/wear
+// -mask textures from the game files; what this CDN serves is one
+// pre-baked composite PNG per weapon+paint, already flattened at a fixed
+// wear and seed. No amount of shader work recovers the inputs from a
+// baked output. The upstream project this borrows from says the same
+// thing in its own UI ("Wear and seed are saved to the server, but are
+// not shown in the beta 3D preview yet"). Faking it would show players a
+// gun that does not match what they get in-game, which is worse than
+// showing the honest fixed-wear render.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const MODEL_BASE = 'https://raw.githubusercontent.com/LielXD/CS2-WeaponPaints-Website/main/src/%5Bmodels%5D/';
 const TEXTURE_BASE = 'https://raw.githubusercontent.com/LielXD/CS2-WeaponPaints-Website/main/src/%5Btextures%5D/';
-const ENVIRONMENT_URL = 'https://raw.githubusercontent.com/LielXD/CS2-WeaponPaints-Website/main/src/environment.hdr';
 
 export function modelUrl(name) {
     return `${MODEL_BASE}${encodeURIComponent(name)}.glb`;
-}
-
-// Fetched once per page session and reused across every mount() call - it's
-// the same studio lighting for every weapon, and at ~1.5MB it's not
-// something worth re-downloading each time someone opens a different
-// weapon's 3D tab. Only the (cheap, GPU-side) PMREM pre-filter step runs
-// per-mount, since that has to happen against that mount's own renderer.
-let environmentPromise = null;
-function loadEnvironmentHdr() {
-    if (!environmentPromise) {
-        environmentPromise = new RGBELoader().loadAsync(ENVIRONMENT_URL).catch(() => null);
-    }
-    return environmentPromise;
-}
-
-// The source repo stores each file as whichever of .png/.webp it happened
-// to be captured as - no single extension covers every weapon+paint pair.
-async function loadTextureTryingExtensions(loader, weaponName, paintId, suffix) {
-    for (const ext of ['png', 'webp']) {
-        const url = `${TEXTURE_BASE}${encodeURIComponent(weaponName)}/${paintId}${suffix}.${ext}`;
-        try {
-            return await loader.loadAsync(url);
-        } catch (e) {
-            // try the next extension
-        }
-    }
-    return null;
 }
 
 export function webglSupported() {
@@ -82,22 +66,59 @@ export function webglSupported() {
 }
 
 /**
- * Mounts a rotatable 3D view of one weapon's model into `container`, with
- * whichever paint is currently equipped applied as the surface texture.
+ * The source repo stores each file as whichever of .png/.webp it happened
+ * to be captured as - no single extension covers every weapon+paint pair,
+ * so both are tried. A miss is not an error: plenty of paints simply have
+ * no texture published, and the model still renders with its own
+ * materials.
+ */
+async function loadPaintTexture(loader, weaponName, paintId, suffix) {
+    for (const ext of ['png', 'webp']) {
+        const url = `${TEXTURE_BASE}${encodeURIComponent(weaponName)}/${paintId}${suffix}.${ext}`;
+        try {
+            return await loader.loadAsync(url);
+        } catch (e) {
+            // try the next extension
+        }
+    }
+    return null;
+}
+
+async function loadPaintTextures(loader, weaponName, paintId) {
+    const [map, metalnessMap] = await Promise.all([
+        loadPaintTexture(loader, weaponName, paintId, ''),
+        loadPaintTexture(loader, weaponName, paintId, '_metal'),
+    ]);
+
+    [map, metalnessMap].forEach((t) => {
+        if (!t) return;
+        t.colorSpace = THREE.SRGBColorSpace;
+        t.wrapS = THREE.RepeatWrapping;
+        t.wrapT = THREE.RepeatWrapping;
+        t.flipY = false;
+    });
+
+    return { map, metalnessMap };
+}
+
+/**
+ * Mounts a rotatable 3D view of one weapon into `container`.
  *
  * @param {HTMLElement} container
- * @param {string} weaponName - e.g. "weapon_ak47", matches both the .glb
+ * @param {string} weaponName  e.g. "weapon_ak47" - matches both the .glb
  *   filename and the texture folder name.
- * @param {number} paintId - 0 for the factory-default look (model renders
- *   with its own embedded materials, no texture swap).
- * @returns {Promise<{dispose: () => void, setPaint: (id: number) => Promise<void>}>}
- *   dispose() must be called before mounting a different weapon or removing
- *   the container, or the render loop and its WebGL context leak. setPaint()
- *   swaps just the texture on the already-loaded model - call it when the
- *   user picks a different paint while the 3D tab is already open, instead
- *   of re-mounting (re-fetching a multi-MB .glb) for every click.
+ * @param {number} paintId  0 for the factory-default finish, which renders
+ *   the model's own embedded textures untouched (the GLB ships real
+ *   baseColor/normal/AO/metalness maps for the stock weapon - an earlier
+ *   build nulled `material.map` for paint 0 and got a blank white gun).
+ * @param {{legacy?: boolean, onProgress?: (ratio: number) => void}} [options]
+ *   `legacy` picks which of the two bundled meshes this paint belongs on
+ *   (see the header note); it comes from the item schema's UseLegacyModel.
+ * @returns {Promise<{dispose: () => void, setPaint: (id: number, legacy?: boolean) => Promise<void>}>}
  */
-export async function mount(container, weaponName, paintId) {
+export async function mount(container, weaponName, paintId, options = {}) {
+    const { onProgress } = options;
+
     const width = container.clientWidth || 320;
     const height = container.clientHeight || 240;
 
@@ -108,14 +129,28 @@ export async function mount(container, weaponName, paintId) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 1.1));
-    const key = new THREE.DirectionalLight(0xffffff, 2.2);
+    // Procedural studio environment rather than a downloaded .hdr. An
+    // earlier build pulled a 1.5MB environment.hdr from the CDN purely for
+    // reflections; RoomEnvironment builds an equivalent lighting rig on the
+    // GPU from nothing, which is 1.5MB less to wait through on a feature
+    // whose whole complaint was that it took too long to open.
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const roomEnvironment = new RoomEnvironment();
+    const environmentTexture = pmremGenerator.fromScene(roomEnvironment, 0.04).texture;
+    scene.environment = environmentTexture;
+    roomEnvironment.dispose?.();
+
+    // Keeps highlights on the barrel/slide readable; the environment alone
+    // is diffuse and leaves edges flat.
+    const key = new THREE.DirectionalLight(0xffffff, 1.4);
     key.position.set(2, 3, 4);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.8);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.5);
     fill.position.set(-3, -1, -2);
     scene.add(fill);
 
@@ -123,82 +158,106 @@ export async function mount(container, weaponName, paintId) {
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.enablePan = false;
-    controls.minDistance = 0.05;
-    controls.maxDistance = 5;
 
     let frameId = null;
     let disposed = false;
-    let loadedRoot = null;
     let currentTextures = [];
 
     const gltfLoader = new GLTFLoader();
     const textureLoader = new THREE.TextureLoader();
-    const [gltf, hdrTexture] = await Promise.all([
-        gltfLoader.loadAsync(modelUrl(weaponName)),
-        loadEnvironmentHdr(),
+
+    // Model and paint textures are fetched together rather than one after
+    // the other - they are independent files on the same host, and the
+    // texture is useless without the model anyway, so serialising them
+    // only added their two round-trips together.
+    const [gltf, initialTextures] = await Promise.all([
+        gltfLoader.loadAsync(modelUrl(weaponName), (event) => {
+            if (onProgress && event.total) onProgress(event.loaded / event.total);
+        }),
+        paintId ? loadPaintTextures(textureLoader, weaponName, paintId) : Promise.resolve(null),
     ]);
 
     if (disposed) {
         return { dispose: () => {}, setPaint: async () => {} };
     }
 
-    // Real environment reflections on metal parts instead of flat ambient
-    // light - PMREM pre-filtering is per-renderer, so it runs here even
-    // though the raw HDR texture itself was fetched once and is shared.
-    let pmremGenerator = null;
-    if (hdrTexture) {
-        pmremGenerator = new THREE.PMREMGenerator(renderer);
-        scene.environment = pmremGenerator.fromEquirectangular(hdrTexture).texture;
-    }
+    const root = gltf.scene;
+    scene.add(root);
 
-    loadedRoot = gltf.scene;
-    scene.add(loadedRoot);
+    // Identify the two variants by node name rather than by child index.
+    // Index order happens to be [legacy, hd] in every file checked, but a
+    // name match cannot silently pick the wrong mesh if that order ever
+    // changes, and it degrades to "no split" cleanly for the single-mesh
+    // models (taser/knives/gloves) instead of removing their only mesh.
+    const findVariant = (needle) => root.children.find((child) => (child.name || '').includes(needle)) ?? null;
+    const legacyMesh = findVariant('body_legacy');
+    const hdMesh = findVariant('body_hd');
+    const hasVariants = !!(legacyMesh && hdMesh);
 
-    // Applies (or clears, for paintId 0) the diffuse/metalness texture for
-    // one paint onto every mesh material except the hand/arm and scope
-    // glass - mirrors LielXD's own weaponviewer.js LoadTexture(), which
-    // excludes those same two by material name so a skin never paints the
-    // player's arm model or a scope's lens.
-    const applyPaint = async (id) => {
-        currentTextures.forEach((t) => t.dispose());
-        currentTextures = [];
+    // The stock weapon's own maps, kept so paint 0 can restore exactly what
+    // the file shipped with instead of clearing to an untextured surface.
+    const originalMaps = new Map();
+    root.traverse((child) => {
+        if (child.isMesh && child.material) {
+            originalMaps.set(child.material, {
+                map: child.material.map ?? null,
+                metalnessMap: child.material.metalnessMap ?? null,
+            });
+        }
+    });
 
-        const [map, metalnessMap] = id
-            ? await Promise.all([
-                loadTextureTryingExtensions(textureLoader, weaponName, id, ''),
-                loadTextureTryingExtensions(textureLoader, weaponName, id, '_metal'),
-            ])
-            : [null, null];
+    const isPaintable = (material) => {
+        const name = (material.name || '').toLowerCase();
 
-        [map, metalnessMap].forEach((t) => {
-            if (!t) return;
-            t.colorSpace = THREE.SRGBColorSpace;
-            t.wrapS = THREE.RepeatWrapping;
-            t.wrapT = THREE.RepeatWrapping;
-            t.flipY = false;
-            currentTextures.push(t);
-        });
+        // A skin never covers the player's arm model or a scope lens -
+        // matches how the upstream viewer filters these same two.
+        return !name.includes('bare_arm') && !name.includes('scope');
+    };
 
-        loadedRoot.traverse((child) => {
-            if (!child.isMesh || !child.material) return;
-            const name = (child.material.name || '').toLowerCase();
-            if (name.includes('bare_arm') || name.includes('scope')) return;
+    const applyTextures = (textures) => {
+        const target = hasVariants ? (legacyMesh.visible ? legacyMesh : hdMesh) : root;
 
-            child.material.map = map;
-            child.material.metalnessMap = metalnessMap;
+        target.traverse((child) => {
+            if (!child.isMesh || !child.material || !isPaintable(child.material)) return;
+
+            const original = originalMaps.get(child.material) ?? { map: null, metalnessMap: null };
+            child.material.map = textures?.map ?? original.map;
+            child.material.metalnessMap = textures?.metalnessMap ?? original.metalnessMap;
             child.material.needsUpdate = true;
         });
     };
 
-    await applyPaint(paintId);
+    const setVariant = (useLegacy) => {
+        if (!hasVariants) return;
+        legacyMesh.visible = !!useLegacy;
+        hdMesh.visible = !useLegacy;
+    };
 
-    // Auto-frame: centre the model and pick a camera distance from its own
-    // size, since every weapon model here ships at a different real-world
-    // scale (a knife and a shotgun are not the same number of units).
-    const box = new THREE.Box3().setFromObject(loadedRoot);
+    const applyPaint = async (id, useLegacy) => {
+        setVariant(useLegacy);
+
+        const textures = id ? await loadPaintTextures(textureLoader, weaponName, id) : null;
+        if (disposed) return;
+
+        currentTextures.forEach((t) => t.dispose());
+        currentTextures = textures ? [textures.map, textures.metalnessMap].filter(Boolean) : [];
+
+        applyTextures(textures);
+    };
+
+    setVariant(options.legacy);
+    currentTextures = initialTextures ? [initialTextures.map, initialTextures.metalnessMap].filter(Boolean) : [];
+    applyTextures(initialTextures);
+
+    // Auto-frame from whichever mesh is actually visible - every weapon
+    // model here ships at a different real-world scale (a knife and a
+    // shotgun are not the same number of units), and a bounding box taken
+    // across both overlapping variants would frame slightly wide.
+    const framingTarget = hasVariants ? (legacyMesh.visible ? legacyMesh : hdMesh) : root;
+    const box = new THREE.Box3().setFromObject(framingTarget);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    loadedRoot.position.sub(center);
+    root.position.sub(center);
 
     const radius = Math.max(size.length() * 0.5, 0.01);
     camera.position.set(radius * 1.6, radius * 0.9, radius * 1.6);
@@ -235,10 +294,8 @@ export async function mount(container, weaponName, paintId) {
             resizeObserver.disconnect();
             controls.dispose();
             currentTextures.forEach((t) => t.dispose());
-            // Only the per-mount PMREM-filtered environment map, not the
-            // raw HDR texture it was generated from - that one is shared
-            // and cached at module scope for the next mount() to reuse.
-            if (pmremGenerator) pmremGenerator.dispose();
+            environmentTexture.dispose();
+            pmremGenerator.dispose();
             scene.traverse((obj) => {
                 if (obj.geometry) obj.geometry.dispose();
                 if (obj.material) {
@@ -254,9 +311,9 @@ export async function mount(container, weaponName, paintId) {
                 renderer.domElement.parentNode.removeChild(renderer.domElement);
             }
         },
-        setPaint: async (id) => {
+        setPaint: async (id, legacy) => {
             if (disposed) return;
-            await applyPaint(id);
+            await applyPaint(id, legacy);
         },
     };
 }
