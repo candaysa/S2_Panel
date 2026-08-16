@@ -90,22 +90,53 @@
 
                     <template x-if="selectedWeapon">
                         <div class="max-w-2xl">
-                            <button type="button" @click="selectedWeapon = null" class="text-sm text-ink-muted hover:text-ink">
+                            <button type="button" @click="closeWeapon()" class="text-sm text-ink-muted hover:text-ink">
                                 ← {{ __('i18n::messages.skins.back') }}
                             </button>
 
                             <h2 class="mt-2 text-lg font-semibold text-ink" x-text="selectedWeapon.label"></h2>
 
                             {{-- Live preview of whatever paint is currently picked below,
-                                 not necessarily saved yet. --}}
-                            <div class="mt-3 flex h-40 items-center justify-center rounded-lg border border-line bg-canvas" x-show="weaponForm.weapon_paint_id">
-                                <img
-                                    :src="skinImageUrl(selectedWeapon.name, weaponForm.weapon_paint_id)"
-                                    alt=""
-                                    class="max-h-full max-w-full object-contain p-3"
-                                    @@error="$el.style.display = 'none'"
-                                    @load="$el.style.display = ''"
-                                >
+                                 not necessarily saved yet. Two modes: the flat
+                                 reference image (fast, always accurate to the
+                                 pattern), or a real rotatable 3D model of the
+                                 weapon itself (see skin-viewer.js - shows the
+                                 model's own shape, not this image projected
+                                 onto it). --}}
+                            <div class="mt-3 flex items-center gap-1.5" x-show="weaponForm.weapon_paint_id">
+                                <button
+                                    type="button"
+                                    @click="previewMode = '2d'"
+                                    :class="previewMode === '2d' ? 'bg-brand-soft text-brand-strong' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'"
+                                    class="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
+                                >{{ __('i18n::messages.skins.preview_2d') }}</button>
+                                <button
+                                    type="button"
+                                    @click="previewMode = '3d'; mount3d()"
+                                    :class="previewMode === '3d' ? 'bg-brand-soft text-brand-strong' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'"
+                                    class="rounded-lg px-3 py-1 text-xs font-medium transition-colors"
+                                >{{ __('i18n::messages.skins.preview_3d') }}</button>
+                            </div>
+
+                            <div class="mt-2 h-56 overflow-hidden rounded-lg border border-line bg-canvas" x-show="weaponForm.weapon_paint_id">
+                                <div class="flex h-full items-center justify-center" x-show="previewMode === '2d'">
+                                    <img
+                                        :src="skinImageUrl(selectedWeapon.name, weaponForm.weapon_paint_id)"
+                                        alt=""
+                                        class="max-h-full max-w-full object-contain p-3"
+                                        @@error="$el.style.display = 'none'"
+                                        @load="$el.style.display = ''"
+                                    >
+                                </div>
+                                <div class="relative h-full" x-show="previewMode === '3d'" x-cloak>
+                                    <div x-ref="viewer3d" class="h-full w-full"></div>
+                                    <p x-show="loading3d" class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-ink-faint">
+                                        {{ __('i18n::messages.common.loading') }}
+                                    </p>
+                                    <p x-show="error3d" x-cloak class="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-ink-faint">
+                                        {{ __('i18n::messages.skins.preview_3d_unavailable') }}
+                                    </p>
+                                </div>
                             </div>
 
                             <label class="mt-4 block text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.choose_paint') }}</label>
@@ -217,6 +248,10 @@
                 paintNames: {},
                 selectedWeapon: null,
                 weaponForm: { weapon_paint_id: 0, weapon_wear: 0.01, weapon_seed: 0, weapon_stattrak: false, weapon_nametag: '' },
+                previewMode: '2d',
+                loading3d: false,
+                error3d: false,
+                dispose3d: null,
                 knives: [],
                 gloves: [],
                 agents: { 2: [], 3: [] },
@@ -335,6 +370,8 @@
 
                 async openWeapon(weapon) {
                     this.selectedWeapon = weapon;
+                    this.previewMode = '2d';
+                    this.error3d = false;
                     this.paints = await this.fetchJson(`/api/skins/catalog/weapons/${weapon.name}/paints`).catch(() => []);
                     const row = (this.profile?.skins ?? []).find((r) => r.weapon_team === 2 && r.weapon_defindex === weapon.index);
                     this.weaponForm = row
@@ -346,6 +383,38 @@
                             weapon_nametag: row.weapon_nametag ?? '',
                         }
                         : { weapon_paint_id: 0, weapon_wear: 0.01, weapon_seed: 0, weapon_stattrak: false, weapon_nametag: '' };
+                },
+
+                closeWeapon() {
+                    if (this.dispose3d) { this.dispose3d(); this.dispose3d = null; }
+                    this.selectedWeapon = null;
+                },
+
+                // The 3D model is per-weapon, not per-paint (see skin-viewer.js -
+                // it shows the real model shape, not this paint projected onto
+                // it), so it only needs to (re)mount when the weapon changes or
+                // the 3D tab is opened for the first time - not on every paint
+                // click.
+                async mount3d() {
+                    if (this.dispose3d) return;
+
+                    this.loading3d = true;
+                    this.error3d = false;
+                    try {
+                        // Loaded via app.js's window.loadSkinViewer() rather than
+                        // a bare import() here, so Vite can code-split it as a
+                        // proper build chunk with a hashed filename - this
+                        // inline pushed script isn't part of the Vite module
+                        // graph, so a relative import() here would have nothing
+                        // correct to resolve against in production.
+                        const { webglSupported, modelUrl, mount } = await window.loadSkinViewer();
+                        if (!webglSupported()) throw new Error('no_webgl');
+                        this.dispose3d = await mount(this.$refs.viewer3d, modelUrl(this.selectedWeapon.name));
+                    } catch (e) {
+                        this.error3d = true;
+                    } finally {
+                        this.loading3d = false;
+                    }
                 },
 
                 async putSkin(slot, team, body) {
@@ -404,7 +473,7 @@
                             if (!res.ok) throw new Error('request_failed');
                         }
                         this.profile = await this.fetchJson(`/api/skins/${this.ownSteamId}`);
-                        this.selectedWeapon = null;
+                        this.closeWeapon();
                     } catch (e) {
                         this.error = true;
                     }
