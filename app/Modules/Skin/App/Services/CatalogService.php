@@ -190,10 +190,20 @@ class CatalogService
      * is the only signal available, so it's used as a best-effort filter -
      * team null returns every agent unfiltered.
      *
-     * @return array<int, array{name: string, index: int, label: string}>
+     * A preview picture is a join against a static id lookup, not the
+     * plugin's own export: agent_images.json (shipped in this module,
+     * unlike the storage/app/catalog/*.json dumps) maps each agent's own
+     * "tm_foo/tm_foo_variantx" model path to the numeric id a third-party
+     * skins CDN happens to use, built once by matching this catalog's own
+     * agent list against that CDN's - 62 of 63 agents matched, the rest
+     * simply have no `image` key and the picker falls back to a silhouette.
+     *
+     * @return array<int, array{name: string, index: int, label: string, image?: string}>
      */
     public function agents(?int $team = null): array
     {
+        $images = $this->agentImages();
+
         return collect($this->rawAgents())
             ->filter(function (array $agent) use ($team): bool {
                 if ($team === null) {
@@ -204,8 +214,35 @@ class CatalogService
 
                 return $team === 2 ? str_contains($path, '/tm_') : str_contains($path, '/ctm_');
             })
-            ->map(fn (array $agent): array => $this->slim($agent))
+            ->map(function (array $agent) use ($images): array {
+                $slim = $this->slim($agent);
+                $modelKey = preg_replace('#^agents/models/#', '', (string) ($agent['Name'] ?? ''));
+
+                if ($modelKey !== null && isset($images[$modelKey])) {
+                    $slim['image'] = "https://raw.githubusercontent.com/Nereziel/cs2-WeaponPaints/main/website/img/skins/agent-{$images[$modelKey]}.png";
+                }
+
+                return $slim;
+            })
             ->values()->all();
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function agentImages(): array
+    {
+        return Cache::remember('catalog:agent-images', self::TTL, function (): array {
+            $path = __DIR__.'/../../Resources/agent_images.json';
+
+            if (! File::exists($path)) {
+                return [];
+            }
+
+            $decoded = json_decode((string) File::get($path), true);
+
+            return is_array($decoded) ? $decoded : [];
+        });
     }
 
     /**
