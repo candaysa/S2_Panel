@@ -61,11 +61,12 @@
                                     @click="openWeapon(w)"
                                     class="overflow-hidden rounded-lg border border-line bg-surface text-left text-sm transition-colors hover:bg-surface-raised"
                                 >
-                                    {{-- Preview art, when the equipped paint has one - see
-                                         skinImageUrl(). Not every weapon+paint pair has an
-                                         image available, so a broken load just hides the
-                                         image and falls back to the label alone. --}}
-                                    <div class="flex h-20 items-center justify-center bg-canvas" x-show="equippedWeapon(w)">
+                                    {{-- Preview art - the equipped paint's image, or the
+                                         weapon's plain default look when nothing custom is
+                                         equipped (see skinImageUrl()). Not every weapon+paint
+                                         pair has an image available, so a broken load just
+                                         hides the image and falls back to the label alone. --}}
+                                    <div class="flex h-20 items-center justify-center bg-canvas">
                                         <img
                                             :src="skinImageUrl(w.name, equippedWeapon(w)?.weapon_paint_id)"
                                             alt=""
@@ -103,7 +104,7 @@
                                  weapon itself (see skin-viewer.js - shows the
                                  model's own shape, not this image projected
                                  onto it). --}}
-                            <div class="mt-3 flex items-center gap-1.5" x-show="weaponForm.weapon_paint_id">
+                            <div class="mt-3 flex items-center gap-1.5">
                                 <button
                                     type="button"
                                     @click="previewMode = '2d'"
@@ -118,7 +119,7 @@
                                 >{{ __('i18n::messages.skins.preview_3d') }}</button>
                             </div>
 
-                            <div class="mt-2 h-56 overflow-hidden rounded-lg border border-line bg-canvas" x-show="weaponForm.weapon_paint_id">
+                            <div class="mt-2 h-56 overflow-hidden rounded-lg border border-line bg-canvas">
                                 <div class="flex h-full items-center justify-center" x-show="previewMode === '2d'">
                                     <img
                                         :src="skinImageUrl(selectedWeapon.name, weaponForm.weapon_paint_id)"
@@ -143,16 +144,25 @@
                             <div class="mt-2 grid max-h-80 grid-cols-3 gap-2 overflow-y-auto rounded-lg border border-line bg-canvas p-2 sm:grid-cols-4">
                                 <button
                                     type="button"
-                                    @click="weaponForm.weapon_paint_id = 0"
-                                    class="rounded-lg border p-2 text-center text-xs transition-colors"
+                                    @click="pickPaint(0)"
+                                    class="overflow-hidden rounded-lg border text-center text-xs transition-colors"
                                     :class="weaponForm.weapon_paint_id === 0 ? 'border-brand-strong bg-brand-soft text-brand-strong' : 'border-line bg-surface text-ink-muted hover:bg-surface-raised'"
                                 >
-                                    {{ __('i18n::messages.skins.default_paint') }}
+                                    <div class="flex h-14 items-center justify-center bg-canvas">
+                                        <img
+                                            :src="skinImageUrl(selectedWeapon.name, 0)"
+                                            alt=""
+                                            loading="lazy"
+                                            class="max-h-full max-w-full object-contain p-1"
+                                            @@error="$el.style.visibility = 'hidden'"
+                                        >
+                                    </div>
+                                    <div class="p-1.5">{{ __('i18n::messages.skins.default_paint') }}</div>
                                 </button>
                                 <template x-for="p in paints" :key="p.index">
                                     <button
                                         type="button"
-                                        @click="weaponForm.weapon_paint_id = p.index"
+                                        @click="pickPaint(p.index)"
                                         class="overflow-hidden rounded-lg border text-left text-xs transition-colors"
                                         :class="weaponForm.weapon_paint_id === p.index ? 'border-brand-strong bg-brand-soft' : 'border-line bg-surface hover:bg-surface-raised'"
                                     >
@@ -251,7 +261,7 @@
                 previewMode: '2d',
                 loading3d: false,
                 error3d: false,
-                dispose3d: null,
+                viewer3d: null,
                 knives: [],
                 gloves: [],
                 agents: { 2: [], 3: [] },
@@ -290,9 +300,15 @@
                 // every combination has an image; the <img> tags this feeds
                 // hide themselves on a failed load rather than showing a
                 // broken-image icon.
+                //
+                // No paint equipped (paintId 0/undefined) still gets a real
+                // image, not a blank slot: the same asset set ships a plain
+                // {weapon}.png with no id suffix for the factory-default
+                // look, which is what an unpainted weapon actually is.
                 skinImageUrl(weaponName, paintId) {
-                    if (!weaponName || !paintId) return '';
-                    return `https://raw.githubusercontent.com/Nereziel/cs2-WeaponPaints/main/website/img/skins/${weaponName}-${paintId}.png`;
+                    if (!weaponName) return '';
+                    const suffix = paintId ? `-${paintId}` : '';
+                    return `https://raw.githubusercontent.com/Nereziel/cs2-WeaponPaints/main/website/img/skins/${weaponName}${suffix}.png`;
                 },
 
                 async fetchJson(url) {
@@ -386,17 +402,16 @@
                 },
 
                 closeWeapon() {
-                    if (this.dispose3d) { this.dispose3d(); this.dispose3d = null; }
+                    if (this.viewer3d) { this.viewer3d.dispose(); this.viewer3d = null; }
                     this.selectedWeapon = null;
                 },
 
-                // The 3D model is per-weapon, not per-paint (see skin-viewer.js -
-                // it shows the real model shape, not this paint projected onto
-                // it), so it only needs to (re)mount when the weapon changes or
-                // the 3D tab is opened for the first time - not on every paint
-                // click.
+                // The GLB model only needs to (re)load when the weapon changes
+                // or the 3D tab is opened for the first time, not on every
+                // paint click - pickPaint() below re-textures the
+                // already-mounted model instead of re-mounting.
                 async mount3d() {
-                    if (this.dispose3d) return;
+                    if (this.viewer3d) return;
 
                     this.loading3d = true;
                     this.error3d = false;
@@ -407,14 +422,19 @@
                         // inline pushed script isn't part of the Vite module
                         // graph, so a relative import() here would have nothing
                         // correct to resolve against in production.
-                        const { webglSupported, modelUrl, mount } = await window.loadSkinViewer();
+                        const { webglSupported, mount } = await window.loadSkinViewer();
                         if (!webglSupported()) throw new Error('no_webgl');
-                        this.dispose3d = await mount(this.$refs.viewer3d, modelUrl(this.selectedWeapon.name));
+                        this.viewer3d = await mount(this.$refs.viewer3d, this.selectedWeapon.name, this.weaponForm.weapon_paint_id);
                     } catch (e) {
                         this.error3d = true;
                     } finally {
                         this.loading3d = false;
                     }
+                },
+
+                pickPaint(id) {
+                    this.weaponForm.weapon_paint_id = id;
+                    if (this.viewer3d) this.viewer3d.setPaint(id);
                 },
 
                 async putSkin(slot, team, body) {
