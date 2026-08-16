@@ -117,12 +117,6 @@ return [
             'depends' => ['auth', 'server'],
         ],
 
-        'stats' => [
-            'enabled' => env('MODULE_STATS', false),
-            'provider' => App\Modules\Stats\StatsServiceProvider::class,
-            'depends' => ['auth', 'server'],
-        ],
-
         'settings' => [
             'enabled' => env('MODULE_SETTINGS', false),
             'provider' => App\Modules\Settings\SettingsServiceProvider::class,
