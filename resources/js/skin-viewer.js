@@ -66,17 +66,63 @@ export function webglSupported() {
 }
 
 /**
+ * The CDN ships these as full capture resolution - up to 4096x4096, several
+ * megabytes each - because that is what a wear/pattern-accurate export
+ * happened to produce, not because a weapon preview panel needs it.
+ * Decoding and GPU-uploading that raw size is what made switching paints
+ * take several real seconds; createImageBitmap's own resize (done during
+ * decode, not as a second pass after) caps both without a visible quality
+ * loss at the size this viewer actually renders at.
+ */
+const MAX_TEXTURE_SIZE = 1024;
+
+async function fetchDownscaledBitmap(url) {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(String(response.status));
+    const blob = await response.blob();
+    const full = await createImageBitmap(blob);
+
+    if (full.width <= MAX_TEXTURE_SIZE && full.height <= MAX_TEXTURE_SIZE) {
+        return full;
+    }
+
+    const scale = MAX_TEXTURE_SIZE / Math.max(full.width, full.height);
+    const resized = await createImageBitmap(full, {
+        resizeWidth: Math.round(full.width * scale),
+        resizeHeight: Math.round(full.height * scale),
+        resizeQuality: 'high',
+    });
+    full.close();
+
+    return resized;
+}
+
+/**
  * The source repo stores each file as whichever of .png/.webp it happened
  * to be captured as - no single extension covers every weapon+paint pair,
  * so both are tried. A miss is not an error: plenty of paints simply have
  * no texture published, and the model still renders with its own
  * materials.
+ *
+ * `isColor` distinguishes the base-color capture (needs sRGB decoding,
+ * like any photo) from the "_metal" file, which is data - a combined
+ * AO/roughness/metalness map, per the same channel packing GLTFLoader
+ * already used for the model's own materials - and must stay linear.
+ * Tagging it sRGB was silently skewing every metalness/roughness/AO value
+ * read from it through gamma decoding.
  */
-async function loadPaintTexture(loader, weaponName, paintId, suffix) {
+async function loadPaintTexture(weaponName, paintId, suffix, isColor) {
     for (const ext of ['png', 'webp']) {
         const url = `${TEXTURE_BASE}${encodeURIComponent(weaponName)}/${paintId}${suffix}.${ext}`;
         try {
-            return await loader.loadAsync(url);
+            const bitmap = await fetchDownscaledBitmap(url);
+            const texture = new THREE.Texture(bitmap);
+            texture.colorSpace = isColor ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.flipY = false;
+            texture.needsUpdate = true;
+            return texture;
         } catch (e) {
             // try the next extension
         }
@@ -84,21 +130,13 @@ async function loadPaintTexture(loader, weaponName, paintId, suffix) {
     return null;
 }
 
-async function loadPaintTextures(loader, weaponName, paintId) {
-    const [map, metalnessMap] = await Promise.all([
-        loadPaintTexture(loader, weaponName, paintId, ''),
-        loadPaintTexture(loader, weaponName, paintId, '_metal'),
+async function loadPaintTextures(weaponName, paintId) {
+    const [map, armMap] = await Promise.all([
+        loadPaintTexture(weaponName, paintId, '', true),
+        loadPaintTexture(weaponName, paintId, '_metal', false),
     ]);
 
-    [map, metalnessMap].forEach((t) => {
-        if (!t) return;
-        t.colorSpace = THREE.SRGBColorSpace;
-        t.wrapS = THREE.RepeatWrapping;
-        t.wrapT = THREE.RepeatWrapping;
-        t.flipY = false;
-    });
-
-    return { map, metalnessMap };
+    return { map, armMap };
 }
 
 /**
@@ -139,20 +177,30 @@ export async function mount(container, weaponName, paintId, options = {}) {
     // reflections; RoomEnvironment builds an equivalent lighting rig on the
     // GPU from nothing, which is 1.5MB less to wait through on a feature
     // whose whole complaint was that it took too long to open.
+    //
+    // Every gun material here is metalness:1/roughness:1 with no separate
+    // scalar override, so its appearance comes entirely from its ORM map
+    // and the light hitting it - a sharp, low-spread environment (blur
+    // 0.04) plus two lights left large areas of the model reading as flat
+    // black with nothing to reflect, which is what made "default has no
+    // texture" and "lighting looks wrong" the same complaint in practice.
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     const roomEnvironment = new RoomEnvironment();
-    const environmentTexture = pmremGenerator.fromScene(roomEnvironment, 0.04).texture;
+    const environmentTexture = pmremGenerator.fromScene(roomEnvironment, 0.2).texture;
     scene.environment = environmentTexture;
     roomEnvironment.dispose?.();
 
-    // Keeps highlights on the barrel/slide readable; the environment alone
-    // is diffuse and leaves edges flat.
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
+    const key = new THREE.DirectionalLight(0xffffff, 2.0);
     key.position.set(2, 3, 4);
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+    const fill = new THREE.DirectionalLight(0xffffff, 1.0);
     fill.position.set(-3, -1, -2);
     scene.add(fill);
+    const rim = new THREE.DirectionalLight(0xffffff, 0.8);
+    rim.position.set(0, -2, 3);
+    scene.add(rim);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambient);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -164,7 +212,6 @@ export async function mount(container, weaponName, paintId, options = {}) {
     let currentTextures = [];
 
     const gltfLoader = new GLTFLoader();
-    const textureLoader = new THREE.TextureLoader();
 
     // Model and paint textures are fetched together rather than one after
     // the other - they are independent files on the same host, and the
@@ -174,7 +221,7 @@ export async function mount(container, weaponName, paintId, options = {}) {
         gltfLoader.loadAsync(modelUrl(weaponName), (event) => {
             if (onProgress && event.total) onProgress(event.loaded / event.total);
         }),
-        paintId ? loadPaintTextures(textureLoader, weaponName, paintId) : Promise.resolve(null),
+        paintId ? loadPaintTextures(weaponName, paintId) : Promise.resolve(null),
     ]);
 
     if (disposed) {
@@ -196,12 +243,15 @@ export async function mount(container, weaponName, paintId, options = {}) {
 
     // The stock weapon's own maps, kept so paint 0 can restore exactly what
     // the file shipped with instead of clearing to an untextured surface.
+    // GLTFLoader points metalnessMap/roughnessMap/aoMap at the *same*
+    // combined texture (glTF always packs occlusion/roughness/metalness
+    // into one image) - captured once here as armMap.
     const originalMaps = new Map();
     root.traverse((child) => {
         if (child.isMesh && child.material) {
             originalMaps.set(child.material, {
                 map: child.material.map ?? null,
-                metalnessMap: child.material.metalnessMap ?? null,
+                armMap: child.material.metalnessMap ?? null,
             });
         }
     });
@@ -220,9 +270,20 @@ export async function mount(container, weaponName, paintId, options = {}) {
         target.traverse((child) => {
             if (!child.isMesh || !child.material || !isPaintable(child.material)) return;
 
-            const original = originalMaps.get(child.material) ?? { map: null, metalnessMap: null };
+            const original = originalMaps.get(child.material) ?? { map: null, armMap: null };
+            const armMap = textures?.armMap ?? original.armMap;
+
             child.material.map = textures?.map ?? original.map;
-            child.material.metalnessMap = textures?.metalnessMap ?? original.metalnessMap;
+            // A paint's "_metal" file is the stock combined map's
+            // replacement, not an add-on - it has to go on all three
+            // properties together. Swapping only metalnessMap while
+            // roughnessMap/aoMap kept pointing at the *stock* weapon's map
+            // is what produced the patchy, partly-black look on painted
+            // guns: the new paint's colour sat under the old weapon's
+            // roughness/occlusion pattern instead of its own.
+            child.material.metalnessMap = armMap;
+            child.material.roughnessMap = armMap;
+            child.material.aoMap = armMap;
             child.material.needsUpdate = true;
         });
     };
@@ -236,17 +297,17 @@ export async function mount(container, weaponName, paintId, options = {}) {
     const applyPaint = async (id, useLegacy) => {
         setVariant(useLegacy);
 
-        const textures = id ? await loadPaintTextures(textureLoader, weaponName, id) : null;
+        const textures = id ? await loadPaintTextures(weaponName, id) : null;
         if (disposed) return;
 
         currentTextures.forEach((t) => t.dispose());
-        currentTextures = textures ? [textures.map, textures.metalnessMap].filter(Boolean) : [];
+        currentTextures = textures ? [textures.map, textures.armMap].filter(Boolean) : [];
 
         applyTextures(textures);
     };
 
     setVariant(options.legacy);
-    currentTextures = initialTextures ? [initialTextures.map, initialTextures.metalnessMap].filter(Boolean) : [];
+    currentTextures = initialTextures ? [initialTextures.map, initialTextures.armMap].filter(Boolean) : [];
     applyTextures(initialTextures);
 
     // Auto-frame from whichever mesh is actually visible - every weapon
