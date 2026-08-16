@@ -22,6 +22,8 @@ Route::prefix('api/skins')->middleware('steam.auth')->group(function (): void {
     Route::get('catalog/gloves', [SkinController::class, 'catalogGloves'])->name('skin.catalog.gloves');
     Route::get('catalog/agents', [SkinController::class, 'catalogAgents'])->name('skin.catalog.agents');
     Route::get('catalog/music', [SkinController::class, 'catalogMusic'])->name('skin.catalog.music');
+    Route::get('catalog/keychains', [SkinController::class, 'catalogKeychains'])->name('skin.catalog.keychains');
+    Route::get('catalog/stickers', [SkinController::class, 'catalogStickers'])->name('skin.catalog.stickers');
 
     Route::get('{steamid}', [SkinController::class, 'show'])->name('skin.show');
     Route::put('{steamid}/{slot}', [SkinController::class, 'store'])->name('skin.store');

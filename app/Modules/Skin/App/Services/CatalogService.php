@@ -215,6 +215,46 @@ class CatalogService
     }
 
     /**
+     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string}>
+     */
+    public function keychains(): array
+    {
+        return collect($this->rawKeychains())
+            ->map(fn (array $k): array => $this->slim($k, withRarity: true))
+            ->values()->all();
+    }
+
+    /**
+     * Every sticker across every capsule/collection, flattened into one
+     * list. sticker_collections.json groups them by collection (each with
+     * its own "Stickers" sub-array) because that's how Valve's own item
+     * schema groups them, not because the panel cares which capsule a
+     * sticker came from - a player picking a sticker for their weapon just
+     * wants to find it by name.
+     *
+     * ~8,800 stickers total, so this is fetched on demand (only once the
+     * sticker picker is actually opened) rather than eagerly with the rest
+     * of the weapon catalog, and the frontend search-filters it rather than
+     * rendering all of them at once.
+     *
+     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string}>
+     */
+    public function stickers(): array
+    {
+        return Cache::remember("catalog:stickers:".app()->getLocale(), self::TTL, function (): array {
+            $out = [];
+
+            foreach ($this->rawStickerCollections() as $collection) {
+                foreach ($collection['Stickers'] ?? [] as $sticker) {
+                    $out[] = $this->slim($sticker, withRarity: true);
+                }
+            }
+
+            return $out;
+        });
+    }
+
+    /**
      * @param  array<string, mixed>  $entry
      * @return array{name: string, index: int|null, label: string, rarity_color?: ?string}
      */
@@ -267,6 +307,22 @@ class CatalogService
     private function rawMusic(): array
     {
         return $this->raw('musickits.json');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function rawKeychains(): array
+    {
+        return $this->raw('keychains.json');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function rawStickerCollections(): array
+    {
+        return $this->raw('sticker_collections.json');
     }
 
     /**

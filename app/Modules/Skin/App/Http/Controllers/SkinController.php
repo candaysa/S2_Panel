@@ -27,6 +27,8 @@ use InvalidArgumentException;
  * GET    /api/skins/catalog/gloves                  – glove types
  * GET    /api/skins/catalog/agents                  – agents (optional ?team=2|3)
  * GET    /api/skins/catalog/music                   – music kits
+ * GET    /api/skins/catalog/keychains                – keychain charms
+ * GET    /api/skins/catalog/stickers                 – every sticker, flattened across all collections
  */
 class SkinController
 {
@@ -87,6 +89,16 @@ class SkinController
     public function catalogMusic(): JsonResponse
     {
         return Api::success($this->catalog->music());
+    }
+
+    public function catalogKeychains(): JsonResponse
+    {
+        return Api::success($this->catalog->keychains());
+    }
+
+    public function catalogStickers(): JsonResponse
+    {
+        return Api::success($this->catalog->stickers());
     }
 
     public function store(Request $request, string $steamid, string $slot): JsonResponse

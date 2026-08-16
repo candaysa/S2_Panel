@@ -203,6 +203,30 @@
                             <label class="mt-4 block text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.nametag') }}</label>
                             <input type="text" x-model="weaponForm.weapon_nametag" maxlength="128" placeholder="{{ __('i18n::messages.skins.nametag_placeholder') }}" class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
 
+                            <label class="mt-4 block text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.stickers') }}</label>
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                <template x-for="i in [0, 1, 2, 3, 4, 5]" :key="i">
+                                    <button
+                                        type="button"
+                                        @click="openStickerPicker(i)"
+                                        class="flex size-16 flex-col items-center justify-center rounded-lg border p-1 text-center text-[10px] leading-tight transition-colors"
+                                        :class="stickerAt(i).id ? 'border-brand-strong bg-brand-soft text-brand-strong' : 'border-line bg-surface text-ink-faint hover:bg-surface-raised'"
+                                    >
+                                        <span x-show="stickerAt(i).id" class="line-clamp-3" x-text="stickerLabel(stickerAt(i).id)"></span>
+                                        <span x-show="!stickerAt(i).id" class="text-lg">+</span>
+                                    </button>
+                                </template>
+                            </div>
+
+                            <label class="mt-4 block text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.keychain') }}</label>
+                            <button
+                                type="button"
+                                @click="openKeychainPicker()"
+                                class="mt-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors"
+                                :class="keychainCurrentId ? 'border-brand-strong bg-brand-soft text-brand-strong' : 'border-line bg-surface text-ink-muted hover:bg-surface-raised'"
+                                x-text="keychainCurrentId ? keychainLabel(keychainCurrentId) : @js(__('i18n::messages.skins.keychain_none'))"
+                            ></button>
+
                             <div class="mt-5 flex items-center gap-3">
                                 <button type="button" :disabled="saving" @click="saveWeapon()" class="inline-flex items-center rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50">
                                     {{ __('i18n::messages.skins.equip') }}
@@ -219,26 +243,108 @@
 
             {{-- Knife / Gloves / Music: pick-a-card, applies to both teams at
                  once. Agent is the exception - it stays scoped to whichever
-                 side the toggle above has selected. --}}
+                 side the toggle above has selected. Knives additionally get
+                 a small 3D peek button - a real GLB model exists for every
+                 knife in the same source used for weapons, though with no
+                 texture (our schema has no per-knife paint data, just a
+                 type choice), so it shows the bare model shape only. --}}
             <template x-if="section !== 'weapons'">
                 <div>
                     <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
                         <template x-for="item in currentCatalog()" :key="item.name">
-                            <button
-                                type="button"
-                                @click="pick(item)"
-                                class="rounded-lg border p-3 text-left text-sm transition-colors"
-                                :class="isEquipped(item) ? 'border-brand-strong bg-brand-soft' : 'border-line bg-surface hover:bg-surface-raised'"
-                            >
-                                <span class="block truncate font-medium" :class="isEquipped(item) ? 'text-brand-strong' : 'text-ink'" x-text="item.label"></span>
-                                <span x-show="isEquipped(item)" class="mt-1 block text-xs text-brand-strong">{{ __('i18n::messages.skins.equipped') }}</span>
-                            </button>
+                            <div class="relative">
+                                <button
+                                    type="button"
+                                    @click="pick(item)"
+                                    class="w-full rounded-lg border p-3 text-left text-sm transition-colors"
+                                    :class="isEquipped(item) ? 'border-brand-strong bg-brand-soft' : 'border-line bg-surface hover:bg-surface-raised'"
+                                >
+                                    <span class="block truncate pr-6 font-medium" :class="isEquipped(item) ? 'text-brand-strong' : 'text-ink'" x-text="item.label"></span>
+                                    <span x-show="isEquipped(item)" class="mt-1 block text-xs text-brand-strong">{{ __('i18n::messages.skins.equipped') }}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    x-show="section === 'knife'"
+                                    @click.stop="openKnife3d(item)"
+                                    class="absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium text-ink-faint transition-colors hover:bg-surface-raised hover:text-ink"
+                                    :title="@js(__('i18n::messages.skins.preview_3d'))"
+                                >{{ __('i18n::messages.skins.preview_3d') }}</button>
+                            </div>
                         </template>
                     </div>
                     <p x-show="currentCatalog().length === 0" class="mt-2 text-sm text-ink-faint">{{ __('i18n::messages.skins.no_data') }}</p>
                     <p class="mt-3 text-xs text-ink-faint" x-show="section !== 'agent'">{{ __('i18n::messages.skins.both_teams_hint') }}</p>
                 </div>
             </template>
+
+            {{-- Knife 3D peek modal - shared across every knife card above,
+                 mounted once when opened rather than one WebGL context per
+                 card. --}}
+            <div
+                x-show="knife3d.open"
+                x-cloak
+                @click.self="closeKnife3d()"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            >
+                <div class="w-full max-w-md rounded-xl border border-line bg-surface p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="text-sm font-semibold text-ink" x-text="knife3d.label"></h3>
+                        <button type="button" @click="closeKnife3d()" class="text-ink-faint hover:text-ink">&times;</button>
+                    </div>
+                    <div class="relative mt-3 h-64 overflow-hidden rounded-lg border border-line bg-canvas">
+                        <div x-ref="knifeViewer3d" class="h-full w-full"></div>
+                        <p x-show="knife3d.loading" class="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-ink-faint">
+                            {{ __('i18n::messages.common.loading') }}
+                        </p>
+                        <p x-show="knife3d.error" x-cloak class="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-ink-faint">
+                            {{ __('i18n::messages.skins.preview_3d_unavailable') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Sticker/keychain picker - shared by all 6 sticker slots and
+                 the keychain slot above. Search only applies to stickers
+                 (~8,800 of them); keychains (143) just list in full. --}}
+            <div
+                x-show="picker.open"
+                x-cloak
+                @click.self="closePicker()"
+                class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            >
+                <div class="flex max-h-[80vh] w-full max-w-lg flex-col rounded-xl border border-line bg-surface p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <h3 class="text-sm font-semibold text-ink" x-text="picker.kind === 'sticker' ? @js(__('i18n::messages.skins.stickers')) : @js(__('i18n::messages.skins.keychain'))"></h3>
+                        <button type="button" @click="closePicker()" class="text-ink-faint hover:text-ink">&times;</button>
+                    </div>
+                    <input
+                        type="search"
+                        x-show="picker.kind === 'sticker'"
+                        x-model="picker.search"
+                        placeholder="{{ __('i18n::messages.common.search') }}"
+                        class="mt-3 w-full shrink-0 rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none"
+                    >
+                    <div class="mt-3 grid grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
+                        <button
+                            type="button"
+                            @click="pickerSelect(0)"
+                            class="rounded-lg border border-line bg-canvas p-2 text-center text-xs text-ink-muted transition-colors hover:bg-surface-raised"
+                        >{{ __('i18n::messages.skins.clear_slot') }}</button>
+                        <template x-for="opt in pickerResults()" :key="opt.index">
+                            <button
+                                type="button"
+                                @click="pickerSelect(opt.index)"
+                                class="flex items-center gap-1.5 rounded-lg border border-line bg-canvas p-2 text-left text-xs text-ink-muted transition-colors hover:bg-surface-raised"
+                            >
+                                <span class="size-1.5 shrink-0 rounded-full" :style="opt.rarity_color ? 'background:' + opt.rarity_color : ''"></span>
+                                <span class="truncate" x-text="opt.label"></span>
+                            </button>
+                        </template>
+                    </div>
+                    <p x-show="picker.kind === 'sticker' && stickerCatalog.length === 0" class="mt-3 text-center text-xs text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -257,15 +363,24 @@
                 paints: [],
                 paintNames: {},
                 selectedWeapon: null,
-                weaponForm: { weapon_paint_id: 0, weapon_wear: 0.01, weapon_seed: 0, weapon_stattrak: false, weapon_nametag: '' },
+                weaponForm: {
+                    weapon_paint_id: 0, weapon_wear: 0.01, weapon_seed: 0, weapon_stattrak: false, weapon_nametag: '',
+                    weapon_sticker_0: '0;0;0;0;0;0;0', weapon_sticker_1: '0;0;0;0;0;0;0', weapon_sticker_2: '0;0;0;0;0;0;0',
+                    weapon_sticker_3: '0;0;0;0;0;0;0', weapon_sticker_4: '0;0;0;0;0;0;0', weapon_sticker_5: '0;0;0;0;0;0;0',
+                    weapon_keychain: '0;0;0;0;0',
+                },
                 previewMode: '2d',
                 loading3d: false,
                 error3d: false,
                 viewer3d: null,
+                knife3d: { open: false, loading: false, error: false, label: '', viewer: null },
                 knives: [],
                 gloves: [],
                 agents: { 2: [], 3: [] },
                 music: [],
+                stickerCatalog: [],
+                keychainCatalog: [],
+                picker: { open: false, kind: null, slotIndex: null, search: '' },
 
                 sections: [
                     { key: 'weapons', label: @js(__('i18n::messages.skins.weapons')) },
@@ -390,6 +505,7 @@
                     this.error3d = false;
                     this.paints = await this.fetchJson(`/api/skins/catalog/weapons/${weapon.name}/paints`).catch(() => []);
                     const row = (this.profile?.skins ?? []).find((r) => r.weapon_team === 2 && r.weapon_defindex === weapon.index);
+                    const emptySticker = '0;0;0;0;0;0;0';
                     this.weaponForm = row
                         ? {
                             weapon_paint_id: row.weapon_paint_id ?? 0,
@@ -397,13 +513,58 @@
                             weapon_seed: row.weapon_seed ?? 0,
                             weapon_stattrak: !!row.weapon_stattrak,
                             weapon_nametag: row.weapon_nametag ?? '',
+                            weapon_sticker_0: row.weapon_sticker_0 || emptySticker,
+                            weapon_sticker_1: row.weapon_sticker_1 || emptySticker,
+                            weapon_sticker_2: row.weapon_sticker_2 || emptySticker,
+                            weapon_sticker_3: row.weapon_sticker_3 || emptySticker,
+                            weapon_sticker_4: row.weapon_sticker_4 || emptySticker,
+                            weapon_sticker_5: row.weapon_sticker_5 || emptySticker,
+                            weapon_keychain: row.weapon_keychain || '0;0;0;0;0',
                         }
-                        : { weapon_paint_id: 0, weapon_wear: 0.01, weapon_seed: 0, weapon_stattrak: false, weapon_nametag: '' };
+                        : {
+                            weapon_paint_id: 0, weapon_wear: 0.01, weapon_seed: 0, weapon_stattrak: false, weapon_nametag: '',
+                            weapon_sticker_0: emptySticker, weapon_sticker_1: emptySticker, weapon_sticker_2: emptySticker,
+                            weapon_sticker_3: emptySticker, weapon_sticker_4: emptySticker, weapon_sticker_5: emptySticker,
+                            weapon_keychain: '0;0;0;0;0',
+                        };
+
+                    // Fire-and-forget: if this weapon already carries a
+                    // sticker/keychain, load the catalogs in the background
+                    // so the slot labels below show a real name rather than
+                    // a bare id, without making the panel wait on an
+                    // 8,800-item fetch just to open.
+                    if ([0, 1, 2, 3, 4, 5].some((i) => this.stickerAt(i).id)) this.ensureStickerCatalog();
+                    if (this.keychainCurrentId) this.ensureKeychainCatalog();
                 },
 
                 closeWeapon() {
                     if (this.viewer3d) { this.viewer3d.dispose(); this.viewer3d = null; }
                     this.selectedWeapon = null;
+                },
+
+                // Knives have no per-item paint data in our schema (just a
+                // type choice), so this is a shape-only peek - no texture
+                // step like mount3d() below has for weapons.
+                async openKnife3d(item) {
+                    this.knife3d.open = true;
+                    this.knife3d.label = item.label;
+                    this.knife3d.loading = true;
+                    this.knife3d.error = false;
+                    await this.$nextTick();
+                    try {
+                        const { webglSupported, mount } = await window.loadSkinViewer();
+                        if (!webglSupported()) throw new Error('no_webgl');
+                        this.knife3d.viewer = await mount(this.$refs.knifeViewer3d, item.name);
+                    } catch (e) {
+                        this.knife3d.error = true;
+                    } finally {
+                        this.knife3d.loading = false;
+                    }
+                },
+
+                closeKnife3d() {
+                    if (this.knife3d.viewer) { this.knife3d.viewer.dispose(); this.knife3d.viewer = null; }
+                    this.knife3d.open = false;
                 },
 
                 // The GLB model only needs to (re)load when the weapon changes
@@ -437,6 +598,76 @@
                     if (this.viewer3d) this.viewer3d.setPaint(id);
                 },
 
+                // Sticker/keychain slots are stored as semicolon-delimited
+                // strings (id;schema;x;y;wear;scale;rotation for a sticker,
+                // id;x;y;z;seed for the keychain) - matches exactly what the
+                // CS2_Skin plugin itself reads, so nothing here needs its
+                // own column. Picking one here writes a sensible default
+                // placement (centered, full scale, no rotation) rather than
+                // exposing manual x/y/rotation controls - repositioning a
+                // sticker by hand is a real feature but a separate one from
+                // "can a player put a sticker on their gun at all", which is
+                // the gap this closes.
+                stickerAt(slot) {
+                    const raw = this.weaponForm[`weapon_sticker_${slot}`] || '0;0;0;0;0;0;0';
+                    return { id: Number(raw.split(';')[0]) || 0 };
+                },
+
+                get keychainCurrentId() {
+                    return Number((this.weaponForm.weapon_keychain || '0;0;0;0;0').split(';')[0]) || 0;
+                },
+
+                stickerLabel(id) {
+                    return this.stickerCatalog.find((s) => s.index === id)?.label ?? `#${id}`;
+                },
+
+                keychainLabel(id) {
+                    return this.keychainCatalog.find((k) => k.index === id)?.label ?? `#${id}`;
+                },
+
+                async ensureStickerCatalog() {
+                    if (this.stickerCatalog.length) return;
+                    this.stickerCatalog = await this.fetchJson('/api/skins/catalog/stickers').catch(() => []);
+                },
+
+                async ensureKeychainCatalog() {
+                    if (this.keychainCatalog.length) return;
+                    this.keychainCatalog = await this.fetchJson('/api/skins/catalog/keychains').catch(() => []);
+                },
+
+                async openStickerPicker(slot) {
+                    this.picker = { open: true, kind: 'sticker', slotIndex: slot, search: '' };
+                    await this.ensureStickerCatalog();
+                },
+
+                async openKeychainPicker() {
+                    this.picker = { open: true, kind: 'keychain', slotIndex: null, search: '' };
+                    await this.ensureKeychainCatalog();
+                },
+
+                closePicker() {
+                    this.picker.open = false;
+                },
+
+                // Capped rather than rendering all ~8,800 stickers at once -
+                // search narrows it down; keychains (143 total) just show
+                // in full since that's small enough to browse directly.
+                pickerResults() {
+                    if (this.picker.kind === 'keychain') return this.keychainCatalog;
+                    const q = this.picker.search.trim().toLowerCase();
+                    const source = q ? this.stickerCatalog.filter((s) => s.label.toLowerCase().includes(q)) : this.stickerCatalog;
+                    return source.slice(0, 60);
+                },
+
+                pickerSelect(id) {
+                    if (this.picker.kind === 'sticker') {
+                        this.weaponForm[`weapon_sticker_${this.picker.slotIndex}`] = id ? `${id};0;0;0;0;1;0` : '0;0;0;0;0;0;0';
+                    } else {
+                        this.weaponForm.weapon_keychain = id ? `${id};0;0;0;0` : '0;0;0;0;0';
+                    }
+                    this.closePicker();
+                },
+
                 async putSkin(slot, team, body) {
                     const res = await fetch(`/api/skins/${this.ownSteamId}/${slot}`, {
                         method: 'PUT',
@@ -454,26 +685,15 @@
                     this.saving = true;
                     this.error = false;
                     try {
+                        // weaponForm now owns stickers/keychain too (see
+                        // stickerAt()/pickerSelect() below), same as paint/
+                        // wear/seed already did - both teams get whatever
+                        // is currently in the form, not whatever each
+                        // team's row happened to have before.
                         for (const team of [2, 3]) {
-                            // The API upserts the whole row - carry over sticker/keychain
-                            // fields from each team's own existing row untouched so
-                            // equipping a paint here never silently wipes stickers
-                            // applied elsewhere, and one team's stickers never leak
-                            // onto the other's row.
-                            const existing = (this.profile?.skins ?? []).find(
-                                (r) => r.weapon_team === team && r.weapon_defindex === this.selectedWeapon.index
-                            ) ?? {};
-
                             await this.putSkin('weapon', team, {
                                 defindex: this.selectedWeapon.index,
                                 ...this.weaponForm,
-                                weapon_sticker_0: existing.weapon_sticker_0,
-                                weapon_sticker_1: existing.weapon_sticker_1,
-                                weapon_sticker_2: existing.weapon_sticker_2,
-                                weapon_sticker_3: existing.weapon_sticker_3,
-                                weapon_sticker_4: existing.weapon_sticker_4,
-                                weapon_sticker_5: existing.weapon_sticker_5,
-                                weapon_keychain: existing.weapon_keychain,
                             });
                         }
                         this.profile = await this.fetchJson(`/api/skins/${this.ownSteamId}`);
