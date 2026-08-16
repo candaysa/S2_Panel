@@ -3,19 +3,7 @@
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.skins') }}</h1>
         <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.skins.subtitle') }}</p>
 
-        <div class="mt-5 flex gap-1.5">
-            <template x-for="t in [2, 3]" :key="t">
-                <button
-                    type="button"
-                    @click="team = t; selectedWeapon = null"
-                    :class="team === t ? 'bg-brand-soft text-brand-strong' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'"
-                    class="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
-                    x-text="t === 2 ? @js(__('i18n::messages.skins.team_t')) : @js(__('i18n::messages.skins.team_ct'))"
-                ></button>
-            </template>
-        </div>
-
-        <div class="mt-4 flex flex-wrap gap-1 border-b border-line">
+        <div class="mt-5 flex flex-wrap gap-1 border-b border-line">
             <template x-for="s in sections" :key="s.key">
                 <button
                     type="button"
@@ -23,6 +11,37 @@
                     :class="section === s.key ? 'border-brand-strong text-brand-strong' : 'border-transparent text-ink-muted hover:text-ink'"
                     class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
                     x-text="s.label"
+                ></button>
+            </template>
+        </div>
+
+        {{-- Agents are the one thing genuinely locked to a side (a T model
+             cannot be worn as CT), so this toggle only exists here - every
+             other tab applies its pick to both teams at once. --}}
+        <div class="mt-4 flex gap-1.5" x-show="section === 'agent'" x-cloak>
+            <template x-for="t in [2, 3]" :key="t">
+                <button
+                    type="button"
+                    @click="team = t; loadSection()"
+                    :class="team === t ? 'bg-brand-soft text-brand-strong' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'"
+                    class="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
+                    x-text="t === 2 ? @js(__('i18n::messages.skins.team_t')) : @js(__('i18n::messages.skins.team_ct'))"
+                ></button>
+            </template>
+        </div>
+
+        {{-- Weapon category sub-filter - rifle/pistol/smg/heavy, matching
+             CS2's own buy-menu split (see CatalogService::WEAPON_CATEGORIES).
+             Knives are excluded from the weapons catalog entirely now, not
+             just hidden here - they have their own tab. --}}
+        <div class="mt-4 flex flex-wrap gap-1.5" x-show="section === 'weapons' && !selectedWeapon" x-cloak>
+            <template x-for="c in weaponCategories" :key="c.key">
+                <button
+                    type="button"
+                    @click="weaponCategory = c.key"
+                    :class="weaponCategory === c.key ? 'bg-brand-soft text-brand-strong' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'"
+                    class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
+                    x-text="c.label"
                 ></button>
             </template>
         </div>
@@ -36,7 +55,7 @@
                 <div>
                     <template x-if="!selectedWeapon">
                         <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                            <template x-for="w in weapons" :key="w.name">
+                            <template x-for="w in filteredWeapons()" :key="w.name">
                                 <button
                                     type="button"
                                     @click="openWeapon(w)"
@@ -65,6 +84,7 @@
                                     </div>
                                 </button>
                             </template>
+                            <p x-show="filteredWeapons().length === 0" class="col-span-full text-sm text-ink-faint">{{ __('i18n::messages.skins.no_data') }}</p>
                         </div>
                     </template>
 
@@ -142,35 +162,41 @@
                             <label class="mt-4 block text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.nametag') }}</label>
                             <input type="text" x-model="weaponForm.weapon_nametag" maxlength="128" placeholder="{{ __('i18n::messages.skins.nametag_placeholder') }}" class="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
 
-                            <div class="mt-5 flex gap-2">
+                            <div class="mt-5 flex items-center gap-3">
                                 <button type="button" :disabled="saving" @click="saveWeapon()" class="inline-flex items-center rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50">
                                     {{ __('i18n::messages.skins.equip') }}
                                 </button>
                                 <button type="button" x-show="equippedWeapon(selectedWeapon)" @click="removeWeapon()" class="rounded-lg border border-line px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10">
                                     {{ __('i18n::messages.skins.remove') }}
                                 </button>
+                                <span class="text-xs text-ink-faint">{{ __('i18n::messages.skins.both_teams_hint') }}</span>
                             </div>
                         </div>
                     </template>
                 </div>
             </template>
 
-            {{-- Knife / Gloves / Agent / Music: pick-a-card, no sub-attributes --}}
+            {{-- Knife / Gloves / Music: pick-a-card, applies to both teams at
+                 once. Agent is the exception - it stays scoped to whichever
+                 side the toggle above has selected. --}}
             <template x-if="section !== 'weapons'">
-                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                    <template x-for="item in currentCatalog()" :key="item.name">
-                        <button
-                            type="button"
-                            @click="pick(item)"
-                            class="rounded-lg border p-3 text-left text-sm transition-colors"
-                            :class="isEquipped(item) ? 'border-brand-strong bg-brand-soft' : 'border-line bg-surface hover:bg-surface-raised'"
-                        >
-                            <span class="block truncate font-medium" :class="isEquipped(item) ? 'text-brand-strong' : 'text-ink'" x-text="item.label"></span>
-                            <span x-show="isEquipped(item)" class="mt-1 block text-xs text-brand-strong">{{ __('i18n::messages.skins.equipped') }}</span>
-                        </button>
-                    </template>
+                <div>
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                        <template x-for="item in currentCatalog()" :key="item.name">
+                            <button
+                                type="button"
+                                @click="pick(item)"
+                                class="rounded-lg border p-3 text-left text-sm transition-colors"
+                                :class="isEquipped(item) ? 'border-brand-strong bg-brand-soft' : 'border-line bg-surface hover:bg-surface-raised'"
+                            >
+                                <span class="block truncate font-medium" :class="isEquipped(item) ? 'text-brand-strong' : 'text-ink'" x-text="item.label"></span>
+                                <span x-show="isEquipped(item)" class="mt-1 block text-xs text-brand-strong">{{ __('i18n::messages.skins.equipped') }}</span>
+                            </button>
+                        </template>
+                    </div>
+                    <p x-show="currentCatalog().length === 0" class="mt-2 text-sm text-ink-faint">{{ __('i18n::messages.skins.no_data') }}</p>
+                    <p class="mt-3 text-xs text-ink-faint" x-show="section !== 'agent'">{{ __('i18n::messages.skins.both_teams_hint') }}</p>
                 </div>
-                <p x-show="currentCatalog().length === 0" class="mt-2 text-sm text-ink-faint">{{ __('i18n::messages.skins.no_data') }}</p>
             </template>
         </div>
     </div>
@@ -186,7 +212,9 @@
                 error: false,
                 profile: null,
                 weapons: [],
+                weaponCategory: 'all',
                 paints: [],
+                paintNames: {},
                 selectedWeapon: null,
                 weaponForm: { weapon_paint_id: 0, weapon_wear: 0.01, weapon_seed: 0, weapon_stattrak: false, weapon_nametag: '' },
                 knives: [],
@@ -201,6 +229,19 @@
                     { key: 'agent', label: @js(__('i18n::messages.skins.agent')) },
                     { key: 'music', label: @js(__('i18n::messages.skins.music')) },
                 ],
+
+                weaponCategories: [
+                    { key: 'all', label: @js(__('i18n::messages.skins.category_all')) },
+                    { key: 'rifle', label: @js(__('i18n::messages.skins.category_rifle')) },
+                    { key: 'pistol', label: @js(__('i18n::messages.skins.category_pistol')) },
+                    { key: 'smg', label: @js(__('i18n::messages.skins.category_smg')) },
+                    { key: 'heavy', label: @js(__('i18n::messages.skins.category_heavy')) },
+                ],
+
+                filteredWeapons() {
+                    if (this.weaponCategory === 'all') return this.weapons;
+                    return this.weapons.filter((w) => w.category === this.weaponCategory);
+                },
 
                 csrf() {
                     return document.querySelector('meta[name=csrf-token]').content;
@@ -229,6 +270,12 @@
                     try {
                         this.profile = await this.fetchJson(`/api/skins/${this.ownSteamId}`);
                         this.weapons = await this.fetchJson('/api/skins/catalog/weapons');
+                        // Global paint-id -> name/rarity map (one request for
+                        // every weapon combined) so the list view can label an
+                        // equipped paint without first opening that weapon's
+                        // own paint picker - previously this showed a bare
+                        // "#1147" until the weapon had been opened once.
+                        this.paintNames = await this.fetchJson('/api/skins/catalog/paint-names').catch(() => ({}));
                     } catch (e) {
                         this.error = true;
                     } finally {
@@ -259,9 +306,16 @@
                     return [];
                 },
 
+                // Knife/gloves/music apply to both teams at once, so team 2
+                // (T) is read as the canonical "is this equipped" state -
+                // an equip action always writes both, so the two only ever
+                // disagree on data set before this behaviour existed. Agent
+                // stays genuinely per-team.
                 rowsFor(slot) {
                     const key = { knife: 'knife', gloves: 'gloves', agent: 'agents', music: 'music' }[slot];
-                    return (this.profile?.[key] ?? []).filter((r) => r.weapon_team === this.team);
+                    const rows = this.profile?.[key] ?? [];
+                    const team = slot === 'agent' ? this.team : 2;
+                    return rows.filter((r) => r.weapon_team === team);
                 },
 
                 isEquipped(item) {
@@ -273,16 +327,16 @@
                 },
 
                 equippedWeapon(weapon) {
-                    const row = (this.profile?.skins ?? []).find((r) => r.weapon_team === this.team && r.weapon_defindex === weapon.index);
+                    const row = (this.profile?.skins ?? []).find((r) => r.weapon_team === 2 && r.weapon_defindex === weapon.index);
                     if (!row || !row.weapon_paint_id) return null;
-                    const paint = this.paints.find((p) => p.index === row.weapon_paint_id);
+                    const paint = this.paintNames[row.weapon_paint_id];
                     return { ...row, paint_label: paint?.label ?? `#${row.weapon_paint_id}` };
                 },
 
                 async openWeapon(weapon) {
                     this.selectedWeapon = weapon;
                     this.paints = await this.fetchJson(`/api/skins/catalog/weapons/${weapon.name}/paints`).catch(() => []);
-                    const row = (this.profile?.skins ?? []).find((r) => r.weapon_team === this.team && r.weapon_defindex === weapon.index);
+                    const row = (this.profile?.skins ?? []).find((r) => r.weapon_team === 2 && r.weapon_defindex === weapon.index);
                     this.weaponForm = row
                         ? {
                             weapon_paint_id: row.weapon_paint_id ?? 0,
@@ -294,22 +348,34 @@
                         : { weapon_paint_id: 0, weapon_wear: 0.01, weapon_seed: 0, weapon_stattrak: false, weapon_nametag: '' };
                 },
 
+                async putSkin(slot, team, body) {
+                    const res = await fetch(`/api/skins/${this.ownSteamId}/${slot}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                        body: JSON.stringify({ ...body, team }),
+                    });
+                    if (!res.ok) throw new Error('request_failed');
+                },
+
+                // Every non-agent slot equips identically on both teams in
+                // one action - most skins here are cosmetically the same
+                // choice either side, and re-picking the same thing twice
+                // through a team tab was the exact friction this replaced.
                 async saveWeapon() {
                     this.saving = true;
                     this.error = false;
                     try {
-                        // The API upserts the whole row - carry over sticker/keychain
-                        // fields from the existing row untouched so equipping a paint
-                        // here never silently wipes stickers applied elsewhere.
-                        const existing = (this.profile?.skins ?? []).find(
-                            (r) => r.weapon_team === this.team && r.weapon_defindex === this.selectedWeapon.index
-                        ) ?? {};
+                        for (const team of [2, 3]) {
+                            // The API upserts the whole row - carry over sticker/keychain
+                            // fields from each team's own existing row untouched so
+                            // equipping a paint here never silently wipes stickers
+                            // applied elsewhere, and one team's stickers never leak
+                            // onto the other's row.
+                            const existing = (this.profile?.skins ?? []).find(
+                                (r) => r.weapon_team === team && r.weapon_defindex === this.selectedWeapon.index
+                            ) ?? {};
 
-                        const res = await fetch(`/api/skins/${this.ownSteamId}/weapon`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                            body: JSON.stringify({
-                                team: this.team,
+                            await this.putSkin('weapon', team, {
                                 defindex: this.selectedWeapon.index,
                                 ...this.weaponForm,
                                 weapon_sticker_0: existing.weapon_sticker_0,
@@ -319,9 +385,8 @@
                                 weapon_sticker_4: existing.weapon_sticker_4,
                                 weapon_sticker_5: existing.weapon_sticker_5,
                                 weapon_keychain: existing.weapon_keychain,
-                            }),
-                        });
-                        if (!res.ok) throw new Error('request_failed');
+                            });
+                        }
                         this.profile = await this.fetchJson(`/api/skins/${this.ownSteamId}`);
                     } catch (e) {
                         this.error = true;
@@ -333,9 +398,11 @@
                 async removeWeapon() {
                     this.error = false;
                     try {
-                        const url = `/api/skins/${this.ownSteamId}/weapon?team=${this.team}&defindex=${this.selectedWeapon.index}`;
-                        const res = await fetch(url, { method: 'DELETE', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() } });
-                        if (!res.ok) throw new Error('request_failed');
+                        for (const team of [2, 3]) {
+                            const url = `/api/skins/${this.ownSteamId}/weapon?team=${team}&defindex=${this.selectedWeapon.index}`;
+                            const res = await fetch(url, { method: 'DELETE', headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() } });
+                            if (!res.ok) throw new Error('request_failed');
+                        }
                         this.profile = await this.fetchJson(`/api/skins/${this.ownSteamId}`);
                         this.selectedWeapon = null;
                     } catch (e) {
@@ -345,19 +412,20 @@
 
                 async pick(item) {
                     this.error = false;
-                    const body = { team: this.team };
+                    const body = {};
                     if (this.section === 'knife') body.knife = item.name;
                     if (this.section === 'gloves') body.weapon_defindex = item.index;
                     if (this.section === 'agent') body.agent_index = item.index;
                     if (this.section === 'music') body.music_id = item.index;
 
                     try {
-                        const res = await fetch(`/api/skins/${this.ownSteamId}/${this.section}`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                            body: JSON.stringify(body),
-                        });
-                        if (!res.ok) throw new Error('request_failed');
+                        // Agent is team-locked - only the currently toggled
+                        // side. Everything else writes both teams so one
+                        // click is the whole action.
+                        const teams = this.section === 'agent' ? [this.team] : [2, 3];
+                        for (const team of teams) {
+                            await this.putSkin(this.section, team, body);
+                        }
                         this.profile = await this.fetchJson(`/api/skins/${this.ownSteamId}`);
                     } catch (e) {
                         this.error = true;

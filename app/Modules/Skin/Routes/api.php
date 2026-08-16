@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api/skins')->middleware('steam.auth')->group(function (): void {
     Route::get('catalog/weapons', [SkinController::class, 'catalogWeapons'])->name('skin.catalog.weapons');
     Route::get('catalog/weapons/{weapon}/paints', [SkinController::class, 'catalogPaintkits'])->name('skin.catalog.paints');
+    Route::get('catalog/paint-names', [SkinController::class, 'catalogPaintNames'])->name('skin.catalog.paint-names');
     Route::get('catalog/knives', [SkinController::class, 'catalogKnives'])->name('skin.catalog.knives');
     Route::get('catalog/gloves', [SkinController::class, 'catalogGloves'])->name('skin.catalog.gloves');
     Route::get('catalog/agents', [SkinController::class, 'catalogAgents'])->name('skin.catalog.agents');

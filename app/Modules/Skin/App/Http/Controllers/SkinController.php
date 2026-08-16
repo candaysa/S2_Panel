@@ -61,6 +61,11 @@ class SkinController
         return Api::success($this->catalog->paintkits($weapon));
     }
 
+    public function catalogPaintNames(): JsonResponse
+    {
+        return Api::success($this->catalog->paintNames());
+    }
+
     public function catalogKnives(): JsonResponse
     {
         return Api::success($this->catalog->knives());

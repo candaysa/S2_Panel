@@ -34,20 +34,99 @@ class CatalogService
     ];
 
     /**
+     * Buy-menu-style grouping for the weapons() list, matching CS2's own
+     * category split (snipers live under Rifles there too, not a category
+     * of their own). Anything not listed falls back to 'rifle' rather than
+     * disappearing from every filter.
+     */
+    private const WEAPON_CATEGORIES = [
+        'weapon_glock' => 'pistol', 'weapon_usp_silencer' => 'pistol', 'weapon_hkp2000' => 'pistol',
+        'weapon_elite' => 'pistol', 'weapon_p250' => 'pistol', 'weapon_fiveseven' => 'pistol',
+        'weapon_tec9' => 'pistol', 'weapon_cz75a' => 'pistol', 'weapon_deagle' => 'pistol',
+        'weapon_revolver' => 'pistol', 'weapon_taser' => 'pistol',
+
+        'weapon_mac10' => 'smg', 'weapon_mp9' => 'smg', 'weapon_mp7' => 'smg',
+        'weapon_mp5sd' => 'smg', 'weapon_ump45' => 'smg', 'weapon_p90' => 'smg', 'weapon_bizon' => 'smg',
+
+        'weapon_famas' => 'rifle', 'weapon_galilar' => 'rifle', 'weapon_ak47' => 'rifle',
+        'weapon_m4a1' => 'rifle', 'weapon_m4a1_silencer' => 'rifle', 'weapon_sg556' => 'rifle',
+        'weapon_aug' => 'rifle', 'weapon_ssg08' => 'rifle', 'weapon_awp' => 'rifle',
+        'weapon_scar20' => 'rifle', 'weapon_g3sg1' => 'rifle',
+
+        'weapon_nova' => 'heavy', 'weapon_xm1014' => 'heavy', 'weapon_mag7' => 'heavy',
+        'weapon_sawedoff' => 'heavy', 'weapon_m249' => 'heavy', 'weapon_negev' => 'heavy',
+    ];
+
+    /**
      * Skinnable guns: present in items.json (for the Index/defindex) AND
      * weapon_to_paintkits.json (proof a paintkit list exists for it).
      *
-     * @return array<int, array{name: string, index: int, label: string}>
+     * Knives (weapon_knife_*, weapon_bayonet) are deliberately excluded even
+     * though they also appear in weapon_to_paintkits.json (knife finishes
+     * are paintkits too) - they have their own knives() catalog and their
+     * own panel tab; leaving them in here is what made rifle/pistol/etc
+     * filters show knives mixed in with guns.
+     *
+     * @return array<int, array{name: string, index: int, label: string, category: string}>
      */
     public function weapons(): array
     {
         $paintable = $this->rawPaintkits();
 
         return collect($this->rawItems())
-            ->filter(fn (array $item): bool => str_starts_with((string) ($item['Name'] ?? ''), 'weapon_')
-                && array_key_exists($item['Name'], $paintable))
-            ->map(fn (array $item): array => $this->slim($item))
+            ->filter(function (array $item): bool {
+                $name = (string) ($item['Name'] ?? '');
+
+                return str_starts_with($name, 'weapon_')
+                    && ! str_starts_with($name, 'weapon_knife_')
+                    && $name !== 'weapon_bayonet';
+            })
+            ->filter(fn (array $item): bool => array_key_exists($item['Name'], $paintable))
+            ->map(function (array $item): array {
+                $slim = $this->slim($item);
+                $slim['category'] = self::WEAPON_CATEGORIES[$item['Name']] ?? 'rifle';
+
+                return $slim;
+            })
             ->values()->all();
+    }
+
+    /**
+     * Paint id -> {label, rarity_color}, merged across every weapon's
+     * paintkit list. Paint ids are a single global numbering (Valve's
+     * paintkits.txt) reused across every compatible weapon, not a
+     * per-weapon sequence - verified against the live catalog with zero
+     * id/name collisions across 1400+ ids - so one flat map is enough to
+     * label any equipped paint without fetching that weapon's own paint
+     * list first (which the weapon list view has no reason to have loaded
+     * yet).
+     *
+     * @return array<int, array{label: string, rarity_color: ?string}>
+     */
+    public function paintNames(): array
+    {
+        return Cache::remember("catalog:paint-names:".app()->getLocale(), self::TTL, function (): array {
+            $map = [];
+
+            foreach ($this->rawPaintkits() as $weapon => $paints) {
+                if (str_starts_with($weapon, 'weapon_knife_') || $weapon === 'weapon_bayonet') {
+                    continue;
+                }
+
+                foreach ($paints as $entry) {
+                    $index = $entry['Index'] ?? null;
+
+                    if ($index === null) {
+                        continue;
+                    }
+
+                    $slim = $this->slim($entry, withRarity: true);
+                    $map[(int) $index] = ['label' => $slim['label'], 'rarity_color' => $slim['rarity_color']];
+                }
+            }
+
+            return $map;
+        });
     }
 
     /**
