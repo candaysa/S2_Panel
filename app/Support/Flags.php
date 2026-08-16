@@ -57,9 +57,30 @@ final class Flags
             return null;
         }
 
+        $groups = self::explode($admin->groups);
+        $flags = self::explode($admin->flags);
+
+        // An admin's own `flags` column is frequently empty by design - this
+        // live install assigns every real admin permissions purely through a
+        // group (Owner/Admin/Alt_Admin/...), never per-row. Reading only the
+        // row's own column left every group-only admin with zero effective
+        // flags, silently failing every flag:admin.xxx gate in the panel
+        // (RCON, Admins, Groups, Cheat Check, Audit) for anyone but the
+        // owner - group membership must grant what the group defines.
+        if ($groups !== []) {
+            $groupFlags = DB::connection('swiftly')
+                ->table('admin_groups')
+                ->whereIn('name', $groups)
+                ->pluck('flags')
+                ->flatMap(fn (?string $csv): array => self::explode($csv))
+                ->all();
+
+            $flags = array_values(array_unique([...$flags, ...$groupFlags]));
+        }
+
         return [
-            'flags' => self::explode($admin->flags),
-            'groups' => self::explode($admin->groups),
+            'flags' => $flags,
+            'groups' => $groups,
             'immunity' => (int) $admin->immunity,
         ];
     }
@@ -83,9 +104,25 @@ final class Flags
             return null;
         }
 
+        $groups = self::decodeJson($admin->Groups);
+        $flags = self::decodeJson($admin->Permissions);
+
+        // Same reasoning as forCs2Admin() - a group's own Permissions have
+        // to count toward what a member can do, not just the admin row's.
+        if ($groups !== []) {
+            $groupFlags = DB::connection('swiftly')
+                ->table('groups')
+                ->whereIn('Name', $groups)
+                ->pluck('Permissions')
+                ->flatMap(fn (?string $json): array => self::decodeJson($json))
+                ->all();
+
+            $flags = array_values(array_unique([...$flags, ...$groupFlags]));
+        }
+
         return [
-            'flags' => self::decodeJson($admin->Permissions),
-            'groups' => self::decodeJson($admin->Groups),
+            'flags' => $flags,
+            'groups' => $groups,
             'immunity' => (int) $admin->Immunity,
         ];
     }

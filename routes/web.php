@@ -91,19 +91,23 @@ Route::middleware('steam.auth')->group(function (): void {
         'canDecide' => \App\Support\TicketAccess::canDecide(auth()->user()),
     ]))->name('tickets.page');
 
+    // Bans is read-only here (nothing is created or lifted from this page)
+    // and every player is already named on it, so there is no extra
+    // exposure in letting any logged-in player look their own record up -
+    // same "auth" tier as vip/skins/tickets above, not staff-gated.
+    Route::view('/bans', 'bans.index')->name('bans.page');
+
     // Staff pages. The page itself now carries the same flag its API
-    // requires, so a signed-in player cannot open an RCON console or a ban
-    // list at all - previously the shell rendered for anyone with a session
-    // and only the data was withheld, which showed players the shape of
-    // tools they have no business seeing. Each gate mirrors the matching
-    // Routes/api.php exactly; the sidebar hides these for the same set.
+    // requires, so a signed-in player cannot open an RCON console or an
+    // admin list at all - previously the shell rendered for anyone with a
+    // session and only the data was withheld, which showed players the
+    // shape of tools they have no business seeing. Each gate mirrors the
+    // matching Routes/api.php exactly; the sidebar hides these for the
+    // same set.
     Route::get('/admins', fn () => view('admin.index', [
         'adminPlugin' => app(\App\Modules\Settings\App\Services\SettingService::class)->get('admin_plugin', 'cs2_admin'),
     ]))->middleware('flag:admin.root')->name('admins.page');
     Route::view('/groups', 'admin.groups')->middleware('flag:admin.root')->name('groups.page');
-    Route::view('/bans', 'bans.index')
-        ->middleware('flag:admin.ban,admin.mute,admin.kick,admin.generic')
-        ->name('bans.page');
     Route::view('/rcon', 'rcon.index')->middleware('flag:admin.rcon')->name('rcon.page');
     Route::view('/audit', 'audit.index')->middleware('flag:admin.root')->name('audit.page');
     Route::view('/cheat-check', 'cheatcheck.index')->middleware('flag:admin.generic')->name('cheatcheck.page');

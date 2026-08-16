@@ -18,6 +18,7 @@
                         <th class="px-4 py-3"><x-sort-th key="actor_name" :label="__('i18n::messages.audit.actor')" /></th>
                         <th class="px-4 py-3"><x-sort-th key="action" :label="__('i18n::messages.audit.action')" /></th>
                         <th class="px-4 py-3">{{ __('i18n::messages.audit.target') }}</th>
+                        <th class="hidden px-4 py-3 lg:table-cell">{{ __('i18n::messages.audit.source') }}</th>
                         <th class="px-4 py-3"><x-sort-th key="created_at" :label="__('i18n::messages.audit.when')" /></th>
                     </tr>
                 </thead>
@@ -40,9 +41,10 @@
                                 </a>
                             </td>
                             <td class="px-4 py-3">
-                                <span class="inline-flex items-center rounded-full bg-surface-raised px-2.5 py-0.5 font-mono text-xs" x-text="log.action"></span>
+                                <span :title="log.action" x-text="describe(log)"></span>
                             </td>
                             <td class="px-4 py-3" x-text="(log.target_type ?? '') + (log.target_id ? ' #' + log.target_id : '')"></td>
+                            <td class="hidden px-4 py-3 font-mono text-xs lg:table-cell" x-text="log.ip_address || '—'"></td>
                             <td class="px-4 py-3" x-text="formatDate(log.created_at)"></td>
                         </tr>
                     </template>
@@ -66,6 +68,7 @@
                 sort: 'created_at',
                 dir: 'desc',
                 logs: [],
+                t: @js(__('i18n::messages.audit')),
 
                 async load() {
                     this.loading = true;
@@ -105,6 +108,64 @@
                 // bio instead of the handle in the snapshot itself.
                 actorName(log) {
                     return log.actor_current_name || log.actor_name || '—';
+                },
+
+                // Turns a raw "module.verb_phrase" action key into a
+                // readable sentence. Covers the actions every module
+                // actually logs (see AuditService callers); anything new or
+                // uncovered still reads fine via the generic fallback at the
+                // bottom, which just humanizes the key itself rather than
+                // showing the dotted machine string as-is.
+                describe(log) {
+                    const d = log.details || {};
+                    const t = log.target_id ?? '';
+                    const name = d.name || d.player_name || t;
+
+                    const sentences = {
+                        'admin.created': () => this.t.action_admin_created.replace(':name', name),
+                        'admin.updated': () => this.t.action_admin_updated.replace(':name', name),
+                        'admin.disabled': () => this.t.action_admin_disabled.replace(':name', name),
+                        'admin_group.created': () => this.t.action_group_created.replace(':name', t),
+                        'admin_group.updated': () => this.t.action_group_updated.replace(':name', t),
+                        'admin_group.deleted': () => this.t.action_group_deleted.replace(':name', t),
+                        'rank.points_updated': () => this.t.action_points_updated
+                            .replace(':old', d.old_value ?? '?').replace(':new', d.new_value ?? '?'),
+                        'appeal.created': () => this.t.action_appeal_created,
+                        'appeal.decided': () => this.t.action_appeal_decided.replace(':status', d.status ?? '?'),
+                        'report.created': () => this.t.action_report_created.replace(':type', d.ticket_type ?? '?'),
+                        'report.replied': () => this.t.action_report_replied.replace(':id', t),
+                        'report.closed': () => this.t.action_report_closed.replace(':id', t),
+                        'report.deleted': () => this.t.action_report_deleted.replace(':id', t),
+                        'rcon.settings.saved': () => this.t.action_rcon_saved.replace(':server', d.server_id ?? t),
+                        'rcon.settings.removed': () => this.t.action_rcon_removed.replace(':server', d.server_id ?? t),
+                        'rcon.command.executed': () => this.t.action_rcon_executed.replace(':server', d.server_id ?? t),
+                        'server.created': () => this.t.action_server_created.replace(':address', d.address ?? t),
+                        'server.deleted': () => this.t.action_server_deleted.replace(':address', d.address ?? t),
+                        'server.hidden': () => this.t.action_server_hidden,
+                        'server.shown': () => this.t.action_server_shown,
+                        'vip.granted': () => this.t.action_vip_granted,
+                        'vip.revoked': () => this.t.action_vip_revoked,
+                        'plugin.installed': () => this.t.action_plugin_installed.replace(':name', d.name ?? t),
+                        'plugin.enabled': () => this.t.action_plugin_enabled.replace(':name', t),
+                        'plugin.disabled': () => this.t.action_plugin_disabled.replace(':name', t),
+                        'plugin.uninstalled': () => this.t.action_plugin_uninstalled.replace(':name', d.name ?? t),
+                        'module.enabled': () => this.t.action_module_enabled.replace(':name', t),
+                        'module.disabled': () => this.t.action_module_disabled.replace(':name', t),
+                        'module.admin_plugin_changed': () => this.t.action_admin_plugin_changed
+                            .replace(':from', d.from ?? '?').replace(':to', d.to ?? '?'),
+                        'panel.updated': () => this.t.action_panel_updated.replace(':version', t),
+                        'cheat_check.opened': () => this.t.action_cheatcheck_opened.replace(':name', name),
+                        'cheat_check.completed': () => this.t.action_cheatcheck_completed.replace(':status', d.status ?? '?'),
+                        'cheat_check.deleted': () => this.t.action_cheatcheck_deleted.replace(':id', t),
+                    };
+
+                    if (sentences[log.action]) return sentences[log.action]();
+
+                    // Generic fallback: "module.some_verb" -> "Some verb" -
+                    // still far more readable than the raw dotted key.
+                    const parts = String(log.action).split('.');
+                    const words = (parts[parts.length - 1] || '').replace(/_/g, ' ');
+                    return words.charAt(0).toUpperCase() + words.slice(1);
                 },
 
                 init() { this.load(); },

@@ -30,6 +30,10 @@ abstract class Punishment extends Model
      */
     private const ACTIVE_STATUSES = ['active', '1'];
 
+    /** Manually lifted before expiry - the third bucket CS2_Admin tracks
+     *  separately from "ran out on its own" (status='expired'/'3'). */
+    private const REMOVED_STATUSES = ['unbanned', 'unmuted', 'ungagged', '2'];
+
     protected function casts(): array
     {
         return [
@@ -68,5 +72,25 @@ abstract class Punishment extends Model
             ->whereNotNull('status')->whereNotIn('status', self::ACTIVE_STATUSES)
             ->orWhere(fn (Builder $q): Builder => $q
                 ->whereNotNull('expires_at')->where('expires_at', '<=', now())));
+    }
+
+    /**
+     * A three-state read for display: 'active' (still in force), 'removed'
+     * (an admin lifted it early - CS2_Admin tracks this separately from a
+     * natural expiry), or 'expired' (ran out, or any status this panel
+     * doesn't recognize). Mirrors scopeActive/scopeExpired's status+expiry
+     * logic rather than trusting the raw column alone, so a row stuck on
+     * status='active' past its own expires_at still reads as expired.
+     */
+    public function displayStatus(): string
+    {
+        if ($this->status !== null && in_array((string) $this->status, self::REMOVED_STATUSES, true)) {
+            return 'removed';
+        }
+
+        $isActiveStatus = $this->status === null || in_array((string) $this->status, self::ACTIVE_STATUSES, true);
+        $expired = $this->expires_at !== null && $this->expires_at->lte(now());
+
+        return $isActiveStatus && ! $expired ? 'active' : 'expired';
     }
 }

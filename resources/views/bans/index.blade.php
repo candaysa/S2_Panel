@@ -47,6 +47,19 @@
             formatDate(value) {
                 return value ? new Date(value).toLocaleString() : '—';
             },
+            statusLabels: {
+                active: @js(__('i18n::messages.bans.status_active')),
+                removed: @js(__('i18n::messages.bans.status_removed')),
+                expired: @js(__('i18n::messages.bans.status_expired')),
+            },
+            statusLabel(status) {
+                return this.statusLabels[status] ?? this.statusLabels.active;
+            },
+            statusBadge(status) {
+                if (status === 'removed') return 'bg-sky-500/10 text-sky-400';
+                if (status === 'expired') return 'bg-surface-raised text-ink-faint';
+                return 'bg-brand-soft text-brand-strong';
+            },
         }"
         x-init="init()"
     >
@@ -129,9 +142,9 @@
                             <td class="px-4 py-3" x-text="row.expires_at ? formatDate(row.expires_at) : '{{ __('i18n::messages.bans.never') }}'"></td>
                             <td class="px-4 py-3" x-show="type !== 'warn'">
                                 <span
-                                    :class="(row.status ?? 'active') === 'active' ? 'bg-brand-soft text-brand-strong' : 'bg-surface-raised text-ink-faint'"
+                                    :class="statusBadge(row.status)"
                                     class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
-                                    x-text="row.status ?? 'active'"
+                                    x-text="statusLabel(row.status)"
                                 ></span>
                             </td>
                         </tr>

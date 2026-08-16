@@ -19,11 +19,11 @@
             ['tickets.page', __('i18n::messages.nav.tickets'), 'flag', 'auth'],
             ['vip.page', __('i18n::messages.nav.vip'), 'star', 'auth'],
             ['skins.page', __('i18n::messages.nav.skins'), 'palette', 'auth'],
+            ['bans.page', __('i18n::messages.nav.bans'), 'ban', 'auth'],
         ]],
         [__('i18n::messages.nav.section_moderation'), [
             ['admins.page', __('i18n::messages.nav.admin'), 'users', ['admin.root']],
             ['groups.page', __('i18n::messages.nav.groups'), 'group', ['admin.root']],
-            ['bans.page', __('i18n::messages.nav.bans'), 'ban', ['admin.ban', 'admin.mute', 'admin.kick', 'admin.generic']],
             ['cheatcheck.page', __('i18n::messages.nav.cheat_check'), 'shield', ['admin.generic']],
             ['rcon.page', __('i18n::messages.nav.rcon'), 'terminal', ['admin.rcon']],
             ['audit.page', __('i18n::messages.nav.audit'), 'list', ['admin.root']],

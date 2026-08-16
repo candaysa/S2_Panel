@@ -74,15 +74,19 @@ class BanService
 
         $paginator = $query->orderBy($column, $dir)->paginate($perPage);
 
-        $this->overlayAvatars($paginator);
+        $this->decorate($paginator);
 
         return $paginator;
     }
 
     /**
+     * Avatar lookup plus a normalized three-state status - see
+     * Punishment::displayStatus(). Both are presentation concerns the raw
+     * plugin row doesn't carry on its own.
+     *
      * @param  LengthAwarePaginator<int, Punishment>  $paginator
      */
-    private function overlayAvatars(LengthAwarePaginator $paginator): void
+    private function decorate(LengthAwarePaginator $paginator): void
     {
         $rows = $paginator->getCollection();
 
@@ -99,6 +103,7 @@ class BanService
         $rows->transform(function (Punishment $row) use ($profiles): array {
             $data = $row->toArray();
             $data['avatar'] = $profiles[$row->steamid]['avatar'] ?? null;
+            $data['status'] = $row->displayStatus();
 
             return $data;
         });
