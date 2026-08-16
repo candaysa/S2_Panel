@@ -26,16 +26,36 @@
 // source rather than guessing, since a wrong technique here (e.g. their
 // separate ProjectedMaterial-based sticker system, which is NOT what the
 // base skin uses) would look worse than no texture at all.
+//
+// Lighting: the same repo also ships a studio environment.hdr, used here
+// via PMREMGenerator for real reflections on metal parts - a flat
+// ambient+directional setup alone leaves glossy/metallic materials looking
+// dull and plasticky.
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 const MODEL_BASE = 'https://raw.githubusercontent.com/LielXD/CS2-WeaponPaints-Website/main/src/%5Bmodels%5D/';
 const TEXTURE_BASE = 'https://raw.githubusercontent.com/LielXD/CS2-WeaponPaints-Website/main/src/%5Btextures%5D/';
+const ENVIRONMENT_URL = 'https://raw.githubusercontent.com/LielXD/CS2-WeaponPaints-Website/main/src/environment.hdr';
 
 export function modelUrl(name) {
     return `${MODEL_BASE}${encodeURIComponent(name)}.glb`;
+}
+
+// Fetched once per page session and reused across every mount() call - it's
+// the same studio lighting for every weapon, and at ~1.5MB it's not
+// something worth re-downloading each time someone opens a different
+// weapon's 3D tab. Only the (cheap, GPU-side) PMREM pre-filter step runs
+// per-mount, since that has to happen against that mount's own renderer.
+let environmentPromise = null;
+function loadEnvironmentHdr() {
+    if (!environmentPromise) {
+        environmentPromise = new RGBELoader().loadAsync(ENVIRONMENT_URL).catch(() => null);
+    }
+    return environmentPromise;
 }
 
 // The source repo stores each file as whichever of .png/.webp it happened
@@ -113,10 +133,22 @@ export async function mount(container, weaponName, paintId) {
 
     const gltfLoader = new GLTFLoader();
     const textureLoader = new THREE.TextureLoader();
-    const gltf = await gltfLoader.loadAsync(modelUrl(weaponName));
+    const [gltf, hdrTexture] = await Promise.all([
+        gltfLoader.loadAsync(modelUrl(weaponName)),
+        loadEnvironmentHdr(),
+    ]);
 
     if (disposed) {
         return { dispose: () => {}, setPaint: async () => {} };
+    }
+
+    // Real environment reflections on metal parts instead of flat ambient
+    // light - PMREM pre-filtering is per-renderer, so it runs here even
+    // though the raw HDR texture itself was fetched once and is shared.
+    let pmremGenerator = null;
+    if (hdrTexture) {
+        pmremGenerator = new THREE.PMREMGenerator(renderer);
+        scene.environment = pmremGenerator.fromEquirectangular(hdrTexture).texture;
     }
 
     loadedRoot = gltf.scene;
@@ -203,6 +235,10 @@ export async function mount(container, weaponName, paintId) {
             resizeObserver.disconnect();
             controls.dispose();
             currentTextures.forEach((t) => t.dispose());
+            // Only the per-mount PMREM-filtered environment map, not the
+            // raw HDR texture it was generated from - that one is shared
+            // and cached at module scope for the next mount() to reuse.
+            if (pmremGenerator) pmremGenerator.dispose();
             scene.traverse((obj) => {
                 if (obj.geometry) obj.geometry.dispose();
                 if (obj.material) {
