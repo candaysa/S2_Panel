@@ -8,11 +8,13 @@ use Illuminate\Support\Facades\Route;
 | Ban module API routes
 |--------------------------------------------------------------------------
 |
-| Punishment records are read-only panel data. Access requires the steam
-| session plus any moderation flag – the owner always passes via RequireFlag.
+| Punishment records are read-only panel data - nothing here creates or
+| lifts a ban, that still happens in-game or via RCON. Any logged-in
+| player may read the list, same tier as VIP/Skins/Tickets; no moderation
+| flag required.
 |
 */
 
-Route::prefix('api/bans')->middleware(['steam.auth', 'flag:admin.ban,admin.mute,admin.kick,admin.generic'])->group(function (): void {
+Route::prefix('api/bans')->middleware(['steam.auth'])->group(function (): void {
     Route::get('/', [BanController::class, 'index'])->name('ban.index');
 });

@@ -58,10 +58,27 @@ class AdminController
         $profiles = SteamProfiles::many(collect($admins->items())->pluck('steamid')->all());
         $playtime = $this->admins->playtimeFor($admins->items());
 
-        $items = collect($admins->items())->map(function ($admin) use ($profiles, $playtime): array {
+        // A group's own flags count toward what a member can do (see
+        // Flags::for() - the same gap existed there until this session).
+        // Admins here are frequently assigned permissions purely through a
+        // group with nothing on their own `flags` column, which otherwise
+        // makes the list's Flags column look empty despite the admin having
+        // real access. groupFlags maps group name -> that group's flags.
+        $groupFlags = $this->admins->groups()->mapWithKeys(
+            fn (array $g): array => [$g['name'] => array_filter(explode(',', (string) ($g['flags'] ?? '')))
+            ]
+        );
+
+        $items = collect($admins->items())->map(function ($admin) use ($profiles, $playtime, $groupFlags): array {
             $row = is_array($admin) ? $admin : $admin->toArray();
             $row['avatar'] = $profiles[(string) ($row['steamid'] ?? '')]['avatar'] ?? null;
             $row['playtime_minutes'] = $playtime[(string) ($row['steamid'] ?? '')] ?? null;
+
+            $ownFlags = array_filter(explode(',', (string) ($row['flags'] ?? '')));
+            $inherited = collect(array_filter(explode(',', (string) ($row['groups'] ?? ''))))
+                ->flatMap(fn (string $g): array => $groupFlags[trim($g)] ?? [])
+                ->all();
+            $row['effective_flags'] = implode(',', array_unique([...$ownFlags, ...$inherited])) ?: null;
 
             return $row;
         })->all();

@@ -66,7 +66,7 @@
                                     <span x-show="!player.avatar" class="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold text-ink-faint" x-text="(player.name ?? '?').charAt(0).toUpperCase()"></span>
                                     <span class="min-w-0">
                                         <span class="block truncate font-medium text-ink transition-colors group-hover:text-brand-strong" x-text="player.name || '—'"></span>
-                                        <span class="block truncate font-mono text-xs text-ink-faint" x-text="player.steam"></span>
+                                        <span class="block truncate text-xs text-ink-faint" x-text="lastSeen(player)"></span>
                                     </span>
                                 </a>
                             </td>
@@ -119,7 +119,7 @@
                         <img x-show="player.avatar" :src="player.avatar" alt="" loading="lazy" class="size-9 shrink-0 rounded-full object-cover ring-1 ring-line">
                         <div class="min-w-0 flex-1">
                             <p class="truncate font-medium text-ink" x-text="player.name || '—'"></p>
-                            <p class="truncate font-mono text-xs text-ink-faint" x-text="player.steam"></p>
+                            <p class="truncate text-xs text-ink-faint" x-text="lastSeen(player)"></p>
                         </div>
                         <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" size="sm" class="shrink-0" />
                     </div>
@@ -190,6 +190,7 @@
                 canEdit: @js($canEditPoints ?? false),
 
                 labels: @js(__('i18n::messages.rank_tiers')),
+                t: @js(__('i18n::messages.ranks')),
 
                 page: 1,
                 perPage: 50,
@@ -303,6 +304,19 @@
                     const hours = Math.floor((seconds ?? 0) / 3600);
                     if (hours >= 1) return hours.toLocaleString() + @js(__('i18n::messages.ranks.hours_short'));
                     return Math.floor((seconds ?? 0) / 60) + @js(__('i18n::messages.ranks.minutes_short'));
+                },
+
+                // Shown under the player's name instead of their raw
+                // SteamID - a bare STEAM_0:x:y string means nothing to a
+                // player browsing the leaderboard, but "seen 2 days ago"
+                // does.
+                lastSeen(player) {
+                    const unix = player.lastconnect;
+                    if (!unix) return '';
+                    const days = Math.floor((Date.now() / 1000 - unix) / 86400);
+                    if (days <= 0) return this.t.seen_today;
+                    if (days === 1) return this.t.seen_yesterday;
+                    return this.t.seen_days_ago.replace(':days', days);
                 },
 
                 startEdit(player) {

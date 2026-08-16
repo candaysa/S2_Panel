@@ -64,16 +64,26 @@
                                 </div>
                             </td>
 
-                            {{-- Flags are a comma-joined string in the plugin
-                                 table; split into chips, each coloured by
-                                 window.flagColorClass() so a flag reads the
-                                 same everywhere it appears in the panel. --}}
+                            {{-- Shows the admin's EFFECTIVE flags (own +
+                                 whatever their group(s) grant), not just the
+                                 admin row's own column - most admins here
+                                 carry permissions purely via a group, which
+                                 otherwise made this column look empty despite
+                                 real access. A flag earned only through a
+                                 group renders as an outline instead of solid
+                                 fill, and the edit form below still only ever
+                                 edits the admin's own flags. --}}
                             <td class="px-4 py-3">
                                 <div class="flex max-w-xs flex-wrap gap-1">
-                                    <template x-for="flag in chips(admin.flags)" :key="flag">
-                                        <span class="rounded px-1.5 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset" :class="flagColorClass(flag)" x-text="flag"></span>
+                                    <template x-for="flag in chips(admin.effective_flags)" :key="flag">
+                                        <span
+                                            class="rounded px-1.5 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset"
+                                            :class="chips(admin.flags).includes(flag) ? flagColorClass(flag) : 'bg-transparent text-ink-faint ring-line'"
+                                            :title="chips(admin.flags).includes(flag) ? '' : @js(__('i18n::messages.admins.flag_from_group'))"
+                                            x-text="flag"
+                                        ></span>
                                     </template>
-                                    <span x-show="chips(admin.flags).length === 0" class="text-ink-faint">—</span>
+                                    <span x-show="chips(admin.effective_flags).length === 0" class="text-ink-faint">—</span>
                                 </div>
                             </td>
 

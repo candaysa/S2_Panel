@@ -56,11 +56,13 @@ class BanTest extends TestCase
             ->assertOk();
     }
 
-    public function test_index_requires_moderation_flag(): void
+    public function test_index_is_visible_to_any_authenticated_player(): void
     {
+        // Read-only community tier, same as VIP/Skins/Tickets - no
+        // moderation flag required, just a logged-in session.
         $this->actingAs(User::factory()->create())
             ->getJson('/api/bans')
-            ->assertStatus(403);
+            ->assertOk();
     }
 
     public function test_owner_can_access_without_flag(): void
@@ -151,6 +153,23 @@ class BanTest extends TestCase
             ->getJson('/api/bans?status=expired')
             ->assertOk()
             ->assertJsonCount(2, 'data');
+    }
+
+    public function test_index_normalizes_status_for_display(): void
+    {
+        $this->insertBan(['target_name' => 'StillActive', 'status' => 'active']);
+        $this->insertBan(['target_name' => 'ManuallyLifted', 'status' => 'unbanned']);
+        $this->insertBan(['target_name' => 'RanOut', 'status' => 'active', 'expires_at' => now()->subHour()]);
+
+        $rows = $this->actingAs(User::factory()->owner()->create())
+            ->getJson('/api/bans?status=all')
+            ->assertOk()
+            ->json('data');
+
+        $byName = collect($rows)->keyBy('target_name');
+        $this->assertSame('active', $byName['StillActive']['status']);
+        $this->assertSame('removed', $byName['ManuallyLifted']['status']);
+        $this->assertSame('expired', $byName['RanOut']['status']);
     }
 
     public function test_index_with_status_all_ignores_state(): void
