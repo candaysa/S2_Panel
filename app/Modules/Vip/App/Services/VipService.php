@@ -2,8 +2,8 @@
 
 namespace App\Modules\Vip\App\Services;
 
-use App\Modules\Admin\App\Models\AdminPlaytime;
 use App\Modules\Audit\App\Services\AuditService;
+use App\Modules\Rank\App\Models\RankPlayer;
 use App\Modules\Vip\App\Models\VipServer;
 use App\Modules\Vip\App\Models\VipUser;
 use App\Models\User;
@@ -65,9 +65,19 @@ class VipService
     }
 
     /**
-     * Overlays avatar (Steam Web API, bulk) and playtime (Swiftly
-     * admin_playtime, bulk) onto each row, and derives active/expired from
-     * `expires` - VIPCore's own "0 = never expires" convention.
+     * Overlays avatar (Steam Web API, bulk) and playtime onto each row, and
+     * derives active/expired from `expires` - VIPCore's own "0 = never
+     * expires" convention.
+     *
+     * Playtime reads CS2_Ranks' rank_base.playtime (seconds, converted to
+     * minutes here to match the column's own unit) rather than the
+     * CS2_Admin plugin's admin_playtime table. admin_playtime only has a
+     * row for someone who has actually held staff - 40 rows total on this
+     * install versus 3000+ tracked players - so keying VIP's playtime
+     * column off it left it blank for every VIP who isn't also an admin,
+     * and for the ones who are, showed their staff console session time
+     * mislabeled as how long they've played. rank_base tracks every
+     * player CS2_Ranks has ever seen, which is what this column is for.
      *
      * @param  Collection<int, VipUser>  $users
      */
@@ -78,6 +88,7 @@ class VipService
         }
 
         $ids64 = $users->map(fn (VipUser $u): string => SteamId::fromAccountId((int) $u->account_id)->steamId64())->all();
+        $ids2 = $users->map(fn (VipUser $u): string => SteamId::fromAccountId((int) $u->account_id)->steamId2())->all();
 
         try {
             $profiles = SteamProfiles::many($ids64);
@@ -86,19 +97,20 @@ class VipService
         }
 
         try {
-            $playtime = AdminPlaytime::query()->whereIn('steamid', $ids64)->pluck('playtime_minutes', 'steamid');
+            $playtimeSeconds = RankPlayer::query()->whereIn('steam', $ids2)->pluck('playtime', 'steam');
         } catch (Throwable) {
-            // admin_playtime is a separate, optional plugin table.
-            $playtime = collect();
+            // rank_base belongs to the optional Rank module.
+            $playtimeSeconds = collect();
         }
 
         $now = now()->timestamp;
 
-        $users->transform(function (VipUser $u) use ($profiles, $playtime, $now): array {
+        $users->transform(function (VipUser $u) use ($profiles, $playtimeSeconds, $now): array {
             $id64 = SteamId::fromAccountId((int) $u->account_id)->steamId64();
+            $id2 = SteamId::fromAccountId((int) $u->account_id)->steamId2();
             $row = $u->toArray();
             $row['avatar'] = $profiles[$id64]['avatar'] ?? null;
-            $row['playtime_minutes'] = (int) ($playtime[$id64] ?? 0);
+            $row['playtime_minutes'] = (int) floor(($playtimeSeconds[$id2] ?? 0) / 60);
             $row['active'] = $u->expires === 0 || $u->expires > $now;
 
             return $row;
