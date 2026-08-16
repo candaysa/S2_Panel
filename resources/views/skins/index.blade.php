@@ -255,13 +255,19 @@
                 </div>
             </template>
 
-            {{-- Knife / Gloves / Music: pick-a-card, applies to both teams at
-                 once. Agent is the exception - it stays scoped to whichever
-                 side the toggle above has selected. Knives additionally get
-                 a small 3D peek button - a real GLB model exists for every
-                 knife in the same source used for weapons, though with no
-                 texture (our schema has no per-knife paint data, just a
-                 type choice), so it shows the bare model shape only. --}}
+            {{-- Knife / Gloves / Agent / Music: pick-a-card, applies to both
+                 teams at once. Agent is the exception - it stays scoped to
+                 whichever side the toggle above has selected.
+                 cardImageUrl() picks a source per section: knives reuse the
+                 same flat weapon-icon set as the 2D weapon preview, agents
+                 and music kits join against a small id lookup (see
+                 CatalogService::agents() / musicImageUrl()) - both are best-
+                 effort, so a missing picture just hides the <img> rather
+                 than showing a broken-image icon. Gloves have no flat image
+                 anywhere in either source, but the model+texture behind
+                 every glove *type* is the same asset used for weapons (its
+                 own numeric id, not its name), so they get the knife's 3D
+                 peek button instead. --}}
             <template x-if="section !== 'weapons'">
                 <div>
                     <div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
@@ -270,16 +276,27 @@
                                 <button
                                     type="button"
                                     @click="pick(item)"
-                                    class="w-full rounded-lg border p-3 text-left text-sm transition-colors"
+                                    class="w-full overflow-hidden rounded-lg border text-left text-sm transition-colors"
                                     :class="isEquipped(item) ? 'border-brand-strong bg-brand-soft' : 'border-line bg-surface hover:bg-surface-raised'"
                                 >
-                                    <span class="block truncate pr-6 font-medium" :class="isEquipped(item) ? 'text-brand-strong' : 'text-ink'" x-text="item.label"></span>
-                                    <span x-show="isEquipped(item)" class="mt-1 block text-xs text-brand-strong">{{ __('i18n::messages.skins.equipped') }}</span>
+                                    <div class="flex h-16 items-center justify-center bg-canvas" x-show="cardImageUrl(item)">
+                                        <img
+                                            :src="cardImageUrl(item)"
+                                            alt=""
+                                            loading="lazy"
+                                            class="max-h-full max-w-full object-contain p-1.5"
+                                            @@error="$el.closest('div').style.display = 'none'"
+                                        >
+                                    </div>
+                                    <div class="p-3">
+                                        <span class="block truncate pr-6 font-medium" :class="isEquipped(item) ? 'text-brand-strong' : 'text-ink'" x-text="item.label"></span>
+                                        <span x-show="isEquipped(item)" class="mt-1 block text-xs text-brand-strong">{{ __('i18n::messages.skins.equipped') }}</span>
+                                    </div>
                                 </button>
                                 <button
                                     type="button"
-                                    x-show="section === 'knife'"
-                                    @click.stop="openKnife3d(item)"
+                                    x-show="section === 'knife' || section === 'gloves'"
+                                    @click.stop="section === 'knife' ? openKnife3d(item) : openGlove3d(item)"
                                     class="absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium text-ink-faint transition-colors hover:bg-surface-raised hover:text-ink"
                                     :title="@js(__('i18n::messages.skins.preview_3d'))"
                                 >{{ __('i18n::messages.skins.preview_3d') }}</button>
@@ -442,6 +459,27 @@
                     return `https://raw.githubusercontent.com/Nereziel/cs2-WeaponPaints/main/website/img/skins/${weaponName}${suffix}.png`;
                 },
 
+                // Same flat-image set as skinImageUrl() also happens to
+                // publish one icon per music kit id - no paint/suffix
+                // concept here, just the kit's own id.
+                musicImageUrl(id) {
+                    if (!id) return '';
+                    return `https://raw.githubusercontent.com/Nereziel/cs2-WeaponPaints/main/website/img/skins/music_kit-${id}.png`;
+                },
+
+                // Picture source per picker section - each catalog type
+                // reached this differently (see the template comment above
+                // the card grid): knives reuse the weapon icon set directly,
+                // agents/music carry a pre-resolved `image` from the API
+                // (agents) or build one from their id (music), and gloves
+                // have no flat image at all (they get a 3D peek instead).
+                cardImageUrl(item) {
+                    if (this.section === 'knife') return this.skinImageUrl(item.name, 0);
+                    if (this.section === 'agent') return item.image || '';
+                    if (this.section === 'music') return this.musicImageUrl(item.index);
+                    return '';
+                },
+
                 async fetchJson(url) {
                     const res = await fetch(url, { headers: { Accept: 'application/json' } });
                     if (!res.ok) throw new Error('request_failed');
@@ -584,6 +622,30 @@
                 closeKnife3d() {
                     if (this.knife3d.viewer) { this.knife3d.viewer.dispose(); this.knife3d.viewer = null; }
                     this.knife3d.open = false;
+                },
+
+                // Gloves have no per-name model/texture - the catalog's
+                // `index` for a glove *is* the same numeric id the shared
+                // asset source keys its model/texture folder by (e.g. 5027
+                // for Bloodhound Gloves), so this reuses the exact mount()
+                // call knives use, just with that id in place of a weapon
+                // name. Shares the knife3d modal/state - only one of the
+                // two peeks is ever open at once.
+                async openGlove3d(item) {
+                    this.knife3d.open = true;
+                    this.knife3d.label = item.label;
+                    this.knife3d.loading = true;
+                    this.knife3d.error = false;
+                    await this.$nextTick();
+                    try {
+                        const { webglSupported, mount } = await window.loadSkinViewer();
+                        if (!webglSupported()) throw new Error('no_webgl');
+                        this.knife3d.viewer = await mount(this.$refs.knifeViewer3d, String(item.index), 0);
+                    } catch (e) {
+                        this.knife3d.error = true;
+                    } finally {
+                        this.knife3d.loading = false;
+                    }
                 },
 
                 // Which of the two meshes bundled in every gun .glb this paint
