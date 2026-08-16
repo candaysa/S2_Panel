@@ -13,12 +13,7 @@
     $menuGroups = [
         [__('i18n::messages.nav.section_menu'), [
             ['dashboard', __('i18n::messages.nav.dashboard'), 'home', null],
-            ['servers.page', __('i18n::messages.nav.servers'), 'server', null],
             ['ranks.page', __('i18n::messages.nav.ranks'), 'trophy', null],
-            // Stats sits last in this group: it is the least-visited of the
-            // four and reads as a drill-down from the dashboard rather than a
-            // starting point.
-            ['stats.page', __('i18n::messages.nav.stats'), 'chart', null],
         ]],
         [__('i18n::messages.nav.section_community'), [
             ['tickets.page', __('i18n::messages.nav.tickets'), 'flag', 'auth'],
@@ -38,6 +33,7 @@
     $user = \App\Support\Access::user();
     $isOwner = \App\Support\Access::isOwner();
     $userFlags = $isOwner ? [] : \App\Support\Access::flags();
+    $notificationsEnabled = app(\App\Support\ModuleRegistry::class)->isEnabled('health');
 
     $canSee = function (?array $gate) use ($user, $isOwner, $userFlags): bool {
         if ($gate === null) {
@@ -117,17 +113,51 @@
 
     <div class="border-t border-line px-3 py-3 space-y-0.5">
         @if ($isOwner)
-            <a
-                href="{{ route('health.page') }}"
-                @class([
-                    'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
-                    'bg-brand-soft text-brand-strong font-medium' => request()->routeIs('health.page'),
-                    'text-ink-muted hover:bg-surface-raised hover:text-ink' => ! request()->routeIs('health.page'),
-                ])
-            >
-                <x-icon name="bell" class="size-5 shrink-0" />
-                {{ __('i18n::messages.nav.health') }}
-            </a>
+            @if ($notificationsEnabled)
+                <div x-data="notificationBell()" x-init="init()" class="relative">
+                    <button
+                        type="button"
+                        @click="open = !open"
+                        class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
+                    >
+                        <span class="relative shrink-0">
+                            <x-icon name="bell" class="size-5" />
+                            <span x-show="unread > 0" x-cloak class="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white" x-text="unread > 9 ? '9+' : unread"></span>
+                        </span>
+                        {{ __('i18n::messages.health.notifications') }}
+                    </button>
+
+                    <div
+                        x-show="open"
+                        x-cloak
+                        @click.outside="open = false"
+                        x-transition
+                        class="absolute bottom-full left-0 z-50 mb-2 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-line bg-surface shadow-lg"
+                    >
+                        <div class="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-ink-faint">{{ __('i18n::messages.health.notifications') }}</span>
+                            <button type="button" @click="markAllRead()" class="text-xs text-ink-muted hover:text-ink">
+                                {{ __('i18n::messages.health.mark_all_read') }}
+                            </button>
+                        </div>
+                        <div class="max-h-80 divide-y divide-line-soft overflow-y-auto">
+                            <template x-for="notification in notifications" :key="notification.id">
+                                <div @click="markRead(notification)" class="cursor-pointer px-4 py-2.5 hover:bg-surface-raised" :class="notification.read ? '' : 'font-medium'">
+                                    <div class="flex items-center gap-2">
+                                        <span x-show="!notification.read" class="size-1.5 shrink-0 rounded-full bg-brand-strong"></span>
+                                        <p class="truncate text-sm text-ink" x-text="notification.title"></p>
+                                    </div>
+                                    <p class="mt-0.5 truncate text-xs text-ink-faint" x-text="notification.body"></p>
+                                    <p class="mt-0.5 text-xs text-ink-faint" x-text="formatDate(notification.created_at)"></p>
+                                </div>
+                            </template>
+                            <p x-show="!loading && notifications.length === 0" class="px-4 py-6 text-center text-sm text-ink-faint">
+                                {{ __('i18n::messages.health.no_notifications') }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             <a
                 href="{{ route('settings.page') }}"
@@ -183,3 +213,60 @@
     @click="sidebarOpen = false"
     class="fixed inset-0 z-30 bg-black/60 lg:hidden"
 ></div>
+
+@if ($isOwner && $notificationsEnabled)
+    @push('scripts')
+        <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
+            window.notificationBell = () => ({
+                open: false,
+                loading: true,
+                notifications: [],
+
+                get unread() {
+                    return this.notifications.filter((n) => !n.read).length;
+                },
+
+                csrf() {
+                    return document.querySelector('meta[name=csrf-token]').content;
+                },
+
+                async init() {
+                    try {
+                        const res = await fetch('/api/notifications', { headers: { Accept: 'application/json' } });
+                        if (res.ok) this.notifications = (await res.json()).data;
+                    } catch (e) {
+                        // The bell just stays quiet on failure - nothing else
+                        // on the page depends on this call succeeding.
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async markAllRead() {
+                    try {
+                        await fetch('/api/notifications/read-all', {
+                            method: 'POST',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                        });
+                        this.notifications = this.notifications.map((n) => ({ ...n, read: true }));
+                    } catch (e) {}
+                },
+
+                async markRead(notification) {
+                    if (notification.read) return;
+                    try {
+                        await fetch(`/api/notifications/${notification.id}/read`, {
+                            method: 'POST',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                        });
+                        notification.read = true;
+                    } catch (e) {}
+                },
+
+                formatDate(value) {
+                    return value ? new Date(value).toLocaleString() : '—';
+                },
+            });
+        </script>
+    @endpush
+@endif

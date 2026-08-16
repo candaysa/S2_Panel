@@ -17,7 +17,6 @@ use App\Modules\Report\ReportServiceProvider;
 use App\Modules\Server\ServerServiceProvider;
 use App\Modules\Settings\SettingsServiceProvider;
 use App\Modules\Skin\SkinServiceProvider;
-use App\Modules\Stats\StatsServiceProvider;
 use App\Modules\Updater\UpdaterServiceProvider;
 use App\Modules\Vip\VipServiceProvider;
 use App\Modules\Webhook\WebhookServiceProvider;
@@ -39,7 +38,6 @@ return [
     AppealServiceProvider::class,
     ServerServiceProvider::class,
     RconServiceProvider::class,
-    StatsServiceProvider::class,
     SettingsServiceProvider::class,
     I18nServiceProvider::class,
     HealthServiceProvider::class,

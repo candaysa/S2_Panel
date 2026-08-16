@@ -42,7 +42,9 @@
         <div class="mt-6 rounded-xl border border-emerald-500/30 bg-surface">
             <div class="flex items-center justify-between border-b border-line px-5 py-3.5">
                 <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.nav.servers') }}</h2>
-                <a href="{{ route('servers.page') }}" class="text-xs text-ink-faint transition-colors hover:text-brand-strong">{{ __('i18n::messages.dashboard.view_all') }}</a>
+                @if (\App\Support\Access::isOwner())
+                    <a href="{{ route('settings.servers.page') }}" class="text-xs text-ink-faint transition-colors hover:text-brand-strong">{{ __('i18n::messages.servers.manage') }}</a>
+                @endif
             </div>
 
             {{-- name / map / ip / players / connect, aligned as columns but

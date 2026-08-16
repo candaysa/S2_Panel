@@ -54,12 +54,6 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
-        // Sample A2S player counts every 5 minutes (C12). Gated on the
-        // module config so a disabled Stats module never schedules work.
-        if (config('modules.modules.stats.enabled', false)) {
-            $schedule->command('stats:collect')->everyFiveMinutes();
-        }
-
         // Health sweep every 5 minutes (C16): database liveness + RCON
         // auth probes, owner alert on state changes to "down".
         if (config('modules.modules.health.enabled', false)) {

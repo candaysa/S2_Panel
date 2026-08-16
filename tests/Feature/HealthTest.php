@@ -49,13 +49,6 @@ class HealthTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_page_renders_for_the_owner(): void
-    {
-        $this->actingAs(User::factory()->owner()->create())
-            ->get('/health')
-            ->assertOk();
-    }
-
     private function addServer(array $overrides = []): int
     {
         DB::connection('swiftly')->table('admin_servers')->insert(array_merge([

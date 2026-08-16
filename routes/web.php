@@ -63,8 +63,6 @@ Route::get('/login', function (Request $request) {
 // that is public for exactly the same reason (see the matching module's
 // Routes/api.php); nothing mutable lives behind these.
 Route::view('/dashboard', 'dashboard')->name('dashboard');
-Route::view('/servers', 'servers.index')->name('servers.page');
-Route::view('/stats', 'stats.index')->name('stats.page');
 Route::view('/ranks', 'ranks.index')->name('ranks.page');
 
 // Public player profile. The SteamID is only passed through to the page so
@@ -111,11 +109,11 @@ Route::middleware('steam.auth')->group(function (): void {
     Route::view('/cheat-check', 'cheatcheck.index')->middleware('flag:admin.generic')->name('cheatcheck.page');
 
     Route::middleware('owner.only')->group(function (): void {
-        Route::view('/health', 'health.index')->name('health.page');
         Route::view('/webhooks', 'webhooks.index')->name('webhooks.page');
         Route::view('/modules', 'modules.index')->name('modules.page');
         Route::view('/settings', 'settings.index')->name('settings.page');
         Route::view('/settings/design', 'settings.design')->name('settings.design.page');
         Route::view('/settings/tickets', 'settings.tickets')->name('settings.tickets.page');
+        Route::view('/settings/servers', 'settings.servers')->name('settings.servers.page');
     });
 });
