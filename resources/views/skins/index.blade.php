@@ -141,6 +141,13 @@
                                             <span class="block h-full rounded-full bg-brand-strong transition-all" :style="'width:' + progress3d + '%'"></span>
                                         </span>
                                     </div>
+                                    {{-- Switching paint on an already-mounted model has no
+                                         byte progress to show (setPaint() has no onProgress
+                                         hook), just that a multi-megabyte texture is on the
+                                         way - an indeterminate bar beats looking frozen. --}}
+                                    <div x-show="switchingPaint3d" x-cloak class="pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden bg-surface-raised">
+                                        <span class="block h-full w-1/3 animate-pulse bg-brand-strong"></span>
+                                    </div>
                                     <p x-show="error3d" x-cloak class="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-ink-faint">
                                         {{ __('i18n::messages.skins.preview_3d_unavailable') }}
                                     </p>
@@ -380,6 +387,7 @@
                 loading3d: false,
                 progress3d: 0,
                 error3d: false,
+                switchingPaint3d: false,
                 viewer3d: null,
                 knife3d: { open: false, loading: false, error: false, label: '', viewer: null },
                 knives: [],
@@ -618,9 +626,19 @@
                     }
                 },
 
-                pickPaint(id) {
+                async pickPaint(id) {
                     this.weaponForm.weapon_paint_id = id;
-                    if (this.viewer3d) this.viewer3d.setPaint(id, this.paintIsLegacy(id));
+                    if (!this.viewer3d) return;
+
+                    // A paint's texture is a multi-megabyte download even
+                    // downscaled - without this the switch just looks
+                    // frozen for a couple of seconds instead of loading.
+                    this.switchingPaint3d = true;
+                    try {
+                        await this.viewer3d.setPaint(id, this.paintIsLegacy(id));
+                    } finally {
+                        this.switchingPaint3d = false;
+                    }
                 },
 
                 // Sticker/keychain slots are stored as semicolon-delimited
