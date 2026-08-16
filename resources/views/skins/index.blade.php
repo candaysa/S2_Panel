@@ -227,14 +227,14 @@
                                 x-text="keychainCurrentId ? keychainLabel(keychainCurrentId) : @js(__('i18n::messages.skins.keychain_none'))"
                             ></button>
 
-                            <div class="mt-5 flex items-center gap-3">
+                            <div class="mt-5 flex flex-wrap items-center gap-3">
                                 <button type="button" :disabled="saving" @click="saveWeapon()" class="inline-flex items-center rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50">
                                     {{ __('i18n::messages.skins.equip') }}
                                 </button>
                                 <button type="button" x-show="equippedWeapon(selectedWeapon)" @click="removeWeapon()" class="rounded-lg border border-line px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10">
                                     {{ __('i18n::messages.skins.remove') }}
                                 </button>
-                                <span class="text-xs text-ink-faint">{{ __('i18n::messages.skins.both_teams_hint') }}</span>
+                                <span class="w-full text-xs text-ink-faint sm:w-auto">{{ __('i18n::messages.skins.both_teams_hint') }}</span>
                             </div>
                         </div>
                     </template>

@@ -57,9 +57,48 @@
     body {
         background-color: var(--color-canvas);
         color: var(--color-ink);
+        scrollbar-gutter: stable;
     }
 
     [x-cloak] {
         display: none !important;
+    }
+
+    /* Themed scrollbar - the default OS scrollbar (light grey track/thumb
+       in the screenshot that prompted this) ignores dark mode and the
+       owner's palette entirely. Applies everywhere, not just the page
+       body: the sidebar nav, any modal, and every internally-scrolling
+       list (bans table, paint picker grid, ...) all use `overflow-y-auto`
+       and would otherwise show that same mismatched bar. Track is left
+       transparent rather than tied to one surface color, since scroll
+       containers here sit on canvas, surface, and surface-raised
+       backgrounds interchangeably - transparent lets each container's own
+       background show through instead of hardcoding one that would clash
+       against the others. */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-line) transparent;
+    }
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background-color: var(--color-line);
+        border-radius: 9999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--color-ink-faint);
+    }
+
+    ::-webkit-scrollbar-corner {
+        background: transparent;
     }
 }
