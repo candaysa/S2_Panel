@@ -130,6 +130,14 @@
                 <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.intro_body') }}</p>
             </section>
 
+            {{-- Ahead of the hand-written walkthrough below, because the
+                 generator does most of what that walkthrough describes. --}}
+            <section class="rounded-xl border border-line bg-surface p-5">
+                <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.scaffold_title') }}</h2>
+                <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.scaffold_body') }}</p>
+                <pre class="mt-3 overflow-x-auto rounded-lg bg-surface-raised p-4 font-mono text-xs text-ink-muted">php artisan make:module Trophy</pre>
+            </section>
+
             <section>
                 <h2 class="text-lg font-semibold text-ink">{{ __('i18n::messages.modules.docs.structure_title') }}</h2>
                 <p class="mt-2 text-sm leading-relaxed text-ink-muted">{{ __('i18n::messages.modules.docs.structure_body') }}</p>

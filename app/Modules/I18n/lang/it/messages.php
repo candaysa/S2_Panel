@@ -183,6 +183,8 @@ return [
         'docs' => [
             'intro_title' => 'Cos\'è un modulo?',
             'intro_body' => 'Ogni funzionalità di questo pannello - Admin, Ban, VIP, Ticket e così via - vive nel proprio modulo: una cartella autonoma sotto app/Modules/ con le proprie rotte, migrazioni del database, controller e viste. Un "plugin" installato da questa pagina non è un tipo di cosa diverso - è un modulo impacchettato come .zip così da poter essere installato senza toccare direttamente i file del server. Una volta caricato, un modulo integrato e un plugin installato seguono esattamente lo stesso percorso di codice.',
+            'scaffold_title' => 'Genera lo scheletro',
+            'scaffold_body' => 'Un modulo integrato e un plugin sono la stessa cosa - `php artisan make:module Trophy` genera entrambi, e docs/module-development.md nel repository copre per intero pagine, regole del database, controlli di accesso e pacchettizzazione.',
             'structure_title' => 'Struttura delle cartelle',
             'structure_body' => 'Ogni modulo segue la stessa struttura, sia che venga fornito con il pannello sia che venga installato in seguito come plugin.',
             'structure_manifest_note' => 'necessario solo per un\'installazione da .zip, non per un modulo integrato',

@@ -183,6 +183,8 @@ return [
         'docs' => [
             'intro_title' => 'What is a module?',
             'intro_body' => 'Every feature in this panel - Admins, Bans, VIP, Tickets, and so on - lives in its own module: a self-contained folder under app/Modules/ with its own routes, database migrations, controllers and views. A "plugin" installed from this page is not a different kind of thing - it is a module packaged as a .zip so it can be installed without touching the server\'s files directly. Once loaded, a built-in module and an installed plugin run through the exact same code path.',
+            'scaffold_title' => 'Scaffold one',
+            'scaffold_body' => 'A built-in module and a plugin are the same thing - `php artisan make:module Trophy` generates either, and docs/module-development.md in the repository covers pages, database rules, access gates and packaging in full.',
             'structure_title' => 'Folder layout',
             'structure_body' => 'Every module follows the same layout, whether it ships with the panel or is installed later as a plugin.',
             'structure_manifest_note' => 'only needed for a .zip install, not for a built-in module',

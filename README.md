@@ -24,11 +24,13 @@ or bridge is required on the game server.
   provenance and browser history, then reports its findings back to the
   panel. Heuristic hits are reported as *suspicious* rather than *cheat*, so
   nobody is auto-flagged on a hunch.
-- **Modules tab**: turn built-in features (VIP/Skins/Ranks) on or off at
-  runtime, no redeploy needed.
+- **Modules tab**: turn optional features (VIP, Skins, Ranks, Tickets,
+  RCON, Cheat check) on or off at runtime, no redeploy needed. Switching one
+  off takes its pages and its API with it, not just the nav entry.
 - **Plugins tab**: install third-party plugins as a `.zip`, right from the
-  panel — see [docs/plugin-development.md](docs/plugin-development.md) for
-  how to build one.
+  panel. A plugin is just a module in a zip — same base class, same layout;
+  see [docs/module-development.md](docs/module-development.md) for how to
+  build either, or run `php artisan make:module Trophy` to scaffold one.
 - **Self-service install wizard**: language, database connections,
   Steam/owner setup, and module selection — no manual SQL required. A
   previously downloaded `backup.zip` can be uploaded on the very first

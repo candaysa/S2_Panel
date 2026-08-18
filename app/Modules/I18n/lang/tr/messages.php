@@ -183,6 +183,8 @@ return [
         'docs' => [
             'intro_title' => 'Modül nedir?',
             'intro_body' => 'Bu paneldeki her özellik - Adminler, Banlar, VIP, Biletler vb. - kendi modülünde yaşar: app/Modules/ altında kendi route\'ları, veritabanı migration\'ları, controller\'ları ve view\'ları olan bağımsız bir klasör. Bu sayfadan yüklenen bir "eklenti" farklı bir şey değildir - sunucunun dosyalarına doğrudan dokunmadan kurulabilsin diye .zip olarak paketlenmiş bir modüldür. Yüklendikten sonra, yerleşik bir modül ile kurulmuş bir eklenti birebir aynı kod yolundan geçer.',
+            'scaffold_title' => 'Hazır iskelet oluştur',
+            'scaffold_body' => 'Yerleşik bir modül ile eklenti aynı şeydir - `php artisan make:module Trophy` ikisini de oluşturur; depodaki docs/module-development.md sayfaları, veritabanı kurallarını, erişim kapılarını ve paketlemeyi baştan sona anlatır.',
             'structure_title' => 'Klasör yapısı',
             'structure_body' => 'Panelle birlikte gelsin ya da sonradan eklenti olarak kurulsun, her modül aynı yapıyı izler.',
             'structure_manifest_note' => 'sadece .zip kurulumu için gerekli, yerleşik bir modül için değil',
