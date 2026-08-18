@@ -79,14 +79,5 @@ const hashString = (value) => {
 
 window.flagColorClass = (flag) => FLAG_COLORS[flag] ?? FLAG_PALETTE[hashString(String(flag)) % FLAG_PALETTE.length];
 
-// Three.js + its loaders are a few hundred KB - nobody should pay for that
-// on page load just because the Skins page exists. Routing the import
-// through here (rather than a bare import() inside the pushed inline
-// script on skins/index.blade.php, which isn't part of Vite's module graph
-// and has nothing correct to resolve a relative path against in production)
-// lets Vite split skin-viewer.js into its own hashed chunk, fetched only
-// when someone actually opens the 3D preview.
-window.loadSkinViewer = () => import('./skin-viewer.js');
-
 window.Alpine = Alpine;
 Alpine.start();
