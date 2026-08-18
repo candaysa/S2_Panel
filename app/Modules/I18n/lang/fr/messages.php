@@ -403,6 +403,7 @@ return [
         'tab_panel' => 'Activité du panneau',
         'tab_admin' => 'Journaux admin',
         'all_admins' => 'Tous les admins',
+        'console_actor' => 'Console du serveur',
         'all_actions' => 'Toutes les actions',
         'admin_log_search' => 'Rechercher nom, action, détails ou SteamID',
         'admin_log_unavailable' => 'Le plugin admin actif ne tient pas de journal des actions en jeu.',

@@ -91,6 +91,12 @@
             formatDate(value) {
                 return value ? new Date(value).toLocaleString() : '—';
             },
+            // A Steam profile URL, or '' when there is no real account behind
+            // the id - a console-issued punishment records admin_steamid 0.
+            profileUrl(steamid) {
+                const id = String(steamid ?? '');
+                return id && id !== '0' ? `https://steamcommunity.com/profiles/${id}` : '';
+            },
             statusLabels: {
                 active: @js(__('i18n::messages.bans.status_active')),
                 removed: @js(__('i18n::messages.bans.status_removed')),
@@ -171,8 +177,21 @@
                 <tbody class="divide-y divide-line-soft">
                     <template x-for="row in rows" :key="row.id">
                         <tr class="text-ink-muted">
+                            {{-- Both sides link to Steam. The name and the
+                                 SteamID were already on screen and reading as
+                                 clickable, but nothing was: looking a player
+                                 up meant copying 17 digits out by hand. No
+                                 link when there is no real account behind the
+                                 id - a console-issued punishment records no
+                                 admin, and a link to nobody is worse than
+                                 none because it still looks like one. --}}
                             <td class="px-4 py-3">
-                                <div class="flex items-center gap-2.5">
+                                <a
+                                    :href="profileUrl(row.steamid)"
+                                    :target="profileUrl(row.steamid) ? '_blank' : null"
+                                    rel="noopener noreferrer"
+                                    class="flex items-center gap-2.5"
+                                >
                                     <template x-if="row.avatar">
                                         <img :src="row.avatar" alt="" class="size-7 shrink-0 rounded-full">
                                     </template>
@@ -180,12 +199,22 @@
                                         <span class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-muted" x-text="(row.target_name || '?').charAt(0).toUpperCase()"></span>
                                     </template>
                                     <div class="min-w-0">
-                                        <span class="block truncate font-medium text-ink" x-text="row.target_name || '—'"></span>
-                                        <span class="block font-mono text-xs text-ink-faint" x-text="row.steamid"></span>
+                                        <span class="block truncate font-medium text-ink" :class="profileUrl(row.steamid) ? 'transition-colors hover:text-brand-strong' : ''" x-text="row.target_name || '—'"></span>
+                                        <span class="block font-mono text-xs text-ink-faint" x-text="row.steamid || '—'"></span>
                                     </div>
-                                </div>
+                                </a>
                             </td>
-                            <td class="px-4 py-3" x-text="row.admin_name || '—'"></td>
+                            <td class="px-4 py-3">
+                                <a
+                                    :href="profileUrl(row.admin_steamid)"
+                                    :target="profileUrl(row.admin_steamid) ? '_blank' : null"
+                                    rel="noopener noreferrer"
+                                    class="block min-w-0"
+                                >
+                                    <span class="block truncate" :class="profileUrl(row.admin_steamid) ? 'text-ink transition-colors hover:text-brand-strong' : ''" x-text="row.admin_name || '—'"></span>
+                                    <span x-show="row.admin_steamid && row.admin_steamid !== '0'" class="block truncate font-mono text-[11px] text-ink-faint" x-text="row.admin_steamid"></span>
+                                </a>
+                            </td>
                             <td class="max-w-xs px-4 py-3">
                                 <span class="line-clamp-2" x-text="row.reason || '—'"></span>
                             </td>

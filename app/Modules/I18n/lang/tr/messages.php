@@ -403,6 +403,7 @@ return [
         'tab_panel' => 'Panel etkinliği',
         'tab_admin' => 'Yetkili logları',
         'all_admins' => 'Tüm yetkililer',
+        'console_actor' => 'Sunucu konsolu',
         'all_actions' => 'Tüm işlemler',
         'admin_log_search' => 'İsim, işlem, detay veya SteamID ara',
         'admin_log_unavailable' => 'Aktif yetkili eklentisi oyun içi işlem logu tutmuyor.',

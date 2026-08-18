@@ -403,6 +403,7 @@ return [
         'tab_panel' => 'Panel activity',
         'tab_admin' => 'Admin logs',
         'all_admins' => 'All admins',
+        'console_actor' => 'Server console',
         'all_actions' => 'All actions',
         'admin_log_search' => 'Search name, action, details or SteamID',
         'admin_log_unavailable' => 'The active admin plugin does not keep an in-game action log.',
