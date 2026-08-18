@@ -74,8 +74,9 @@
 
             <p x-show="loading" x-cloak class="mt-6 text-sm text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
 
-            {{-- One list: the 3 owner-toggleable built-in features, then
-                 every installed plugin, sorted by name. --}}
+            {{-- One list: every owner-toggleable built-in feature, then every
+                 installed plugin, sorted by name. See
+                 ModuleRegistry::toggleable() for what qualifies. --}}
             <div x-show="!loading" x-cloak class="mt-5 space-y-3">
                 <template x-for="item in combined" :key="item.key">
                     <div class="flex items-center justify-between gap-4 rounded-xl border border-line bg-surface p-5">
@@ -226,6 +227,8 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                 adminPlugin: 'cs2_admin',
                 adminPluginSaving: false,
 
+                dependsWarning: @js(__('i18n::messages.modules.depends_warning')),
+
                 adminPluginOptions: [
                     { key: 'cs2_admin', label: 'CS2_Admin' },
                     { key: 'swiftly_admins', label: @js(__('i18n::messages.install.admin_plugin_swiftly')) },
@@ -235,11 +238,19 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                     vip: @js(__('i18n::messages.modules.items.vip.name')),
                     skin: @js(__('i18n::messages.modules.items.skin.name')),
                     rank: @js(__('i18n::messages.modules.items.rank.name')),
+                    report: @js(__('i18n::messages.modules.items.report.name')),
+                    appeal: @js(__('i18n::messages.modules.items.appeal.name')),
+                    rcon: @js(__('i18n::messages.modules.items.rcon.name')),
+                    cheat_check: @js(__('i18n::messages.modules.items.cheat_check.name')),
                 },
                 descriptions: {
                     vip: @js(__('i18n::messages.modules.items.vip.description')),
                     skin: @js(__('i18n::messages.modules.items.skin.description')),
                     rank: @js(__('i18n::messages.modules.items.rank.description')),
+                    report: @js(__('i18n::messages.modules.items.report.description')),
+                    appeal: @js(__('i18n::messages.modules.items.appeal.description')),
+                    rcon: @js(__('i18n::messages.modules.items.rcon.description')),
+                    cheat_check: @js(__('i18n::messages.modules.items.cheat_check.description')),
                 },
 
                 // Built-in toggleable modules and installed plugins, merged
@@ -253,6 +264,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                         description: this.descriptions[m.key] ?? '',
                         version: null,
                         enabled: m.enabled,
+                        dependents: m.dependents ?? [],
                     }));
                     const plugins = this.plugins.map((p) => ({
                         key: 'plugin:' + p.key,
@@ -262,6 +274,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                         description: p.description || p.key,
                         version: p.version,
                         enabled: p.enabled,
+                        dependents: [],
                     }));
                     return [...builtins, ...plugins].sort((a, b) => a.name.localeCompare(b.name));
                 },
@@ -297,8 +310,24 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                     }
                 },
 
+                // Turning a module off is not always a local decision -
+                // RCON, for instance, is what the server health checks run
+                // through. Say so before the switch flips rather than leaving
+                // the owner to find it in a log line afterwards.
+                dependentNames(item) {
+                    return (item.dependents ?? []).map((k) => this.names[k] ?? k);
+                },
+
                 async toggle(item) {
                     const next = !item.enabled;
+
+                    if (!next) {
+                        const affected = this.dependentNames(item);
+                        if (affected.length && !confirm(this.dependsWarning.replace(':list', affected.join(', ')))) {
+                            return;
+                        }
+                    }
+
                     this.pending[item.key] = true;
                     this.error = '';
                     try {

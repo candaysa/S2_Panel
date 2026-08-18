@@ -35,8 +35,17 @@ class ModuleController
 
     public function index(): JsonResponse
     {
+        $all = $this->modules->all();
+
+        // depends/dependents travel with each row so the tab can warn before
+        // a switch is flipped rather than after - see ModuleRegistry.
         $data = array_map(
-            fn (string $key): array => ['key' => $key, 'enabled' => $this->modules->isEnabled($key)],
+            fn (string $key): array => [
+                'key' => $key,
+                'enabled' => $this->modules->isEnabled($key),
+                'depends' => array_values($all[$key]['depends'] ?? []),
+                'dependents' => $this->modules->dependents($key),
+            ],
             $this->modules->toggleable(),
         );
 

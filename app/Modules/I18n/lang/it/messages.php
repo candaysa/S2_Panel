@@ -155,11 +155,28 @@ return [
                 'name' => 'Rank',
                 'description' => 'Monitoraggio rank e livello dei giocatori (CS2_Ranks).',
             ],
+            'report' => [
+                'name' => 'Segnalazioni',
+                'description' => 'Segnalazioni giocatori e candidature admin nella pagina Tickets.',
+            ],
+            'appeal' => [
+                'name' => 'Ricorsi ban',
+                'description' => 'Permette ai giocatori bannati di fare ricorso dalla pagina Tickets.',
+            ],
+            'rcon' => [
+                'name' => 'RCON',
+                'description' => 'Console server dal vivo ed esecuzione comandi.',
+            ],
+            'cheat_check' => [
+                'name' => 'Controllo cheat',
+                'description' => 'Sessioni di condivisione schermo e registri dei controlli.',
+            ],
         ],
         'tab_modules' => 'Moduli',
         'tab_docs' => 'Documentazione',
         'badge_builtin' => 'Integrato',
         'badge_plugin' => 'Plugin',
+        'depends_warning' => 'Disattivarlo disattiva anche: :list',
         'admin_plugin_title' => 'Plugin admin',
         'admin_plugin_hint' => 'Da quale plugin leggono Admin, Ban e RCON. Cambiarlo fa sì che ogni verifica di admin/permessi legga immediatamente uno schema diverso - cambia solo se sai con certezza quale plugin usa davvero questo server.',
         'admin_plugin_confirm' => 'Cambiare il plugin admin attivo? Ogni verifica di admin/permessi leggerà immediatamente uno schema diverso. Fallo solo se sai con certezza quale plugin usa davvero questo server.',

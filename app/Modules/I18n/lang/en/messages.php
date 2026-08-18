@@ -155,11 +155,28 @@ return [
                 'name' => 'Ranks',
                 'description' => 'Player rank and level tracking (CS2_Ranks).',
             ],
+            'report' => [
+                'name' => 'Reports',
+                'description' => 'Player reports and admin applications on the Tickets page.',
+            ],
+            'appeal' => [
+                'name' => 'Ban appeals',
+                'description' => 'Lets banned players appeal from the Tickets page.',
+            ],
+            'rcon' => [
+                'name' => 'RCON',
+                'description' => 'Live server console and command execution.',
+            ],
+            'cheat_check' => [
+                'name' => 'Cheat check',
+                'description' => 'Screen-share sessions and cheat-check records.',
+            ],
         ],
         'tab_modules' => 'Modules',
         'tab_docs' => 'Docs',
         'badge_builtin' => 'Built-in',
         'badge_plugin' => 'Plugin',
+        'depends_warning' => 'Switching this off also disables: :list',
         'admin_plugin_title' => 'Admin plugin',
         'admin_plugin_hint' => 'Which plugin Admins, Bans and RCON read from. Changing this points every admin/permission query at a different schema - only switch if you know which plugin this server actually runs.',
         'admin_plugin_confirm' => 'Switch the active admin plugin? Every admin/permission check will immediately start reading a different schema. Only do this if you know which plugin this server actually runs.',

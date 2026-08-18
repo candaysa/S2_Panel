@@ -57,13 +57,19 @@ Route::get('/login', function (Request $request) {
     return view('auth.login');
 })->name('login');
 
+// Pages whose feature is owner-toggleable carry module:<key> alongside
+// whatever flag gate they already had. A module's API routes vanish when it
+// is switched off, but these Blade pages are registered by the app itself
+// and used to outlive it - the page rendered and every fetch behind it 404'd.
+// See App\Http\Middleware\RequireModule.
+//
 // Public read-only pages, reachable without a Steam session - a visitor
 // should be able to see server status, aggregate stats and the leaderboard
 // before deciding to log in. Each view fetches its data from an API route
 // that is public for exactly the same reason (see the matching module's
 // Routes/api.php); nothing mutable lives behind these.
 Route::view('/dashboard', 'dashboard')->name('dashboard');
-Route::view('/ranks', 'ranks.index')->name('ranks.page');
+Route::view('/ranks', 'ranks.index')->middleware('module:rank')->name('ranks.page');
 
 // Public player profile. The SteamID is only passed through to the page so
 // its Alpine component can fetch /api/ranks/{steam}; that endpoint does the
@@ -76,20 +82,20 @@ Route::middleware('steam.auth')->group(function (): void {
     // Open to any logged-in session - no flag required. Their APIs enforce
     // the exact same rule (see Vip/Skin/Report/Appeal Routes/api.php); the
     // sidebar hides these for guests but never for a plain logged-in player.
-    Route::view('/vip', 'vip.index')->name('vip.page');
+    Route::view('/vip', 'vip.index')->middleware('module:vip')->name('vip.page');
 
     // Own SteamID64 resolved server-side once here - the page has no
     // "look up another player" mode, so it never needs one from the client.
     Route::get('/skins', fn () => view('skins.index', [
         'ownSteamId' => \App\Support\SteamId::parse((string) auth()->user()->steam_id)->steamId64(),
-    ]))->name('skins.page');
+    ]))->middleware('module:skin')->name('skins.page');
 
     // Reports, admin applications, and ban appeals share one page (a
     // category dropdown switches between them); canDecide is resolved
     // server-side once here rather than re-derived per fetch client-side.
     Route::get('/tickets', fn () => view('tickets.index', [
         'canDecide' => \App\Support\TicketAccess::canDecide(auth()->user()),
-    ]))->name('tickets.page');
+    ]))->middleware('module:report,appeal')->name('tickets.page');
 
     // Bans is read-only here (nothing is created or lifted from this page)
     // and every player is already named on it, so there is no extra
@@ -108,9 +114,9 @@ Route::middleware('steam.auth')->group(function (): void {
         'adminPlugin' => app(\App\Modules\Settings\App\Services\SettingService::class)->get('admin_plugin', 'cs2_admin'),
     ]))->middleware('flag:admin.root')->name('admins.page');
     Route::view('/groups', 'admin.groups')->middleware('flag:admin.root')->name('groups.page');
-    Route::view('/rcon', 'rcon.index')->middleware('flag:admin.rcon')->name('rcon.page');
+    Route::view('/rcon', 'rcon.index')->middleware(['module:rcon', 'flag:admin.rcon'])->name('rcon.page');
     Route::view('/audit', 'audit.index')->middleware('flag:admin.root')->name('audit.page');
-    Route::view('/cheat-check', 'cheatcheck.index')->middleware('flag:admin.generic')->name('cheatcheck.page');
+    Route::view('/cheat-check', 'cheatcheck.index')->middleware(['module:cheat_check', 'flag:admin.generic'])->name('cheatcheck.page');
 
     Route::middleware('owner.only')->group(function (): void {
         Route::view('/webhooks', 'webhooks.index')->name('webhooks.page');

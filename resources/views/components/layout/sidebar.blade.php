@@ -2,38 +2,48 @@
 
 @php
     // Grouped as [section label, items]; each item is [route name, label,
-    // icon, gate]. Wire a new module's page in here once it has a real Blade
-    // page. `gate` mirrors the access rule the item's own module already
-    // enforces server-side (see each Routes/api.php) rather than inventing a
-    // separate one here, so the nav can never promise more than the API
-    // actually grants:
+    // icon, gate, modules]. Wire a new module's page in here once it has a
+    // real Blade page.
+    //
+    // `gate` mirrors the access rule the item's own module already enforces
+    // server-side (see each Routes/api.php) rather than inventing a separate
+    // one here, so the nav can never promise more than the API actually
+    // grants:
     //   null            - public, shown to everyone (see routes/web.php)
     //   'auth'          - any logged-in session, no flag required
     //   [flags...]      - logged-in AND at least one of these flags (or owner)
+    //
+    // `modules` mirrors the module: gate on the same route in routes/web.php
+    // (any-of, null = always). Owners can switch these features off, and a
+    // nav link to a page that now 404s is worse than no link at all.
     $menuGroups = [
         [__('i18n::messages.nav.section_menu'), [
-            ['dashboard', __('i18n::messages.nav.dashboard'), 'home', null],
-            ['ranks.page', __('i18n::messages.nav.ranks'), 'trophy', null],
+            ['dashboard', __('i18n::messages.nav.dashboard'), 'home', null, null],
+            ['ranks.page', __('i18n::messages.nav.ranks'), 'trophy', null, ['rank']],
         ]],
         [__('i18n::messages.nav.section_community'), [
-            ['tickets.page', __('i18n::messages.nav.tickets'), 'flag', 'auth'],
-            ['vip.page', __('i18n::messages.nav.vip'), 'star', 'auth'],
-            ['skins.page', __('i18n::messages.nav.skins'), 'palette', 'auth'],
-            ['bans.page', __('i18n::messages.nav.bans'), 'ban', 'auth'],
+            ['tickets.page', __('i18n::messages.nav.tickets'), 'flag', 'auth', ['report', 'appeal']],
+            ['vip.page', __('i18n::messages.nav.vip'), 'star', 'auth', ['vip']],
+            ['skins.page', __('i18n::messages.nav.skins'), 'palette', 'auth', ['skin']],
+            ['bans.page', __('i18n::messages.nav.bans'), 'ban', 'auth', null],
         ]],
         [__('i18n::messages.nav.section_moderation'), [
-            ['admins.page', __('i18n::messages.nav.admin'), 'users', ['admin.root']],
-            ['groups.page', __('i18n::messages.nav.groups'), 'group', ['admin.root']],
-            ['cheatcheck.page', __('i18n::messages.nav.cheat_check'), 'shield', ['admin.generic']],
-            ['rcon.page', __('i18n::messages.nav.rcon'), 'terminal', ['admin.rcon']],
-            ['audit.page', __('i18n::messages.nav.audit'), 'list', ['admin.root']],
+            ['admins.page', __('i18n::messages.nav.admin'), 'users', ['admin.root'], null],
+            ['groups.page', __('i18n::messages.nav.groups'), 'group', ['admin.root'], null],
+            ['cheatcheck.page', __('i18n::messages.nav.cheat_check'), 'shield', ['admin.generic'], ['cheat_check']],
+            ['rcon.page', __('i18n::messages.nav.rcon'), 'terminal', ['admin.rcon'], ['rcon']],
+            ['audit.page', __('i18n::messages.nav.audit'), 'list', ['admin.root'], ['audit']],
         ]],
     ];
 
     $user = \App\Support\Access::user();
     $isOwner = \App\Support\Access::isOwner();
     $userFlags = $isOwner ? [] : \App\Support\Access::flags();
-    $notificationsEnabled = app(\App\Support\ModuleRegistry::class)->isEnabled('health');
+    $registry = app(\App\Support\ModuleRegistry::class);
+    $notificationsEnabled = $registry->isEnabled('health');
+
+    $moduleOn = fn (?array $modules): bool => $modules === null
+        || collect($modules)->contains(fn (string $key): bool => $registry->isEnabled($key));
 
     $canSee = function (?array $gate) use ($user, $isOwner, $userFlags): bool {
         if ($gate === null) {
@@ -55,9 +65,10 @@
     // 'auth' is a single-item marker, not a flag list - normalize both shapes
     // to an array so $canSee only has one thing to branch on.
     $visibleGroups = collect($menuGroups)
-        ->map(function (array $group) use ($canSee): array {
+        ->map(function (array $group) use ($canSee, $moduleOn): array {
             [$label, $items] = $group;
             $visible = collect($items)
+                ->filter(fn (array $item): bool => $moduleOn($item[4]))
                 ->filter(fn (array $item): bool => $canSee($item[3] === 'auth' ? ['auth'] : $item[3]))
                 ->all();
 
@@ -91,7 +102,7 @@
                     {{ $sectionLabel }}
                 </p>
                 <ul class="space-y-0.5">
-                    @foreach ($items as [$routeName, $label, $icon, $gate])
+                    @foreach ($items as [$routeName, $label, $icon, $gate, $modules])
                         <li>
                             <a
                                 href="{{ route($routeName) }}"
