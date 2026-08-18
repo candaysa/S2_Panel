@@ -9,31 +9,41 @@
         {{-- Counters. Each card carries its own border/accent so the four
              read as distinct figures at a glance instead of one grey block;
              the tint is tied to meaning (bans red, mutes amber) rather than
-             decoration. Bans/mutes additionally show an "N active" pill -
-             the count on its own can't tell a moderator whether that is
-             every ban this server has ever issued or just the ones still
-             in force. --}}
+             decoration.
+
+             Bans and mutes lead with a full-width "N active" band across the
+             top of the card. The headline number is the all-time total, and
+             on its own it cannot tell a moderator whether 605 bans means 605
+             people are banned right now - which is the only figure they are
+             ever actually looking for. Giving it the widest, first-read line
+             on the card puts the two in the right order. Servers and admins
+             have no such distinction, so they simply have no band. --}}
         <div class="mt-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             @foreach ([
-                ['servers', 'server', __('i18n::messages.dashboard.card_servers'), 'text-emerald-400', 'bg-emerald-500/10', 'border-emerald-500/30', false],
-                ['bans', 'ban', __('i18n::messages.dashboard.card_bans'), 'text-red-400', 'bg-red-500/10', 'border-red-500/30', true],
-                ['mutes', 'mute', __('i18n::messages.dashboard.card_mutes'), 'text-amber-400', 'bg-amber-500/10', 'border-amber-500/30', true],
-                ['admins', 'users', __('i18n::messages.dashboard.card_admins'), 'text-sky-400', 'bg-sky-500/10', 'border-sky-500/30', false],
-            ] as [$key, $icon, $label, $fg, $chip, $ring, $hasActive])
-                <div class="relative overflow-hidden rounded-xl border bg-surface p-4 {{ $ring }} sm:p-5">
-                    <div class="flex items-start justify-between gap-2">
-                        <span
-                            x-show="{{ $hasActive ? 'true' : 'false' }} && !loading && counts.{{ $key }}"
+                ['servers', 'server', __('i18n::messages.dashboard.card_servers'), 'text-emerald-400', 'bg-emerald-500/10', 'border-emerald-500/30', 'from-emerald-500/[0.07]', false],
+                ['bans', 'ban', __('i18n::messages.dashboard.card_bans'), 'text-red-400', 'bg-red-500/10', 'border-red-500/30', 'from-red-500/[0.07]', true],
+                ['mutes', 'mute', __('i18n::messages.dashboard.card_mutes'), 'text-amber-400', 'bg-amber-500/10', 'border-amber-500/30', 'from-amber-500/[0.07]', true],
+                ['admins', 'users', __('i18n::messages.dashboard.card_admins'), 'text-sky-400', 'bg-sky-500/10', 'border-sky-500/30', 'from-sky-500/[0.07]', false],
+            ] as [$key, $icon, $label, $fg, $chip, $ring, $wash, $hasActive])
+                <div class="flex flex-col overflow-hidden rounded-xl border bg-surface bg-gradient-to-b {{ $ring }} {{ $wash }} to-transparent">
+                    @if ($hasActive)
+                        <div
+                            x-show="!loading && counts.{{ $key }}"
                             x-cloak
-                            class="rounded-full px-2 py-0.5 text-[11px] font-semibold {{ $chip }} {{ $fg }}"
+                            class="border-b px-3 py-1.5 text-center text-xs font-semibold {{ $ring }} {{ $chip }} {{ $fg }}"
                             x-text="stat(counts.{{ $key }}?.active) + ' ' + activeLabel"
-                        ></span>
-                        <span class="flex size-8 shrink-0 items-center justify-center rounded-lg {{ $chip }} ml-auto">
-                            <x-icon name="{{ $icon }}" class="size-4 {{ $fg }}" />
+                        ></div>
+                    @endif
+
+                    <div class="flex flex-1 items-center justify-between gap-3 p-4 sm:p-5">
+                        <span class="flex size-10 shrink-0 items-center justify-center rounded-xl {{ $chip }} sm:size-12">
+                            <x-icon name="{{ $icon }}" class="size-5 {{ $fg }} sm:size-6" />
                         </span>
+                        <div class="min-w-0 text-right">
+                            <p class="text-2xl font-semibold leading-none text-ink sm:text-3xl" x-text="loading ? '·' : stat({{ $hasActive ? "counts.{$key}?.total" : "counts.{$key}" }})"></p>
+                            <span class="mt-1.5 block text-[11px] font-medium uppercase tracking-wider text-ink-faint sm:text-xs">{{ $label }}</span>
+                        </div>
                     </div>
-                    <p class="mt-2 text-2xl font-semibold text-ink sm:text-3xl" x-text="loading ? '·' : stat({{ $hasActive ? "counts.{$key}?.total" : "counts.{$key}" }})"></p>
-                    <span class="text-[11px] font-medium uppercase tracking-wider text-ink-faint sm:text-xs">{{ $label }}</span>
                 </div>
             @endforeach
         </div>
