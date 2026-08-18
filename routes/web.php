@@ -115,7 +115,7 @@ Route::middleware('steam.auth')->group(function (): void {
     ]))->middleware('flag:admin.root')->name('admins.page');
     Route::view('/groups', 'admin.groups')->middleware('flag:admin.root')->name('groups.page');
     Route::view('/rcon', 'rcon.index')->middleware(['module:rcon', 'flag:admin.rcon'])->name('rcon.page');
-    Route::view('/audit', 'audit.index')->middleware('flag:admin.root')->name('audit.page');
+    Route::view('/audit', 'audit.index')->middleware(['module:audit', 'flag:admin.root'])->name('audit.page');
     Route::view('/cheat-check', 'cheatcheck.index')->middleware(['module:cheat_check', 'flag:admin.generic'])->name('cheatcheck.page');
 
     Route::middleware('owner.only')->group(function (): void {

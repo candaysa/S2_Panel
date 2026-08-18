@@ -45,6 +45,7 @@
         <env name="MODULE_I18N" value="true"/>
         <env name="MODULE_HEALTH" value="true"/>
         <env name="MODULE_WEBHOOKS" value="true"/>
+        <env name="MODULE_CHEAT_CHECK" value="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
