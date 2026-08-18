@@ -35,4 +35,27 @@ class ModuleRegistryTest extends TestCase
             $this->assertStringContainsString('App\Modules', $provider);
         }
     }
+
+    public function test_every_configured_module_is_actually_registered(): void
+    {
+        // bootstrap/providers.php derives its list from config/modules.php
+        // precisely so these cannot drift. When they did, the failure was
+        // silent: a module declared in the config but missing from the
+        // provider list simply never loaded, with nothing to explain why.
+        $configured = collect(config('modules.modules'))->pluck('provider')->sort()->values();
+        $registered = collect(require base_path('bootstrap/providers.php'))
+            ->filter(fn (string $provider): bool => str_starts_with($provider, 'App\Modules'))
+            ->sort()
+            ->values();
+
+        $this->assertEquals($configured->all(), $registered->all());
+    }
+
+    public function test_dependents_reports_enabled_modules_that_rely_on_one(): void
+    {
+        config(['modules.modules.health.enabled' => true]);
+
+        $this->assertContains('health', app(ModuleRegistry::class)->dependents('rcon'));
+        $this->assertSame([], app(ModuleRegistry::class)->dependents('webhook'));
+    }
 }

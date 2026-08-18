@@ -1,47 +1,37 @@
 <?php
 
-use App\Modules\Admin\AdminServiceProvider;
-use App\Modules\Appeal\AppealServiceProvider;
-use App\Modules\Audit\AuditServiceProvider;
-use App\Modules\Auth\AuthServiceProvider;
-use App\Modules\Ban\BanServiceProvider;
-use App\Modules\CheatCheck\CheatCheckServiceProvider;
-use App\Modules\Health\HealthServiceProvider;
-use App\Modules\I18n\I18nServiceProvider;
-use App\Modules\Install\InstallServiceProvider;
-use App\Modules\Modules\ModulesServiceProvider;
-use App\Modules\Plugins\PluginsServiceProvider;
-use App\Modules\Rank\RankServiceProvider;
-use App\Modules\Rcon\RconServiceProvider;
-use App\Modules\Report\ReportServiceProvider;
-use App\Modules\Server\ServerServiceProvider;
-use App\Modules\Settings\SettingsServiceProvider;
-use App\Modules\Skin\SkinServiceProvider;
-use App\Modules\Updater\UpdaterServiceProvider;
-use App\Modules\Vip\VipServiceProvider;
-use App\Modules\Webhook\WebhookServiceProvider;
-use App\Providers\AppServiceProvider;
+/*
+|--------------------------------------------------------------------------
+| Service providers
+|--------------------------------------------------------------------------
+|
+| Built-in module providers are derived from config/modules.php rather than
+| listed a second time here. Keeping two lists in sync by hand had exactly
+| one failure mode and it was silent: a module registered in the config but
+| forgotten in this file simply never loaded, with no error to explain why.
+|
+| This file is read before the framework boots, so config() and a loaded
+| .env are both unavailable - which is fine, because only the `provider`
+| class names are wanted here. Whether a module is *enabled* is decided per
+| request by ModuleServiceProvider, not by which providers get registered
+| (see App\Support\ModuleServiceProvider::moduleEnabled()). The env() calls
+| inside the required file therefore just return their defaults at this
+| point, and nothing reads them.
+|
+| Third-party plugins are not here either: they are discovered from the
+| plugin_installs table and registered dynamically - see
+| AppServiceProvider::registerInstalledPlugins().
+|
+*/
 
-return [
-    AppServiceProvider::class,
-    AuthServiceProvider::class,
-    InstallServiceProvider::class,
-    ModulesServiceProvider::class,
-    PluginsServiceProvider::class,
-    AdminServiceProvider::class,
-    BanServiceProvider::class,
-    RankServiceProvider::class,
-    SkinServiceProvider::class,
-    VipServiceProvider::class,
-    AuditServiceProvider::class,
-    ReportServiceProvider::class,
-    AppealServiceProvider::class,
-    ServerServiceProvider::class,
-    RconServiceProvider::class,
-    SettingsServiceProvider::class,
-    I18nServiceProvider::class,
-    HealthServiceProvider::class,
-    WebhookServiceProvider::class,
-    CheatCheckServiceProvider::class,
-    UpdaterServiceProvider::class,
-];
+$modules = require __DIR__.'/../config/modules.php';
+
+return array_merge(
+    // First, always: every module provider asks it for the ModuleRegistry
+    // singleton during its own register() phase.
+    [App\Providers\AppServiceProvider::class],
+    array_values(array_map(
+        static fn (array $module): string => $module['provider'],
+        $modules['modules'],
+    )),
+);

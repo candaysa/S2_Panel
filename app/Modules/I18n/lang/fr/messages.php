@@ -183,6 +183,8 @@ return [
         'docs' => [
             'intro_title' => 'Qu\'est-ce qu\'un module ?',
             'intro_body' => 'Chaque fonctionnalité de ce panneau - Admins, Bans, VIP, Tickets, etc. - vit dans son propre module : un dossier autonome sous app/Modules/ avec ses propres routes, migrations de base de données, contrôleurs et vues. Une « extension » installée depuis cette page n\'est pas un type de chose différent - c\'est un module empaqueté en .zip pour pouvoir être installé sans toucher directement aux fichiers du serveur. Une fois chargés, un module intégré et une extension installée passent exactement par le même chemin de code.',
+            'scaffold_title' => 'Générer un squelette',
+            'scaffold_body' => 'Un module intégré et un plugin sont la même chose - `php artisan make:module Trophy` génère les deux, et docs/module-development.md dans le dépôt couvre en détail les pages, les règles de base de données, les contrôles d’accès et l’empaquetage.',
             'structure_title' => 'Structure des dossiers',
             'structure_body' => 'Chaque module suit la même structure, qu\'il soit livré avec le panneau ou installé plus tard comme extension.',
             'structure_manifest_note' => 'nécessaire uniquement pour une installation .zip, pas pour un module intégré',

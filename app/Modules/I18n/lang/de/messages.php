@@ -183,6 +183,8 @@ return [
         'docs' => [
             'intro_title' => 'Was ist ein Modul?',
             'intro_body' => 'Jede Funktion dieses Panels - Admins, Bans, VIP, Tickets usw. - lebt in ihrem eigenen Modul: einem eigenständigen Ordner unter app/Modules/ mit eigenen Routen, Datenbank-Migrationen, Controllern und Views. Ein von dieser Seite installiertes "Plugin" ist nichts anderes - es ist ein Modul, verpackt als .zip, damit es installiert werden kann, ohne die Serverdateien direkt anzufassen. Einmal geladen, durchlaufen ein integriertes Modul und ein installiertes Plugin exakt denselben Code-Pfad.',
+            'scaffold_title' => 'Gerüst erzeugen',
+            'scaffold_body' => 'Ein eingebautes Modul und ein Plugin sind dasselbe - `php artisan make:module Trophy` erzeugt beides, und docs/module-development.md im Repository behandelt Seiten, Datenbankregeln, Zugriffsgates und Paketierung vollständig.',
             'structure_title' => 'Ordnerstruktur',
             'structure_body' => 'Jedes Modul folgt derselben Struktur, egal ob es mit dem Panel ausgeliefert wird oder später als Plugin installiert wird.',
             'structure_manifest_note' => 'nur für eine .zip-Installation nötig, nicht für ein integriertes Modul',
