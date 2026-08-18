@@ -93,7 +93,9 @@ class CatalogService
 
     /**
      * Paint id -> {label, rarity_color}, merged across every weapon's
-     * paintkit list. Paint ids are a single global numbering (Valve's
+     * paintkit list - knives and gloves included, since a finish on either
+     * is an ordinary paintkit stored in wp_player_skins against that item's
+     * defindex, and the picker needs to label it exactly like a gun's. Paint ids are a single global numbering (Valve's
      * paintkits.txt) reused across every compatible weapon, not a
      * per-weapon sequence - verified against the live catalog with zero
      * id/name collisions across 1400+ ids - so one flat map is enough to
@@ -108,11 +110,7 @@ class CatalogService
         return Cache::remember("catalog:paint-names:".app()->getLocale(), self::TTL, function (): array {
             $map = [];
 
-            foreach ($this->rawPaintkits() as $weapon => $paints) {
-                if (str_starts_with($weapon, 'weapon_knife_') || $weapon === 'weapon_bayonet') {
-                    continue;
-                }
-
+            foreach ($this->rawPaintkits() as $paints) {
                 foreach ($paints as $entry) {
                     $index = $entry['Index'] ?? null;
 
@@ -154,33 +152,58 @@ class CatalogService
     }
 
     /**
-     * Knife types. SkinKnife stores the classname string directly - there is
-     * no paint_id column, so (unlike guns) there is no per-knife paintkit
-     * step here.
+     * Knife types.
      *
-     * @return array<int, array{name: string, index: int, label: string}>
+     * wp_player_knife stores only the classname (which knife model), with no
+     * paint column - but a knife finish is an ordinary paintkit on the
+     * knife's own defindex, so the paint half of a knife loadout lives in
+     * wp_player_skins exactly like a gun's does. That's why every entry
+     * carries its `index` here: the panel writes both tables when a knife is
+     * equipped (see the skins page's saveKnife()).
+     *
+     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string}>
      */
     public function knives(): array
     {
         return collect($this->rawItems())
             ->filter(fn (array $item): bool => str_starts_with((string) ($item['Name'] ?? ''), 'weapon_knife_')
                 || ($item['Name'] ?? '') === 'weapon_bayonet')
-            ->map(fn (array $item): array => $this->slim($item))
+            ->map(fn (array $item): array => $this->slim($item, withRarity: true))
             ->values()->all();
     }
 
     /**
      * Glove types. SkinGloves.weapon_defindex is items.json's Index for
-     * these entries directly - like knives, there is no paint sub-choice.
+     * these entries directly - and, as with knives, the *finish* on those
+     * gloves is a normal paintkit stored against the same defindex in
+     * wp_player_skins, so both tables are written when gloves are equipped.
      *
-     * @return array<int, array{name: string, index: int, label: string}>
+     * Unlike every other slot, gloves have no unpainted artwork at all -
+     * there is no "{glove}.png", only "{glove}-{paint}.png" - because a
+     * bare glove model is not an item a player can own. `preview_paint` is
+     * therefore attached here (that family's first paintkit) purely so the
+     * picker card has something to draw before a finish has been chosen;
+     * without it the gloves tab renders as a wall of unlabelled boxes.
+     *
+     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string, preview_paint?: int}>
      */
     public function gloves(): array
     {
+        $paintable = $this->rawPaintkits();
+
         return collect($this->rawItems())
             ->filter(fn (array $item): bool => str_contains((string) ($item['Name'] ?? ''), 'glove')
                 || str_contains((string) ($item['Name'] ?? ''), 'handwrap'))
-            ->map(fn (array $item): array => $this->slim($item))
+            ->map(function (array $item) use ($paintable): array {
+                $slim = $this->slim($item, withRarity: true);
+                $first = $paintable[(string) ($item['Name'] ?? '')][0]['Index'] ?? null;
+
+                if ($first !== null) {
+                    $slim['preview_paint'] = (int) $first;
+                }
+
+                return $slim;
+            })
             ->values()->all();
     }
 
@@ -198,7 +221,7 @@ class CatalogService
      * agent list against that CDN's - 62 of 63 agents matched, the rest
      * simply have no `image` key and the picker falls back to a silhouette.
      *
-     * @return array<int, array{name: string, index: int, label: string, image?: string}>
+     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string, image?: string}>
      */
     public function agents(?int $team = null): array
     {
@@ -215,7 +238,7 @@ class CatalogService
                 return $team === 2 ? str_contains($path, '/tm_') : str_contains($path, '/ctm_');
             })
             ->map(function (array $agent) use ($images): array {
-                $slim = $this->slim($agent);
+                $slim = $this->slim($agent, withRarity: true);
                 $modelKey = preg_replace('#^agents/models/#', '', (string) ($agent['Name'] ?? ''));
 
                 if ($modelKey !== null && isset($images[$modelKey])) {
@@ -246,12 +269,12 @@ class CatalogService
     }
 
     /**
-     * @return array<int, array{name: string, index: int, label: string}>
+     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string}>
      */
     public function music(): array
     {
         return collect($this->rawMusic())
-            ->map(fn (array $kit): array => $this->slim($kit))
+            ->map(fn (array $kit): array => $this->slim($kit, withRarity: true))
             ->values()->all();
     }
 

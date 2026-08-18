@@ -14,8 +14,7 @@
         "vite": "^8.0.0"
     },
     "dependencies": {
-        "alpinejs": "^3.14.9",
-        "three": "^0.185.1"
+        "alpinejs": "^3.14.9"
     },
     "optionalDependencies": {
         "@laravel/multiplex": "^0.4.1"
