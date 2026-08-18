@@ -138,17 +138,24 @@
                         <template x-for="row in adminLogs" :key="row.id">
                             <tr class="text-ink-muted">
                                 <td class="px-4 py-3">
+                                    {{-- Anything issued from the server console
+                                         or over RCON is recorded against no
+                                         SteamID at all, so it gets a label
+                                         rather than a link to nobody. --}}
                                     <a
-                                        :href="row.admin_steamid ? 'https://steamcommunity.com/profiles/' + row.admin_steamid : null"
-                                        target="_blank"
+                                        :href="profileUrl(row.admin_steamid)"
+                                        :target="profileUrl(row.admin_steamid) ? '_blank' : null"
                                         rel="noopener noreferrer"
                                         class="flex items-center gap-2.5"
                                     >
                                         <img x-show="row.admin_avatar" :src="row.admin_avatar" alt="" loading="lazy" class="size-7 shrink-0 rounded-full object-cover ring-1 ring-line">
                                         <span x-show="!row.admin_avatar" class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-faint" x-text="adminName(row).charAt(0).toUpperCase()"></span>
                                         <span class="min-w-0">
-                                            <span class="block truncate font-medium text-ink transition-colors hover:text-brand-strong" x-text="adminName(row)"></span>
-                                            <span class="block truncate font-mono text-[11px] text-ink-faint" x-text="row.admin_steamid || '—'"></span>
+                                            <span class="block truncate font-medium text-ink" :class="profileUrl(row.admin_steamid) ? 'transition-colors hover:text-brand-strong' : ''" x-text="adminName(row)"></span>
+                                            <span
+                                                class="block truncate font-mono text-[11px] text-ink-faint"
+                                                x-text="row.admin_is_console ? @js(__('i18n::messages.audit.console_actor')) : (row.admin_steamid || '—')"
+                                            ></span>
                                         </span>
                                     </a>
                                 </td>
@@ -162,8 +169,8 @@
                                          17-digit number is the one thing nobody
                                          can identify at a glance. --}}
                                     <a
-                                        x-show="row.target_steamid"
-                                        :href="'https://steamcommunity.com/profiles/' + row.target_steamid"
+                                        x-show="profileUrl(row.target_steamid)"
+                                        :href="profileUrl(row.target_steamid)"
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         class="flex items-center gap-2.5"
@@ -174,7 +181,7 @@
                                             <span class="block truncate font-mono text-[11px] text-ink-faint" x-text="row.target_steamid"></span>
                                         </span>
                                     </a>
-                                    <span x-show="!row.target_steamid" class="text-ink-faint">—</span>
+                                    <span x-show="!profileUrl(row.target_steamid)" class="text-ink-faint">—</span>
                                 </td>
                                 <td class="hidden max-w-xs px-4 py-3 xl:table-cell">
                                     <span class="line-clamp-2" :title="row.details" x-text="row.details || '—'"></span>
@@ -403,6 +410,15 @@
 
                 formatDate(value) {
                     return value ? new Date(value).toLocaleString() : '—';
+                },
+
+                // A Steam profile URL, or '' when there is no real account
+                // behind the id. admin_log records console/RCON actions
+                // against 0, and steamcommunity.com/profiles/0 is a link to
+                // nobody - worse than no link, because it looks like one.
+                profileUrl(steamid) {
+                    const id = String(steamid ?? '');
+                    return id && id !== '0' ? `https://steamcommunity.com/profiles/${id}` : '';
                 },
 
                 serverLabel(row) {

@@ -403,6 +403,7 @@ return [
         'tab_panel' => 'Panel-Aktivität',
         'tab_admin' => 'Admin-Protokolle',
         'all_admins' => 'Alle Admins',
+        'console_actor' => 'Serverkonsole',
         'all_actions' => 'Alle Aktionen',
         'admin_log_search' => 'Name, Aktion, Details oder SteamID suchen',
         'admin_log_unavailable' => 'Das aktive Admin-Plugin führt kein Ingame-Aktionsprotokoll.',

@@ -25,6 +25,13 @@ class AdminLogService
     private const SORTABLE = ['id', 'created_at', 'admin_name', 'action'];
 
     /**
+     * What the plugin stores as the acting admin for anything issued from
+     * the server console or over RCON. Not a SteamID, so it has no profile
+     * and must never be turned into a steamcommunity.com link.
+     */
+    private const CONSOLE_ACTOR = '0';
+
+    /**
      * Whether the active admin plugin actually keeps this log. Checked
      * rather than assumed: this is the difference between "no admin has
      * done anything yet" and "this plugin does not record it", and the page
@@ -60,8 +67,18 @@ class AdminLogService
         $query = AdminLog::query();
 
         // The dropdown's whole purpose: one admin's history, in order.
-        if ($adminSteamId !== null && $adminSteamId !== '' && SteamId::isValid($adminSteamId)) {
-            $query->where('admin_steamid', (int) SteamId::parse($adminSteamId)->steamId64());
+        //
+        // The console is a real actor here and a busy one - the plugin
+        // records anything issued from the server console or RCON under
+        // admin_steamid 0, which is not a SteamID and so failed
+        // SteamId::isValid(). That made picking it silently drop the filter
+        // and return every row, which is a worse answer than an error.
+        if ($adminSteamId !== null && $adminSteamId !== '') {
+            if ($adminSteamId === self::CONSOLE_ACTOR) {
+                $query->where('admin_steamid', 0);
+            } elseif (SteamId::isValid($adminSteamId)) {
+                $query->where('admin_steamid', (int) SteamId::parse($adminSteamId)->steamId64());
+            }
         }
 
         if ($action !== null && $action !== '') {
@@ -111,7 +128,7 @@ class AdminLogService
      * have since been removed - whose history is exactly what someone
      * reviewing this page is most likely looking for.
      *
-     * @return array<int, array{steamid: string, name: string, actions: int}>
+     * @return array<int, array{steamid: string, name: string, actions: int, is_console: bool}>
      */
     public function admins(): array
     {
@@ -134,6 +151,7 @@ class AdminLogService
                 'steamid' => (string) $row->admin_steamid,
                 'name' => (string) ($row->admin_name ?? $row->admin_steamid),
                 'actions' => (int) $row->actions,
+                'is_console' => (string) $row->admin_steamid === self::CONSOLE_ACTOR,
             ])
             ->all();
     }
@@ -178,9 +196,12 @@ class AdminLogService
             return;
         }
 
+        // filter() already drops null/''; the extra reject drops the console
+        // actor, which is not a SteamID and would just be a wasted lookup.
         $ids = $rows->pluck('admin_steamid')
             ->merge($rows->pluck('target_steamid'))
             ->filter()
+            ->reject(fn ($id): bool => (string) $id === self::CONSOLE_ACTOR)
             ->unique()
             ->values()
             ->all();
@@ -199,6 +220,7 @@ class AdminLogService
 
             $data['admin_avatar'] = $admin['avatar'] ?? null;
             $data['admin_current_name'] = $admin['name'] ?? null;
+            $data['admin_is_console'] = (string) $row->admin_steamid === self::CONSOLE_ACTOR;
             $data['target_avatar'] = $target['avatar'] ?? null;
             $data['target_name'] = $target['name'] ?? null;
 
