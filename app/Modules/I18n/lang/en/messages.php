@@ -224,6 +224,7 @@ return [
         'created' => 'Created',
         'expires' => 'Expires',
         'never' => 'Never',
+        'permanent' => 'Permanent',
         'status' => 'Status',
     ],
     'tickets' => [

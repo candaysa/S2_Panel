@@ -160,33 +160,77 @@
 
         {{-- Recent bans / recent mutes, side by side - hidden entirely (not
              shown empty) for a viewer without a moderation flag, so it never
-             reads as "no bans" when the real answer is "you can't see them". --}}
+             reads as "no bans" when the real answer is "you can't see them".
+             Both come straight from BanService::list() now (see
+             DashboardController), so every field here - avatar, the live
+             name fallback for a row whose stored name is just its own
+             SteamID, the three-state status - is exactly what /bans itself
+             would show for the same row; nothing here recomputes anything
+             that page didn't already work out once. --}}
         <div x-show="!loading && canViewBanDetail" x-cloak class="mt-6 grid gap-4 lg:grid-cols-2">
             @foreach ([
                 ['recentBans', __('i18n::messages.dashboard.recent_bans')],
                 ['recentMutes', __('i18n::messages.dashboard.recent_mutes')],
             ] as [$collection, $heading])
-                <div class="rounded-xl border border-line bg-surface">
+                <div class="overflow-hidden rounded-xl border border-line bg-surface">
                     <div class="border-b border-line px-5 py-3.5">
                         <h2 class="text-sm font-semibold text-ink">{{ $heading }}</h2>
                     </div>
 
-                    <ul class="divide-y divide-line-soft">
-                        <template x-for="row in {{ $collection }}" :key="row.id">
-                            <li class="px-5 py-3">
-                                <div class="flex items-baseline justify-between gap-3">
-                                    <span class="min-w-0 truncate text-sm font-medium text-ink" x-text="row.name ?? row.steamid"></span>
-                                    <span class="shrink-0 text-xs text-ink-faint" x-text="date(row.created_at)"></span>
-                                </div>
-                                <p class="mt-0.5 truncate text-xs text-ink-muted" x-text="row.reason"></p>
-                                <p class="mt-0.5 text-xs text-ink-faint">
-                                    <span x-text="row.admin_name"></span>
-                                    <span class="opacity-60">·</span>
-                                    <span x-text="expiry(row.expires_at)"></span>
-                                </p>
-                            </li>
-                        </template>
-                    </ul>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="text-xs font-semibold uppercase tracking-wider text-ink-faint">
+                                <tr>
+                                    <th class="px-5 py-2.5">{{ __('i18n::messages.bans.target') }}</th>
+                                    <th class="px-5 py-2.5">{{ __('i18n::messages.bans.admin') }}</th>
+                                    <th class="px-5 py-2.5">{{ __('i18n::messages.bans.created') }}</th>
+                                    <th class="px-5 py-2.5">{{ __('i18n::messages.bans.status') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-line-soft">
+                                <template x-for="row in {{ $collection }}" :key="row.id">
+                                    <tr>
+                                        <td class="max-w-[9rem] px-5 py-3">
+                                            <a
+                                                :href="profileUrl(row.steamid)"
+                                                :target="profileUrl(row.steamid) ? '_blank' : null"
+                                                rel="noopener noreferrer"
+                                                class="flex min-w-0 items-center gap-2.5"
+                                            >
+                                                <img x-show="row.avatar" :src="row.avatar" alt="" loading="lazy" class="size-7 shrink-0 rounded-full object-cover ring-1 ring-line">
+                                                <span x-show="!row.avatar" class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-faint" x-text="(row.target_name || '?').charAt(0).toUpperCase()"></span>
+                                                <span class="min-w-0 truncate font-medium" :class="profileUrl(row.steamid) ? 'text-ink transition-colors hover:text-brand-strong' : 'text-ink'" x-text="row.target_name || '—'"></span>
+                                            </a>
+                                        </td>
+                                        <td class="max-w-[7rem] px-5 py-3">
+                                            <a
+                                                :href="profileUrl(row.admin_steamid)"
+                                                :target="profileUrl(row.admin_steamid) ? '_blank' : null"
+                                                rel="noopener noreferrer"
+                                                class="block truncate text-ink-muted"
+                                                :class="profileUrl(row.admin_steamid) ? 'transition-colors hover:text-brand-strong' : ''"
+                                                x-text="row.admin_name || '—'"
+                                            ></a>
+                                        </td>
+                                        <td class="whitespace-nowrap px-5 py-3 text-xs text-ink-faint" x-text="date(row.created_at)"></td>
+                                        <td class="px-5 py-3">
+                                            <span
+                                                class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+                                                :class="statusBadge(row.status)"
+                                                x-text="row.status === 'active' && !row.expires_at ? @js(__('i18n::messages.bans.permanent')) : statusLabel(row.status)"
+                                            ></span>
+                                            {{-- Share of the ban/mute's own total duration still remaining -
+                                                 full for permanent or anything not currently active, tapering
+                                                 down toward expiry for a temporary one still in force. --}}
+                                            <span class="mt-1.5 block h-1 w-16 overflow-hidden rounded-full bg-surface-raised">
+                                                <span class="block h-full rounded-full transition-all" :class="durationColor(row.status)" :style="'width:' + durationPercent(row) + '%'"></span>
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
 
                     <p x-show="!loading && {{ $collection }}.length === 0" x-cloak class="px-5 py-8 text-center text-sm text-ink-faint">
                         {{ __('i18n::messages.common.empty') }}
@@ -284,6 +328,53 @@
 
                 expiry(value) {
                     return value ? new Date(value).toLocaleDateString(undefined, { day: '2-digit', month: 'short' }) : @js(__('i18n::messages.bans.never'));
+                },
+
+                // A Steam profile URL, or '' when there is no real account
+                // behind the id - a console-issued punishment records no
+                // admin, and a link to nobody is worse than none because it
+                // still looks like one.
+                profileUrl(steamid) {
+                    const id = String(steamid ?? '');
+                    return id && id !== '0' ? `https://steamcommunity.com/profiles/${id}` : '';
+                },
+
+                statusLabels: {
+                    active: @js(__('i18n::messages.bans.status_active')),
+                    removed: @js(__('i18n::messages.bans.status_removed')),
+                    expired: @js(__('i18n::messages.bans.status_expired')),
+                },
+
+                statusLabel(status) {
+                    return this.statusLabels[status] ?? this.statusLabels.active;
+                },
+
+                statusBadge(status) {
+                    if (status === 'removed') return 'bg-sky-500/10 text-sky-400';
+                    if (status === 'expired') return 'bg-surface-raised text-ink-faint';
+                    return 'bg-brand-soft text-brand-strong';
+                },
+
+                // Fraction of the row's OWN total duration still remaining -
+                // not a countdown against "now" alone, since a 30-day mute
+                // one day old and one three days from expiring should not
+                // read as the same "almost full" bar. Anything not
+                // currently active (lifted early, or already ran out) reads
+                // as fully spent regardless of what expires_at says.
+                durationPercent(row) {
+                    if (row.status !== 'active' || !row.expires_at) return 100;
+                    const created = new Date(row.created_at).getTime();
+                    const expires = new Date(row.expires_at).getTime();
+                    const total = expires - created;
+                    if (!(total > 0)) return 100;
+                    const remaining = expires - Date.now();
+                    return Math.max(0, Math.min(100, Math.round((remaining / total) * 100)));
+                },
+
+                durationColor(status) {
+                    if (status === 'removed') return 'bg-sky-400';
+                    if (status === 'expired') return 'bg-ink-faint/50';
+                    return 'bg-brand-strong';
                 },
 
                 ratio(kills, deaths) {

@@ -224,6 +224,7 @@ return [
         'created' => 'Erstellt',
         'expires' => 'Läuft ab',
         'never' => 'Nie',
+        'permanent' => 'Dauerhaft',
         'status' => 'Status',
     ],
     'tickets' => [
