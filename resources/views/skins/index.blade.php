@@ -127,7 +127,7 @@
                                         alt=""
                                         loading="lazy"
                                         class="max-h-full max-w-full object-contain p-2 transition-transform duration-200 group-hover:scale-105"
-                                        @@error="section === 'gloves' && nextPreviewPaint(item) || ($el.style.visibility = 'hidden')"
+                                        @@error="$el.style.visibility = 'hidden'"
                                     >
                                 </div>
                                 <div class="border-t-2 p-3" :style="accent(rarityOf(item))" :class="rarityOf(item) ? '' : 'border-transparent'">
@@ -207,10 +207,10 @@
                                     </div>
                                 </div>
 
-                                <label class="mt-4 flex items-center gap-2 text-sm text-ink-muted" x-show="supports('stattrak')">
-                                    <input type="checkbox" x-model="form.weapon_stattrak" class="rounded border-line">
-                                    {{ __('i18n::messages.skins.stattrak') }}
-                                </label>
+                                <div class="mt-4 flex items-center justify-between gap-3" x-show="supports('stattrak')">
+                                    <span class="text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.stattrak') }}</span>
+                                    <x-toggle state="form.weapon_stattrak" @click="form.weapon_stattrak = !form.weapon_stattrak" />
+                                </div>
 
                                 <template x-if="supports('nametag')">
                                     <div class="mt-4">
@@ -227,10 +227,19 @@
                                                 <button
                                                     type="button"
                                                     @click="openStickerPicker(i)"
-                                                    class="flex size-14 flex-col items-center justify-center rounded-lg border p-1 text-center text-[10px] leading-tight transition-colors"
+                                                    :title="stickerAt(i).id ? stickerLabel(stickerAt(i).id) : ''"
+                                                    class="relative flex size-14 flex-col items-center justify-center overflow-hidden rounded-lg border p-1 text-center text-[10px] leading-tight transition-colors"
                                                     :class="stickerAt(i).id ? 'border-brand-strong bg-brand-soft text-brand-strong' : 'border-line bg-canvas text-ink-faint hover:bg-surface-raised'"
                                                 >
-                                                    <span x-show="stickerAt(i).id" class="line-clamp-3" x-text="stickerLabel(stickerAt(i).id)"></span>
+                                                    <img
+                                                        x-show="stickerImage(stickerAt(i).id)"
+                                                        :src="stickerImage(stickerAt(i).id)"
+                                                        alt=""
+                                                        loading="lazy"
+                                                        class="max-h-full max-w-full object-contain"
+                                                        @@error="$el.style.visibility = 'hidden'"
+                                                    >
+                                                    <span x-show="stickerAt(i).id && !stickerImage(stickerAt(i).id)" class="line-clamp-3" x-text="stickerLabel(stickerAt(i).id)"></span>
                                                     <span x-show="!stickerAt(i).id" class="text-lg">+</span>
                                                 </button>
                                             </template>
@@ -244,10 +253,19 @@
                                         <button
                                             type="button"
                                             @click="openKeychainPicker()"
-                                            class="mt-2 w-full truncate rounded-lg border px-3 py-2 text-left text-sm transition-colors"
+                                            class="mt-2 flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors"
                                             :class="keychainCurrentId ? 'border-brand-strong bg-brand-soft text-brand-strong' : 'border-line bg-canvas text-ink-muted hover:bg-surface-raised'"
-                                            x-text="keychainCurrentId ? keychainLabel(keychainCurrentId) : @js(__('i18n::messages.skins.keychain_none'))"
-                                        ></button>
+                                        >
+                                            <img
+                                                x-show="keychainImage(keychainCurrentId)"
+                                                :src="keychainImage(keychainCurrentId)"
+                                                alt=""
+                                                loading="lazy"
+                                                class="size-6 shrink-0 object-contain"
+                                                @@error="$el.style.visibility = 'hidden'"
+                                            >
+                                            <span class="truncate" x-text="keychainCurrentId ? keychainLabel(keychainCurrentId) : @js(__('i18n::messages.skins.keychain_none'))"></span>
+                                        </button>
                                     </div>
                                 </template>
                             </div>
@@ -314,7 +332,7 @@
                                     >
                                         <div class="flex h-16 items-center justify-center bg-canvas" :style="glow(p.rarity_color)">
                                             <img
-                                                :src="skinImageUrl(imageName(selected.name), p.index)"
+                                                :src="p.image || skinImageUrl(imageName(selected.name), p.index)"
                                                 alt=""
                                                 loading="lazy"
                                                 class="max-h-full max-w-full object-contain p-1"
@@ -366,9 +384,12 @@
                             <button
                                 type="button"
                                 @click="pickerSelect(opt.index)"
-                                class="flex items-center gap-1.5 rounded-lg border border-line bg-canvas p-2 text-left text-xs text-ink-muted transition-colors hover:bg-surface-raised"
+                                class="flex items-center gap-2 rounded-lg border border-line bg-canvas p-2 text-left text-xs text-ink-muted transition-colors hover:bg-surface-raised"
                             >
-                                <span class="size-1.5 shrink-0 rounded-full" :style="opt.rarity_color ? 'background:' + opt.rarity_color : ''"></span>
+                                <span x-show="opt.image" class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded bg-surface">
+                                    <img :src="opt.image" alt="" loading="lazy" class="max-h-full max-w-full object-contain" @@error="$el.parentElement.style.visibility = 'hidden'">
+                                </span>
+                                <span x-show="!opt.image" class="size-1.5 shrink-0 rounded-full" :style="opt.rarity_color ? 'background:' + opt.rarity_color : ''"></span>
                                 <span class="truncate" x-text="opt.label"></span>
                             </button>
                         </template>
@@ -404,10 +425,6 @@
                 weaponCategory: 'all',
                 search: '',
                 paintSearch: '',
-
-                // glove name -> which preview candidate is currently being
-                // tried. See previewPaint().
-                previewAttempt: {},
 
                 // Weapons, knives and gloves share one detail screen and one
                 // form (all three are "an item with a defindex that carries a
@@ -532,29 +549,22 @@
                     const equipped = this.equippedPaintId(item.index);
 
                     if (this.section === 'gloves') {
-                        return this.skinImageUrl(item.name, equipped || this.previewPaint(item));
+                        return this.gloveImageUrl(item, equipped || item.preview_paint || 0);
                     }
 
                     return this.skinImageUrl(this.imageName(item.name), equipped);
                 },
 
-                // The artwork set does not cover every glove finish - the
-                // recent additions have catalog entries but no published
-                // image, and on three of the eight families one of those is
-                // the first candidate. So a card starts at the first
-                // candidate and nextPreviewPaint() advances on a failed load
-                // until something renders (see CatalogService::gloves()).
-                previewPaint(item) {
-                    const candidates = item.preview_paints ?? [];
-                    return candidates[this.previewAttempt[item.name] ?? 0] ?? candidates[0] ?? 0;
-                },
-
-                nextPreviewPaint(item) {
-                    const candidates = item.preview_paints ?? [];
-                    const at = (this.previewAttempt[item.name] ?? 0) + 1;
-                    if (at >= candidates.length) return false;
-                    this.previewAttempt[item.name] = at;
-                    return true;
+                // Gloves carry a real per-paint image from CatalogService
+                // (see gloveImages() there) rather than a guessed
+                // {name}-{id}.png URL - that pattern has genuine gaps for
+                // every finish older than late 2019 (Wave Chaser, Lime
+                // Polycam, ...), which is why those rendered as an empty
+                // glow well with no image at all before this. The pattern
+                // guess only remains as a fallback for a finish the game
+                // added after this snapshot was taken.
+                gloveImageUrl(item, paintId) {
+                    return item.images?.[paintId] || this.skinImageUrl(item.name, paintId);
                 },
 
                 detailImageUrl() {
@@ -562,7 +572,7 @@
                     const paint = this.form.weapon_paint_id;
 
                     if (this.selectedKind === 'gloves') {
-                        return this.skinImageUrl(this.selected.name, paint || this.previewPaint(this.selected));
+                        return this.gloveImageUrl(this.selected, paint || this.selected.preview_paint || 0);
                     }
 
                     return this.skinImageUrl(this.imageName(this.selected.name), paint);
@@ -773,7 +783,7 @@
                         : {
                             // Gloves open on a real finish rather than "none",
                             // which for gloves is not a wearable state.
-                            weapon_paint_id: this.section === 'gloves' ? this.previewPaint(item) : 0,
+                            weapon_paint_id: this.section === 'gloves' ? (item.preview_paint ?? 0) : 0,
                             weapon_wear: 0.01,
                             weapon_seed: 0,
                             weapon_stattrak: false,
@@ -828,6 +838,20 @@
 
                 keychainLabel(id) {
                     return this.keychainCatalog.find((k) => k.index === id)?.label ?? `#${id}`;
+                },
+
+                // Real artwork when the catalog has it (see
+                // CatalogService::stickerImages()/keychainImages()) - '' once
+                // the slot is empty or before the (lazily-loaded) catalog has
+                // arrived, which the caller already falls back to text for.
+                stickerImage(id) {
+                    if (!id) return '';
+                    return this.stickerCatalog.find((s) => s.index === id)?.image ?? '';
+                },
+
+                keychainImage(id) {
+                    if (!id) return '';
+                    return this.keychainCatalog.find((k) => k.index === id)?.image ?? '';
                 },
 
                 async ensureStickerCatalog() {

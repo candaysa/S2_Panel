@@ -146,8 +146,24 @@ class CatalogService
             return [];
         }
 
+        // Gloves carry a real per-paint image (see gloveImages()); every
+        // other item keeps building its own from name+id in the frontend.
+        $gloveImages = $this->gloveImages()[$weapon] ?? null;
+
         return collect($all[$weapon])
-            ->map(fn (array $entry): array => $this->slim($entry, withRarity: true))
+            ->map(function (array $entry) use ($gloveImages): array {
+                $slim = $this->slim($entry, withRarity: true);
+
+                if ($gloveImages !== null && $slim['index'] !== null) {
+                    $image = $gloveImages[(string) $slim['index']] ?? null;
+
+                    if ($image !== null) {
+                        $slim['image'] = $image;
+                    }
+                }
+
+                return $slim;
+            })
             ->values()->all();
     }
 
@@ -187,47 +203,91 @@ class CatalogService
      *
      * Unlike every other slot, gloves have no unpainted artwork at all -
      * there is no "{glove}.png", only "{glove}-{paint}.png" - because a bare
-     * glove model is not an item a player can own. `preview_paints` is
-     * therefore attached here so the picker card has something to draw
-     * before a finish has been chosen; without it the gloves tab renders as
-     * a wall of unlabelled boxes.
+     * glove model is not an item a player can own. `preview_paint` is
+     * therefore attached here (this family's own highest-id finish) so a
+     * card has something to draw before a finish has been chosen; without
+     * it the gloves tab renders as a wall of unlabelled boxes.
      *
-     * It is a list rather than one id because the artwork set does not cover
-     * every finish: the recent additions (Brocade Crane, Hand Sweaters, ...)
-     * have catalog entries but no published image, and on three of the eight
-     * families one of those sorts first - which is exactly how the "gloves
-     * have no images" report survived a first fix. The frontend walks the
-     * list until an image loads. Ordered high id first only because that
-     * finds a working one sooner; every entry is equally valid, so nothing
-     * breaks if the artwork set later fills the gaps.
+     * `images` is every finish this family actually has, each pointing at
+     * its own real picture from gloveImages() rather than a guessed name+id
+     * URL - that pattern has a genuine gap, not just occasional missing art:
+     * every finish older than late 2019 (Wave Chaser, Lime Polycam, ...) has
+     * a catalog entry with no corresponding image anywhere in the set every
+     * other slot uses, which is exactly why they rendered blank before this.
      *
-     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string, preview_paints: array<int, int>}>
+     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string, images: array<string, string>, preview_paint: ?int}>
      */
     public function gloves(): array
     {
         $paintable = $this->rawPaintkits();
+        $images = $this->gloveImages();
 
         return collect($this->rawItems())
             ->filter(fn (array $item): bool => str_contains((string) ($item['Name'] ?? ''), 'glove')
                 || str_contains((string) ($item['Name'] ?? ''), 'handwrap'))
             ->filter(fn (array $item): bool => ! empty($paintable[(string) ($item['Name'] ?? '')]))
-            ->map(function (array $item) use ($paintable): array {
+            ->map(function (array $item) use ($paintable, $images): array {
                 $slim = $this->slim($item, withRarity: true);
+                $name = (string) ($item['Name'] ?? '');
 
-                $candidates = collect($paintable[(string) ($item['Name'] ?? '')])
+                $ids = collect($paintable[$name])
                     ->pluck('Index')
                     ->filter()
                     ->map(fn ($index): int => (int) $index)
                     ->sortDesc()
-                    ->take(8)
-                    ->values()
+                    ->values();
+
+                // Every finish this family actually has, each pointing at its
+                // own real image (see gloveImages()) - not a Nereziel-style
+                // {name}-{id}.png pattern, which has no entry at all for the
+                // pre-2019 finishes (id < 10000: Wave Chaser, Lime Polycam,
+                // ...) and left those permanently blank. A ->filter() below
+                // drops any id this snapshot doesn't cover (a paint the game
+                // added after it was taken) rather than emitting a null the
+                // frontend would have to guard against.
+                $slim['images'] = $ids
+                    ->mapWithKeys(fn (int $id): array => [(string) $id => $images[$name][(string) $id] ?? null])
+                    ->filter()
                     ->all();
 
-                $slim['preview_paints'] = $candidates;
+                // Cards need something to show before any paint is chosen or
+                // equipped - gloves have no unpainted look, so this is simply
+                // the family's own highest-id finish, which is guaranteed to
+                // have a real image above.
+                $slim['preview_paint'] = $ids->first();
 
                 return $slim;
             })
             ->values()->all();
+    }
+
+    /**
+     * Per-paint glove images, sourced from ByMykel/CSGO-API (MIT) rather
+     * than built from a name+id URL pattern like every other slot: gloves
+     * are the one item where that pattern has real gaps, not just
+     * occasional missing art - every finish predating late 2019 (Wave
+     * Chaser, Lime Polycam, Superconductor, ...) has a catalog entry with
+     * no corresponding image anywhere in Nereziel's set. glove_images.json
+     * is a one-time export (see Resources/, keyed identically to
+     * weapon_to_paintkits.json's own glove families) rather than a live API
+     * call, for the same reason agent_images.json is: this data changes only
+     * when Valve ships new finishes, not per request.
+     *
+     * @return array<string, array<string, string>> weapon name -> paint id -> image URL
+     */
+    private function gloveImages(): array
+    {
+        return Cache::remember('catalog:glove-images', self::TTL, function (): array {
+            $path = __DIR__.'/../../Resources/glove_images.json';
+
+            if (! File::exists($path)) {
+                return [];
+            }
+
+            $decoded = json_decode((string) File::get($path), true);
+
+            return is_array($decoded) ? $decoded : [];
+        });
     }
 
     /**
@@ -306,9 +366,38 @@ class CatalogService
      */
     public function keychains(): array
     {
+        $images = $this->keychainImages();
+
         return collect($this->rawKeychains())
-            ->map(fn (array $k): array => $this->slim($k, withRarity: true))
+            ->map(function (array $k) use ($images): array {
+                $slim = $this->slim($k, withRarity: true);
+                $image = $images[(string) ($k['Name'] ?? '')] ?? null;
+
+                if ($image !== null) {
+                    $slim['image'] = $image;
+                }
+
+                return $slim;
+            })
             ->values()->all();
+    }
+
+    /**
+     * @return array<string, string> keychain id -> image URL
+     */
+    private function keychainImages(): array
+    {
+        return Cache::remember('catalog:keychain-images', self::TTL, function (): array {
+            $path = __DIR__.'/../../Resources/keychain_images.json';
+
+            if (! File::exists($path)) {
+                return [];
+            }
+
+            $decoded = json_decode((string) File::get($path), true);
+
+            return is_array($decoded) ? $decoded : [];
+        });
     }
 
     /**
@@ -328,16 +417,53 @@ class CatalogService
      */
     public function stickers(): array
     {
-        return Cache::remember("catalog:stickers:".app()->getLocale(), self::TTL, function (): array {
+        $images = $this->stickerImages();
+
+        return Cache::remember("catalog:stickers:".app()->getLocale(), self::TTL, function () use ($images): array {
             $out = [];
 
             foreach ($this->rawStickerCollections() as $collection) {
                 foreach ($collection['Stickers'] ?? [] as $sticker) {
-                    $out[] = $this->slim($sticker, withRarity: true);
+                    $slim = $this->slim($sticker, withRarity: true);
+                    $image = $images[(string) ($sticker['Name'] ?? '')] ?? null;
+
+                    if ($image !== null) {
+                        $slim['image'] = $image;
+                    }
+
+                    $out[] = $slim;
                 }
             }
 
             return $out;
+        });
+    }
+
+    /**
+     * Per-sticker images, sourced from ByMykel/CSGO-API (MIT) and keyed by
+     * the same material name (e.g. "std_thirteen") the plugin's own dump
+     * uses as Name - sticker_collections.json carries no image field at all,
+     * only Name/Index/LocalizedNames/Rarity. sticker_images.json is a
+     * one-time export rather than a live call, for the same reason
+     * gloveImages() is: matched 8,828/8,828 (100%) of the live catalog at
+     * export time; a sticker the game adds afterward simply has no
+     * thumbnail until the export is refreshed, and the picker already
+     * degrades gracefully to a text-only row for that case.
+     *
+     * @return array<string, string> sticker material name -> image URL
+     */
+    private function stickerImages(): array
+    {
+        return Cache::remember('catalog:sticker-images', self::TTL, function (): array {
+            $path = __DIR__.'/../../Resources/sticker_images.json';
+
+            if (! File::exists($path)) {
+                return [];
+            }
+
+            $decoded = json_decode((string) File::get($path), true);
+
+            return is_array($decoded) ? $decoded : [];
         });
     }
 
