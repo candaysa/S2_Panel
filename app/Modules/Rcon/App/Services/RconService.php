@@ -43,6 +43,19 @@ class RconService
     }
 
     /**
+     * Which servers currently have an RCON password configured - never the
+     * passwords themselves. Settings > Servers uses this to show a
+     * configured/not-configured state per row without a second request per
+     * server.
+     *
+     * @return array<int, int>
+     */
+    public function configuredServerIds(): array
+    {
+        return RconSetting::query()->pluck('server_id')->map(fn ($id): int => (int) $id)->values()->all();
+    }
+
+    /**
      * Store (or replace) the RCON password for a server.
      */
     public function save(int $serverId, string $password, User $actor): RconSetting

@@ -28,9 +28,22 @@ final class SteamProfiles
     private const ENDPOINT = 'https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/';
 
     /**
+     * Cached in place of a real profile for an id Steam's API had nothing
+     * for (a deleted account, or a malformed id someone typed straight into
+     * an RCON console command - see BanService::looksLikeSteamId(), which
+     * exists precisely because that happens). Without this, such an id was
+     * never written to cache at all, so it repeated the full ~300-800ms
+     * live API round trip on every single page load that happened to
+     * include it, forever - not just once.
+     */
+    private const EMPTY_PROFILE = ['avatar' => null, 'name' => null, 'profile_url' => null];
+
+    /**
      * @param  array<int, string>  $steamIds  any SteamID format
      * @return array<string, array{avatar: ?string, name: ?string, profile_url: ?string}>
-     *                                        keyed by the id that was passed in
+     *                                        keyed by the id that was passed in. An id
+     *                                        Steam has no profile for still gets an entry
+     *                                        (all-null), not a missing key - see EMPTY_PROFILE.
      */
     public static function many(array $steamIds): array
     {
@@ -66,7 +79,11 @@ final class SteamProfiles
         }
 
         foreach (array_chunk(array_keys($missing), self::CHUNK) as $chunk) {
-            foreach (self::fetch($chunk) as $id64 => $profile) {
+            $found = self::fetch($chunk);
+
+            foreach ($chunk as $id64) {
+                $profile = $found[$id64] ?? self::EMPTY_PROFILE;
+
                 Cache::put(self::key($id64), $profile, now()->addHours(self::CACHE_HOURS));
 
                 if (isset($missing[$id64])) {

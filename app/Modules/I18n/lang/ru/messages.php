@@ -543,6 +543,7 @@ return [
         'port_placeholder' => 'Порт',
         'invalid' => 'Укажите корректные IP и порт.',
         'last_seen' => 'Последний визит',
+        'rcon_status_configured' => 'Для этого сервера настроен пароль RCON.',
     ],
 
     'update' => [

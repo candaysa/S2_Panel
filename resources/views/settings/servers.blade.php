@@ -65,6 +65,20 @@
                         </button>
                         <span class="w-14 shrink-0 text-xs" :class="server.hidden ? 'text-ink-faint' : 'text-ink-muted'" x-text="server.hidden ? @js(__('i18n::messages.servers.hidden')) : @js(__('i18n::messages.servers.visible'))"></span>
 
+                        {{-- RCON credential lives here now, not on the RCON page
+                             itself - see rcon/index.blade.php. The dot marks
+                             whether this server actually has one configured,
+                             since the button itself gives no such hint. --}}
+                        <button
+                            type="button"
+                            @click="openRcon(server)"
+                            class="relative shrink-0 rounded-lg border border-line p-1.5 text-ink-faint transition-colors hover:bg-surface-raised hover:text-ink"
+                            :title="@js(__('i18n::messages.rcon.password_settings'))"
+                        >
+                            <x-icon name="terminal" class="size-4" />
+                            <span x-show="rconConfigured.has(server.id)" class="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-brand-strong ring-2 ring-surface"></span>
+                        </button>
+
                         <button type="button" @click="copy(server)" class="shrink-0 rounded-lg border border-line p-1.5 text-ink-faint transition-colors hover:bg-surface-raised hover:text-ink" :title="copied === server.id ? @js(__('i18n::messages.servers.copied')) : @js(__('i18n::messages.servers.copy_ip'))">
                             <x-icon name="copy" class="size-4" />
                         </button>
@@ -75,6 +89,62 @@
                     </li>
                 </template>
             </ul>
+        </div>
+
+        {{-- RCON password modal - one at a time, shared across every row
+             rather than one WebSocket-of-state per server. --}}
+        <div x-show="rcon.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/70" @click="closeRcon()"></div>
+
+            <div x-show="rcon.open" x-transition class="relative w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl">
+                <div class="flex items-center justify-between border-b border-line p-5">
+                    <div class="min-w-0">
+                        <h2 class="text-base font-semibold text-ink">{{ __('i18n::messages.rcon.password_settings') }}</h2>
+                        <p class="truncate text-xs text-ink-faint" x-text="rcon.server ? address(rcon.server) : ''"></p>
+                    </div>
+                    <button type="button" @click="closeRcon()" class="rounded-lg p-1.5 text-ink-faint transition-colors hover:bg-surface-raised hover:text-ink">
+                        <x-icon name="close" class="size-4" />
+                    </button>
+                </div>
+
+                <div class="space-y-3 p-5">
+                    <p x-show="rcon.error" x-cloak class="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400" x-text="rcon.error"></p>
+
+                    {{-- Never pre-filled - the API does not return the stored
+                         password in any form (see RconController::listSettings,
+                         same rule the SMTP settings field follows), only
+                         whether one exists. --}}
+                    <div>
+                        <p
+                            class="text-xs"
+                            :class="rcon.server && rconConfigured.has(rcon.server.id) ? 'text-brand-strong' : 'text-ink-faint'"
+                            x-text="rcon.server && rconConfigured.has(rcon.server.id) ? @js(__('i18n::messages.servers.rcon_status_configured')) : @js(__('i18n::messages.rcon.not_configured'))"
+                        ></p>
+                        <input
+                            type="password"
+                            x-model="rcon.password"
+                            autocomplete="new-password"
+                            :placeholder="rcon.server && rconConfigured.has(rcon.server.id) ? @js(__('i18n::messages.smtp.password_kept')) : @js(__('i18n::messages.rcon.password_placeholder'))"
+                            class="mt-2 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none"
+                        >
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button type="button" :disabled="rcon.saving || !rcon.password.trim()" @click="saveRcon()" class="inline-flex items-center rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50">
+                            {{ __('i18n::messages.rcon.save_password') }}
+                        </button>
+                        <button
+                            type="button"
+                            x-show="rcon.server && rconConfigured.has(rcon.server.id)"
+                            :disabled="rcon.saving"
+                            @click="removeRcon()"
+                            class="rounded-lg border border-line px-4 py-2 text-sm text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
+                        >
+                            {{ __('i18n::messages.rcon.remove_password') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -89,6 +159,12 @@
                 newIp: '',
                 newPort: '',
                 adding: false,
+
+                // Server ids that currently have an RCON password - a set of
+                // ids, never the passwords, loaded once (not on the 30s live
+                // poll: this only changes when someone edits it here).
+                rconConfigured: new Set(),
+                rcon: { open: false, server: null, password: '', saving: false, error: '' },
 
                 async load(force = false) {
                     this.loading = true;
@@ -206,8 +282,68 @@
                     setTimeout(() => { if (this.copied === server.id) this.copied = null; }, 1500);
                 },
 
+                async loadRconConfigured() {
+                    try {
+                        const res = await fetch('/api/rcon/settings', { headers: { Accept: 'application/json' } });
+                        if (!res.ok) return;
+                        const ids = (await res.json()).data.server_ids ?? [];
+                        this.rconConfigured = new Set(ids);
+                    } catch (e) {
+                        // Non-fatal - the modal still works, it just opens
+                        // without knowing whether a password already exists.
+                    }
+                },
+
+                openRcon(server) {
+                    this.rcon = { open: true, server, password: '', saving: false, error: '' };
+                },
+
+                closeRcon() {
+                    this.rcon.open = false;
+                },
+
+                async saveRcon() {
+                    if (!this.rcon.password.trim() || !this.rcon.server) return;
+                    this.rcon.saving = true;
+                    this.rcon.error = '';
+                    try {
+                        const res = await fetch('/api/rcon/settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                            body: JSON.stringify({ server_id: this.rcon.server.id, password: this.rcon.password }),
+                        });
+                        if (!res.ok) throw new Error('request_failed');
+                        this.rconConfigured.add(this.rcon.server.id);
+                        this.closeRcon();
+                    } catch (e) {
+                        this.rcon.error = @js(__('i18n::messages.common.error'));
+                    } finally {
+                        this.rcon.saving = false;
+                    }
+                },
+
+                async removeRcon() {
+                    if (!this.rcon.server) return;
+                    this.rcon.saving = true;
+                    this.rcon.error = '';
+                    try {
+                        const res = await fetch(`/api/rcon/settings/${this.rcon.server.id}`, {
+                            method: 'DELETE',
+                            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
+                        });
+                        if (!res.ok) throw new Error('request_failed');
+                        this.rconConfigured.delete(this.rcon.server.id);
+                        this.closeRcon();
+                    } catch (e) {
+                        this.rcon.error = @js(__('i18n::messages.common.error'));
+                    } finally {
+                        this.rcon.saving = false;
+                    }
+                },
+
                 init() {
                     this.load();
+                    this.loadRconConfigured();
                     setInterval(() => this.load(), 30000);
                 },
             });

@@ -62,15 +62,22 @@ class DashboardController extends Controller
             // an anonymous visitor, unlike the old one-probe-per-server path.
             'servers' => $this->section('server', fn (): array => $this->serversWithLive()),
             'ranks' => $this->section('rank', fn (): array => $this->topPlayers()),
+            // target_name, not name - AdminBan/AdminMute's real column
+            // (see tests/Support/CreatesPluginTables.php for the schema).
+            // Selecting a column that does not exist throws, which
+            // section()'s catch-and-hide turned into a silent empty list -
+            // these two cards showed "Nothing here yet" on every install
+            // regardless of how many bans/mutes actually existed. Aliased
+            // back to `name` since that's what the frontend already reads.
             'recent_bans' => ! $canViewBanDetail ? [] : $this->section('ban', fn (): array => AdminBan::query()
                 ->orderByDesc('id')
-                ->limit(8)
-                ->get(['id', 'name', 'steamid', 'reason', 'admin_name', 'created_at', 'expires_at'])
+                ->limit(6)
+                ->get(['id', 'target_name as name', 'steamid', 'reason', 'admin_name', 'created_at', 'expires_at'])
                 ->all()),
             'recent_mutes' => ! $canViewBanDetail ? [] : $this->section('ban', fn (): array => AdminMute::query()
                 ->orderByDesc('id')
-                ->limit(8)
-                ->get(['id', 'name', 'steamid', 'reason', 'admin_name', 'created_at', 'expires_at'])
+                ->limit(6)
+                ->get(['id', 'target_name as name', 'steamid', 'reason', 'admin_name', 'created_at', 'expires_at'])
                 ->all()),
         ], ['can_view_ban_detail' => $canViewBanDetail]);
     }
