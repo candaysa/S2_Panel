@@ -35,7 +35,7 @@
         </div>
 
         {{-- New report / application --}}
-        <div x-show="showNewForm && category !== 'ban_appeal'" x-cloak x-transition class="mt-4 rounded-xl border border-line bg-surface p-5">
+        <div x-show="composing" x-cloak x-transition class="mt-4 rounded-xl border border-line bg-surface p-5">
             {{-- The category picker also lives here, not just in the header -
                  it is the one thing that decides which queue this ticket
                  lands in, and burying that choice behind an unrelated
@@ -66,18 +66,33 @@
                 placeholder="{{ __('i18n::messages.reports.reason_placeholder') }}"
                 class="mt-3 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none"
             ></textarea>
-            <button
-                type="button"
-                :disabled="creating"
-                @click="submitNewTicket()"
-                class="mt-3 inline-flex items-center rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
-            >
-                {{ __('i18n::messages.reports.submit') }}
-            </button>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    :disabled="creating"
+                    @click="submitNewTicket()"
+                    class="inline-flex items-center rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-50"
+                >
+                    {{ __('i18n::messages.reports.submit') }}
+                </button>
+                <button
+                    type="button"
+                    @click="showNewForm = false"
+                    class="rounded-lg border border-line px-4 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink"
+                >
+                    {{ __('i18n::messages.common.cancel') }}
+                </button>
+            </div>
+
+            <p x-show="actionError" x-cloak class="mt-3 text-sm text-red-400" x-text="actionError"></p>
         </div>
 
-        {{-- Status filter, vocabulary switches with the category --}}
-        <div class="mt-4 flex flex-wrap gap-1.5">
+        {{-- Status filter, vocabulary switches with the category. Hidden
+             while composing: filtering a queue you are not looking at does
+             nothing, and its empty state ("Nothing here yet.") sitting under
+             a half-filled form read as if the submission had already
+             failed. --}}
+        <div x-show="!composing" x-cloak class="mt-4 flex flex-wrap gap-1.5">
             <template x-for="s in statusOptions" :key="s.key">
                 <button
                     type="button"
@@ -89,7 +104,7 @@
             </template>
         </div>
 
-        <div class="mt-4 grid gap-6 lg:grid-cols-5">
+        <div x-show="!composing" x-cloak class="mt-4 grid gap-6 lg:grid-cols-5">
             {{-- List --}}
             <div class="overflow-x-auto rounded-xl border border-line bg-surface lg:col-span-2" :class="selected ? 'hidden lg:block' : ''">
                 <table class="w-full text-left text-sm">
@@ -252,6 +267,13 @@
 
                 labels: @js(__('i18n::messages.reports')),
                 appealLabels: @js(__('i18n::messages.appeals')),
+
+                // Composing takes over the page rather than sitting on top
+                // of the queue. Ban appeals are raised from a ban, not from
+                // here, which is why the form never opens for that category.
+                get composing() {
+                    return this.showNewForm && this.category !== 'ban_appeal';
+                },
 
                 get statusOptions() {
                     if (this.category === 'ban_appeal') {

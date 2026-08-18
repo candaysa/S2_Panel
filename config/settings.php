@@ -54,6 +54,22 @@ return [
         // data migration would silently point every admin/ban query at the
         // wrong schema. See App\Support\AdminPlugin\AdminManagerInterface.
         'admin_plugin' => 'cs2_admin',
+        // Outgoing mail. The panel does send real email - an approved ban
+        // appeal notifies the player (see Appeal\App\Mail\AppealApproved) -
+        // but config/mail.php reads .env, which an owner running a packaged
+        // install has no comfortable way to edit. Configured here instead
+        // and applied at boot; empty mail_host means "leave config/mail.php
+        // alone", so an .env-configured install keeps working untouched.
+        // See App\Support\MailConfig.
+        'mail_host' => '',
+        'mail_port' => 587,
+        'mail_encryption' => 'tls',
+        'mail_username' => '',
+        // Encrypted at rest and never returned by the API - see
+        // SettingsController::index()/updateSmtp().
+        'mail_password' => '',
+        'mail_from_address' => '',
+        'mail_from_name' => '',
     ],
 
     'whitelist' => [
@@ -65,6 +81,9 @@ return [
         'ticket_staff_group_report',
         'ticket_staff_group_admin_application',
         'ticket_staff_group_ban_appeal',
+        // mail_* is deliberately absent: the generic update() echoes the
+        // keys it accepts back through the client, and one of them is a
+        // password. SettingsController::updateSmtp() owns that set.
     ],
 
     'upload_path' => public_path('uploads'),

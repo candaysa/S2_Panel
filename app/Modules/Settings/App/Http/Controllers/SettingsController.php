@@ -4,13 +4,16 @@ namespace App\Modules\Settings\App\Http\Controllers;
 
 use App\Modules\Settings\App\Services\SettingService;
 use App\Support\Api;
+use App\Support\MailConfig;
 use App\Support\PanelBackup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Throwable;
 
 /**
  * Panel settings (C14). Owner-only: the settings table is a sensitive store
@@ -20,6 +23,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
  * PUT  /api/settings              – update whitelisted keys
  * POST /api/settings/logo         – upload logo image
  * POST /api/settings/favicon      – upload favicon image
+ * PUT  /api/settings/smtp         – outgoing mail credentials
+ * POST /api/settings/smtp/test    – send one test message and report back
  * PUT  /api/settings/theme        – set the full color palette override
  * POST /api/settings/theme/reset  – drop it, back to app.css factory colors
  * GET  /api/settings/backup       – download a full backup.zip
@@ -55,7 +60,16 @@ class SettingsController
 
     public function index(): JsonResponse
     {
-        return Api::success($this->settings->all());
+        $values = $this->settings->all();
+
+        // The stored password is encrypted, and the client has no reason to
+        // see it in either form - it only needs to know whether one is set,
+        // so the field can show "leave blank to keep" instead of a fake
+        // value that would be saved back verbatim on the next submit.
+        unset($values['mail_password']);
+        $values['mail_password_set'] = trim((string) $this->settings->get('mail_password')) !== '';
+
+        return Api::success($values);
     }
 
     public function update(Request $request): JsonResponse
@@ -110,6 +124,89 @@ class SettingsController
         // The UI is server-rendered, so a new locale needs a fresh render;
         // the client reloads when told the locale actually moved.
         return Api::success(null, ['updated' => $updated, 'locale_changed' => $localeChanged]);
+    }
+
+    /**
+     * PUT /api/settings/smtp
+     *
+     * Separate from update() because these keys are not in the generic
+     * whitelist: one of them is a password, and update() echoes back the
+     * key names it accepted. Clearing the host is the documented way to
+     * hand outgoing mail back to config/mail.php (see MailConfig).
+     */
+    public function updateSmtp(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'mail_host' => 'nullable|string|max:255',
+            'mail_port' => 'nullable|integer|min:1|max:65535',
+            'mail_encryption' => 'nullable|string|in:none,tls,ssl',
+            'mail_username' => 'nullable|string|max:255',
+            // Absent means "keep whatever is stored" - the client never
+            // receives the current value, so it cannot resubmit it. An
+            // explicit empty string is how a password gets cleared.
+            'mail_password' => 'nullable|string|max:255',
+            'mail_from_address' => 'nullable|email|max:255',
+            'mail_from_name' => 'nullable|string|max:120',
+        ]);
+
+        if ($validator->fails()) {
+            return Api::error(Api::MSG_VALIDATION_FAILED, $validator->errors()->toArray(), 422);
+        }
+
+        $data = $validator->validated();
+
+        foreach (['mail_host', 'mail_port', 'mail_encryption', 'mail_username', 'mail_from_address', 'mail_from_name'] as $key) {
+            if (array_key_exists($key, $data)) {
+                $this->settings->set($key, $data[$key] ?? '', Auth::id());
+            }
+        }
+
+        if (array_key_exists('mail_password', $data)) {
+            $password = (string) ($data['mail_password'] ?? '');
+            $this->settings->set('mail_password', $password === '' ? '' : MailConfig::encrypt($password), Auth::id());
+        }
+
+        // Take effect for this request too, so the test below exercises what
+        // was just saved rather than what boot() happened to load.
+        MailConfig::apply($this->settings);
+
+        return Api::success(['configured' => MailConfig::isConfigured($this->settings)]);
+    }
+
+    /**
+     * POST /api/settings/smtp/test
+     *
+     * Sends one plain message and reports the transport's own error verbatim
+     * on failure. "Something went wrong" is useless when diagnosing SMTP -
+     * the difference between a wrong password, a blocked port and an
+     * unresolvable host is the entire content of the answer, and this
+     * endpoint is already owner-only.
+     */
+    public function testSmtp(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'to' => 'required|email|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return Api::error(Api::MSG_VALIDATION_FAILED, $validator->errors()->toArray(), 422);
+        }
+
+        MailConfig::apply($this->settings);
+
+        $to = (string) $validator->validated()['to'];
+        $siteName = (string) $this->settings->get('site_name', 'S2 Panel');
+
+        try {
+            Mail::raw(
+                __('i18n::messages.smtp.test_body', ['site' => $siteName]),
+                fn ($message) => $message->to($to)->subject(__('i18n::messages.smtp.test_subject', ['site' => $siteName])),
+            );
+        } catch (Throwable $e) {
+            return Api::error($e->getMessage(), null, 422);
+        }
+
+        return Api::success(['sent_to' => $to]);
     }
 
     /**

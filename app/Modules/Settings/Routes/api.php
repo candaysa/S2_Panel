@@ -18,6 +18,8 @@ Route::prefix('api/settings')->middleware(['steam.auth', 'owner.only'])->group(f
     Route::put('/', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('logo', [SettingsController::class, 'uploadLogo'])->name('settings.logo');
     Route::post('favicon', [SettingsController::class, 'uploadFavicon'])->name('settings.favicon');
+    Route::put('smtp', [SettingsController::class, 'updateSmtp'])->name('settings.smtp.update');
+    Route::post('smtp/test', [SettingsController::class, 'testSmtp'])->name('settings.smtp.test');
     Route::post('brand-color/reset', [SettingsController::class, 'resetBrandColor'])->name('settings.brand-color.reset');
     Route::put('theme', [SettingsController::class, 'updateTheme'])->name('settings.theme.update');
     Route::post('theme/reset', [SettingsController::class, 'resetTheme'])->name('settings.theme.reset');
