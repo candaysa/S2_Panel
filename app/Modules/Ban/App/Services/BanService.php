@@ -18,8 +18,11 @@ use Throwable;
  * read-only consumer here – bans/mutes/gags/warns are owned by the plugin
  * and are only ever queried.
  *
- * Search accepts a player name or any SteamID format; the lookup converts
- * to SteamID64 so all three plugin formats resolve to the same row.
+ * Search accepts a name or any SteamID format and matches either side of
+ * the punishment - the player who received it or the admin who issued it -
+ * so an admin's SteamID lists what they have handed out. SteamIDs are
+ * converted to SteamID64 so all three plugin formats resolve to the same
+ * row.
  */
 class BanService
 {
@@ -54,11 +57,19 @@ class BanService
         $query = $model::query();
 
         if ($search !== null && $search !== '') {
+            // Both sides of the punishment, not just the player who received
+            // it. "What has this admin been handing out?" is a routine
+            // question - reviewing a new moderator, or checking a complaint
+            // about one - and answering it previously meant reading every
+            // page by eye because only the target was searchable.
             $query->where(function ($q) use ($search): void {
-                $q->where('target_name', 'like', "%{$search}%");
+                $q->where('target_name', 'like', "%{$search}%")
+                    ->orWhere('admin_name', 'like', "%{$search}%");
 
                 if (SteamId::isValid($search)) {
-                    $q->orWhere('steamid', (int) SteamId::parse($search)->steamId64());
+                    $steam64 = (int) SteamId::parse($search)->steamId64();
+                    $q->orWhere('steamid', $steam64)
+                        ->orWhere('admin_steamid', $steam64);
                 }
             });
         }

@@ -136,45 +136,8 @@
             <p x-show="!loading && !error && players.length === 0" x-cloak class="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.empty') }}</p>
         </div>
 
-        {{-- Pagination. Hidden when everything fits on one page, so a small
-             server never sees controls it has no use for. --}}
-        <div x-show="!loading && lastPage > 1" x-cloak class="mt-4 flex flex-wrap items-center justify-center gap-1">
-            <button
-                type="button"
-                @click="go(page - 1)"
-                :disabled="page === 1"
-                class="inline-flex size-9 items-center justify-center rounded-lg border border-line text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink disabled:pointer-events-none disabled:opacity-40"
-                aria-label="{{ __('i18n::messages.ranks.previous_page') }}"
-            >
-                <x-icon name="chevron-left" class="size-4" />
-            </button>
-
-            <template x-for="(n, i) in pageNumbers" :key="'p' + i">
-                <span>
-                    <span x-show="n === '…'" class="inline-flex size-9 items-center justify-center text-ink-faint">…</span>
-                    <button
-                        type="button"
-                        x-show="n !== '…'"
-                        @click="go(n)"
-                        class="inline-flex min-w-9 items-center justify-center rounded-lg border px-2.5 py-2 text-sm font-medium transition-colors"
-                        :class="n === page
-                            ? 'border-brand-strong bg-brand-soft text-brand-strong'
-                            : 'border-line text-ink-muted hover:bg-surface-raised hover:text-ink'"
-                        x-text="n"
-                    ></button>
-                </span>
-            </template>
-
-            <button
-                type="button"
-                @click="go(page + 1)"
-                :disabled="page === lastPage"
-                class="inline-flex size-9 items-center justify-center rounded-lg border border-line text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink disabled:pointer-events-none disabled:opacity-40"
-                aria-label="{{ __('i18n::messages.ranks.next_page') }}"
-            >
-                <x-icon name="chevron-left" class="size-4 rotate-180" />
-            </button>
-        </div>
+        {{-- range: the heading above already states it. --}}
+        <x-pagination :range="false" />
     </div>
 
     @push('scripts')

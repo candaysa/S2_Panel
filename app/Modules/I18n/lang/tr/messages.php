@@ -205,6 +205,7 @@ return [
     ],
     'bans' => [
         'type_ban' => 'Banlar',
+        'search_placeholder' => 'Oyuncu veya yetkili (isim ya da SteamID)',
         'type_mute' => 'Susturmalar',
         'type_gag' => 'Yazı Engelleri',
         'type_warn' => 'Uyarılar',
@@ -673,5 +674,11 @@ return [
         'test_ok' => 'Test mesajı gönderildi.',
         'test_subject' => ':site — SMTP testi',
         'test_body' => 'Bu :site tarafından gönderilen bir test mesajıdır. Bunu okuyorsanız giden e-posta çalışıyor.',
+    ],
+
+    'pagination' => [
+        'go_to' => 'Sayfaya git',
+        'page' => 'sayfa',
+        'per_page' => 'Sayfa başına satır',
     ],
 ];
