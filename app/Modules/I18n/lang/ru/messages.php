@@ -224,6 +224,7 @@ return [
         'created' => 'Создан',
         'expires' => 'Истекает',
         'never' => 'Никогда',
+        'permanent' => 'Постоянно',
         'status' => 'Статус',
     ],
     'tickets' => [

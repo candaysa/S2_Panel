@@ -224,6 +224,7 @@ return [
         'created' => 'Oluşturulma',
         'expires' => 'Bitiş',
         'never' => 'Süresiz',
+        'permanent' => 'Kalıcı',
         'status' => 'Durum',
     ],
     'tickets' => [

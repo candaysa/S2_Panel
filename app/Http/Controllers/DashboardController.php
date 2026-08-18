@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Modules\Admin\App\Models\AdminAdmin;
 use App\Modules\Ban\App\Models\AdminBan;
 use App\Modules\Ban\App\Models\AdminMute;
+use App\Modules\Ban\App\Services\BanService;
 use App\Modules\Rank\App\Models\RankPlayer;
 use App\Modules\Server\App\Models\AdminServer;
 use App\Modules\Server\App\Services\ServerService;
@@ -36,8 +37,10 @@ class DashboardController extends Controller
 {
     private const BAN_FLAGS = ['admin.ban', 'admin.mute', 'admin.kick', 'admin.generic'];
 
-    public function __construct(private readonly ModuleRegistry $modules)
-    {
+    public function __construct(
+        private readonly ModuleRegistry $modules,
+        private readonly BanService $bans,
+    ) {
     }
 
     public function index(): JsonResponse
@@ -62,23 +65,19 @@ class DashboardController extends Controller
             // an anonymous visitor, unlike the old one-probe-per-server path.
             'servers' => $this->section('server', fn (): array => $this->serversWithLive()),
             'ranks' => $this->section('rank', fn (): array => $this->topPlayers()),
-            // target_name, not name - AdminBan/AdminMute's real column
-            // (see tests/Support/CreatesPluginTables.php for the schema).
-            // Selecting a column that does not exist throws, which
-            // section()'s catch-and-hide turned into a silent empty list -
-            // these two cards showed "Nothing here yet" on every install
-            // regardless of how many bans/mutes actually existed. Aliased
-            // back to `name` since that's what the frontend already reads.
-            'recent_bans' => ! $canViewBanDetail ? [] : $this->section('ban', fn (): array => AdminBan::query()
-                ->orderByDesc('id')
-                ->limit(6)
-                ->get(['id', 'target_name as name', 'steamid', 'reason', 'admin_name', 'created_at', 'expires_at'])
-                ->all()),
-            'recent_mutes' => ! $canViewBanDetail ? [] : $this->section('ban', fn (): array => AdminMute::query()
-                ->orderByDesc('id')
-                ->limit(6)
-                ->get(['id', 'target_name as name', 'steamid', 'reason', 'admin_name', 'created_at', 'expires_at'])
-                ->all()),
+            // Goes through BanService::list() rather than a second,
+            // narrower query straight against AdminBan/AdminMute - a second
+            // hand-picked column list is exactly how this card ended up
+            // selecting a `name` column that was never real (see the fix
+            // history above `looksLikeSteamId`... this file used to do that
+            // itself). list() already resolves the live avatar, the same
+            // steamid-as-name fallback the /bans page gets, and a real
+            // status per row - reusing it means this card can never drift
+            // from what /bans itself shows for the same rows again.
+            'recent_bans' => ! $canViewBanDetail ? [] : $this->section('ban', fn (): array => $this->bans
+                ->list('ban', null, 'all', 6, 'id', 'desc')->items()),
+            'recent_mutes' => ! $canViewBanDetail ? [] : $this->section('ban', fn (): array => $this->bans
+                ->list('mute', null, 'all', 6, 'id', 'desc')->items()),
         ], ['can_view_ban_detail' => $canViewBanDetail]);
     }
 
