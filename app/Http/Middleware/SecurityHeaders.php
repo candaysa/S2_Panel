@@ -54,11 +54,10 @@ class SecurityHeaders
         $response->headers->set('Content-Security-Policy',
             "default-src 'self'; script-src 'self' 'unsafe-eval' 'nonce-{$nonce}'; ".
             "style-src 'self' 'unsafe-inline'; ".
-            // raw.githubusercontent.com: the Skins page's 3D weapon preview
-            // (skin-viewer.js) fetches a real .glb model from there - that's
-            // an XHR/fetch the loader makes internally, not an <img>, so it
-            // falls under connect-src rather than img-src.
-            "img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://raw.githubusercontent.com; ".
+            // Skin/sticker/knife/glove/agent art all loads as <img src>,
+            // which img-src covers - nothing on this panel makes a fetch/XHR
+            // to a third-party host, so connect-src stays 'self' alone.
+            "img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; ".
             "frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; ".
             "manifest-src 'self'; worker-src 'self'"
         );

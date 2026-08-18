@@ -146,16 +146,26 @@ class CatalogService
             return [];
         }
 
-        // Gloves carry a real per-paint image (see gloveImages()); every
-        // other item keeps building its own from name+id in the frontend.
-        $gloveImages = $this->gloveImages()[$weapon] ?? null;
+        // A real per-paint image when one is known (see gloveImages()/
+        // knifeImages()/weaponImages()) - checked in that order since a
+        // name is never in more than one. Guns and knives additionally
+        // still have the frontend's name+id guess as a fallback for
+        // whatever a snapshot does not cover (knives matched 556/556 at
+        // export time - full coverage; guns matched 1,456/1,478, 98.5%, a
+        // genuinely new finish being the only realistic gap); gloves have
+        // no such fallback, because that guess has real, systematic holes
+        // for them specifically.
+        $images = $this->gloveImages()[$weapon]
+            ?? $this->knifeImages()[$weapon]
+            ?? $this->weaponImages()[$weapon]
+            ?? null;
 
         return collect($all[$weapon])
-            ->map(function (array $entry) use ($gloveImages): array {
+            ->map(function (array $entry) use ($images): array {
                 $slim = $this->slim($entry, withRarity: true);
 
-                if ($gloveImages !== null && $slim['index'] !== null) {
-                    $image = $gloveImages[(string) $slim['index']] ?? null;
+                if ($images !== null && $slim['index'] !== null) {
+                    $image = $images[(string) $slim['index']] ?? null;
 
                     if ($image !== null) {
                         $slim['image'] = $image;
@@ -165,6 +175,60 @@ class CatalogService
                 return $slim;
             })
             ->values()->all();
+    }
+
+    /**
+     * Per-paint gun images, sourced from ByMykel/CSGO-API (MIT) the same
+     * way gloveImages() is - a real picture per (weapon, paint) pair rather
+     * than a guessed {name}-{id}.png URL. Guns don't have the systemic gap
+     * gloves do (most finishes the guess pattern predicts really do exist),
+     * but they do have real, individual holes - "AK-47 | Crane Flight" was
+     * one, confirmed 404 against the pattern the frontend otherwise
+     * builds - so this is the same fix at gun scale: 1,456/1,478 (98.5%) of
+     * the live catalog matched at export time; the frontend's own guess
+     * remains the fallback for whatever this snapshot does not cover.
+     *
+     * @return array<string, array<string, string>> weapon name -> paint id -> image URL
+     */
+    private function weaponImages(): array
+    {
+        return Cache::remember('catalog:weapon-images', self::TTL, function (): array {
+            $path = __DIR__.'/../../Resources/weapon_images.json';
+
+            if (! File::exists($path)) {
+                return [];
+            }
+
+            $decoded = json_decode((string) File::get($path), true);
+
+            return is_array($decoded) ? $decoded : [];
+        });
+    }
+
+    /**
+     * Per-paint knife images, sourced from ByMykel/CSGO-API (MIT) the same
+     * way weaponImages() is. Full coverage here, unlike guns/gloves: 556/556
+     * (100%) of the live catalog's knife finishes matched at export time -
+     * a knife's own finish list is small enough (one game-wide set of
+     * skins applied to every blade shape, not a per-weapon roster like guns
+     * have) that there was nothing left uncovered to fall back on the
+     * frontend's guess for.
+     *
+     * @return array<string, array<string, string>> knife classname -> paint id -> image URL
+     */
+    private function knifeImages(): array
+    {
+        return Cache::remember('catalog:knife-images', self::TTL, function (): array {
+            $path = __DIR__.'/../../Resources/knife_images.json';
+
+            if (! File::exists($path)) {
+                return [];
+            }
+
+            $decoded = json_decode((string) File::get($path), true);
+
+            return is_array($decoded) ? $decoded : [];
+        });
     }
 
     /**

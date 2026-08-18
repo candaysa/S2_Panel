@@ -231,15 +231,25 @@
                                                     class="relative flex size-14 flex-col items-center justify-center overflow-hidden rounded-lg border p-1 text-center text-[10px] leading-tight transition-colors"
                                                     :class="stickerAt(i).id ? 'border-brand-strong bg-brand-soft text-brand-strong' : 'border-line bg-canvas text-ink-faint hover:bg-surface-raised'"
                                                 >
+                                                    {{-- Whether the image loads is only known once the browser
+                                                         actually tries - not from whether a URL string exists,
+                                                         which is all "x-show + a static image-vs-text choice"
+                                                         could see. That mismatch is exactly how a slot with a
+                                                         dead image URL ended up rendering neither the picture
+                                                         nor its name: the text was hidden because a URL was
+                                                         present, and the image was hidden by the same @error
+                                                         handler that was supposed to be its fallback. Tracking
+                                                         the failure explicitly is what lets the label take over
+                                                         only once the image has genuinely failed. --}}
                                                     <img
-                                                        x-show="stickerImage(stickerAt(i).id)"
+                                                        x-show="stickerImage(stickerAt(i).id) && !stickerFailed[i]"
                                                         :src="stickerImage(stickerAt(i).id)"
                                                         alt=""
                                                         loading="lazy"
                                                         class="max-h-full max-w-full object-contain"
-                                                        @@error="$el.style.visibility = 'hidden'"
+                                                        @@error="stickerFailed[i] = true"
                                                     >
-                                                    <span x-show="stickerAt(i).id && !stickerImage(stickerAt(i).id)" class="line-clamp-3" x-text="stickerLabel(stickerAt(i).id)"></span>
+                                                    <span x-show="stickerAt(i).id && (!stickerImage(stickerAt(i).id) || stickerFailed[i])" class="line-clamp-3" x-text="stickerLabel(stickerAt(i).id)"></span>
                                                     <span x-show="!stickerAt(i).id" class="text-lg">+</span>
                                                 </button>
                                             </template>
@@ -436,6 +446,12 @@
                 form: {},
 
                 picker: { open: false, kind: null, slotIndex: null, search: '' },
+
+                // Slot index -> true once that slot's <img> has actually
+                // failed to load. Drives the image/text fallback in the
+                // sticker slots - see openDetail() and pickerSelect() for
+                // where it gets cleared.
+                stickerFailed: {},
 
                 EMPTY_STICKER: '0;0;0;0;0;0;0',
                 EMPTY_KEYCHAIN: '0;0;0;0;0',
@@ -761,6 +777,7 @@
                     this.selectedKind = this.section;
                     this.selected = item;
                     this.paintSearch = '';
+                    this.stickerFailed = {};
                     this.paints = await this.fetchJson(`/api/skins/catalog/weapons/${encodeURIComponent(item.name)}/paints`).catch(() => []);
 
                     const row = this.weaponRow(item.index);
@@ -891,6 +908,9 @@
                 pickerSelect(id) {
                     if (this.picker.kind === 'sticker') {
                         this.form[`weapon_sticker_${this.picker.slotIndex}`] = id ? `${id};0;0;0;0;1;0` : this.EMPTY_STICKER;
+                        // A stale failure from whatever was in this slot
+                        // before must not keep the new pick's image hidden.
+                        delete this.stickerFailed[this.picker.slotIndex];
                     } else {
                         this.form.weapon_keychain = id ? `${id};0;0;0;0` : this.EMPTY_KEYCHAIN;
                     }
