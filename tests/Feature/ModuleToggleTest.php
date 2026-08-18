@@ -28,10 +28,14 @@ class ModuleToggleTest extends TestCase
         $this->actingAs(User::factory()->owner()->create())
             ->getJson('/api/modules')
             ->assertOk()
-            ->assertJsonCount(3, 'data')
+            ->assertJsonCount(7, 'data')
             ->assertJsonPath('data.0.key', 'vip')
             ->assertJsonPath('data.1.key', 'skin')
-            ->assertJsonPath('data.2.key', 'rank');
+            ->assertJsonPath('data.2.key', 'rank')
+            ->assertJsonPath('data.3.key', 'report')
+            ->assertJsonPath('data.4.key', 'appeal')
+            ->assertJsonPath('data.5.key', 'rcon')
+            ->assertJsonPath('data.6.key', 'cheat_check');
     }
 
     public function test_index_reflects_env_default_before_any_override(): void
@@ -115,5 +119,36 @@ class ModuleToggleTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         app(ModuleRegistry::class)->setOverride('install', false);
+    }
+
+    public function test_index_reports_which_enabled_modules_depend_on_each_one(): void
+    {
+        // health depends on rcon (config/modules.php), so switching RCON off
+        // takes the server health checks with it - the tab warns before it
+        // happens, which needs this to travel with the row.
+        config(['modules.modules.health.enabled' => true, 'modules.modules.rcon.enabled' => true]);
+
+        $data = collect($this->actingAs(User::factory()->owner()->create())
+            ->getJson('/api/modules')
+            ->assertOk()
+            ->json('data'));
+
+        $this->assertContains('health', $data->firstWhere('key', 'rcon')['dependents']);
+        $this->assertContains('server', $data->firstWhere('key', 'rcon')['depends']);
+    }
+
+    public function test_page_of_a_disabled_module_is_gone_rather_than_broken(): void
+    {
+        $user = User::factory()->owner()->create();
+
+        app(ModuleRegistry::class)->setOverride('vip', false);
+
+        // 404, not a rendered shell whose every fetch fails - see
+        // App\Http\Middleware\RequireModule.
+        $this->actingAs($user)->get('/vip')->assertNotFound();
+
+        app(ModuleRegistry::class)->setOverride('vip', true);
+
+        $this->actingAs($user)->get('/vip')->assertOk();
     }
 }

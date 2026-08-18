@@ -32,15 +32,47 @@ class ModuleRegistry
 
     /**
      * Module keys the owner is allowed to flip via PUT /api/modules/{key}.
-     * Everything else stays purely env/config-driven - keeps a UI toggle
-     * from ever being able to disable core plumbing (auth, install, the
-     * Modules tab itself, ...).
+     *
+     * The rule is "features a server can genuinely run without": every entry
+     * here backs a sidebar page that some installs simply have no plugin
+     * for, so leaving it switched on only advertises a feature that cannot
+     * work. Everything absent stays purely env/config-driven - which keeps a
+     * UI toggle from ever being able to disable core plumbing (auth,
+     * install, settings, the Modules tab itself) or the data other pages
+     * read through (admin, ban, server).
      *
      * @return array<int, string>
      */
     public function toggleable(): array
     {
-        return ['vip', 'skin', 'rank'];
+        return ['vip', 'skin', 'rank', 'report', 'appeal', 'rcon', 'cheat_check'];
+    }
+
+    /**
+     * Enabled modules that declare $key as a dependency.
+     *
+     * Switching a module off is not a local decision - turning RCON off also
+     * takes the server health checks that run through it - so the Modules
+     * tab shows this before asking rather than letting the owner discover it
+     * from a log line afterwards. See checkDependencies().
+     *
+     * @return array<int, string>
+     */
+    public function dependents(string $key): array
+    {
+        $out = [];
+
+        foreach ($this->all() as $module => $definition) {
+            if ($module === $key || ! $definition['enabled']) {
+                continue;
+            }
+
+            if (in_array($key, $definition['depends'] ?? [], true)) {
+                $out[] = $module;
+            }
+        }
+
+        return $out;
     }
 
     /**

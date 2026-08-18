@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'steam.auth' => \App\Http\Middleware\SteamAuth::class,
             'owner.only' => \App\Http\Middleware\OwnerOnly::class,
             'flag' => \App\Http\Middleware\RequireFlag::class,
+            'module' => \App\Http\Middleware\RequireModule::class,
         ]);
 
         // The panel is a session-cookie JSON SPA: Steam OpenID signs into a

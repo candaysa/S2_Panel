@@ -155,11 +155,28 @@ return [
                 'name' => 'Ränge',
                 'description' => 'Spieler-Rang- und Levelverfolgung (CS2_Ranks).',
             ],
+            'report' => [
+                'name' => 'Meldungen',
+                'description' => 'Spielermeldungen und Admin-Bewerbungen auf der Tickets-Seite.',
+            ],
+            'appeal' => [
+                'name' => 'Bann-Einsprüche',
+                'description' => 'Erlaubt gebannten Spielern, über die Tickets-Seite Einspruch einzulegen.',
+            ],
+            'rcon' => [
+                'name' => 'RCON',
+                'description' => 'Live-Serverkonsole und Befehlsausführung.',
+            ],
+            'cheat_check' => [
+                'name' => 'Cheat-Prüfung',
+                'description' => 'Bildschirmfreigabe-Sitzungen und Cheat-Prüfprotokolle.',
+            ],
         ],
         'tab_modules' => 'Module',
         'tab_docs' => 'Dokumentation',
         'badge_builtin' => 'Integriert',
         'badge_plugin' => 'Plugin',
+        'depends_warning' => 'Das Abschalten deaktiviert außerdem: :list',
         'admin_plugin_title' => 'Admin-Plugin',
         'admin_plugin_hint' => 'Aus welchem Plugin Admins, Bans und RCON lesen. Eine Änderung lässt jede Admin-/Rechteabfrage sofort ein anderes Schema lesen - nur umstellen, wenn bekannt ist, welches Plugin dieser Server tatsächlich betreibt.',
         'admin_plugin_confirm' => 'Aktives Admin-Plugin wechseln? Jede Admin-/Rechteprüfung liest ab sofort ein anderes Schema. Nur tun, wenn bekannt ist, welches Plugin dieser Server tatsächlich betreibt.',

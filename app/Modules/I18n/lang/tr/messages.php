@@ -155,11 +155,28 @@ return [
                 'name' => 'Sıralamalar',
                 'description' => 'Oyuncu rütbe ve seviye takibi (CS2_Ranks).',
             ],
+            'report' => [
+                'name' => 'Şikayetler',
+                'description' => 'Tickets sayfasındaki oyuncu şikayetleri ve yetkili başvuruları.',
+            ],
+            'appeal' => [
+                'name' => 'Ban itirazları',
+                'description' => 'Banlı oyuncuların Tickets sayfasından itiraz etmesini sağlar.',
+            ],
+            'rcon' => [
+                'name' => 'RCON',
+                'description' => 'Canlı sunucu konsolu ve komut çalıştırma.',
+            ],
+            'cheat_check' => [
+                'name' => 'Hile kontrolü',
+                'description' => 'Ekran paylaşımı oturumları ve hile kontrol kayıtları.',
+            ],
         ],
         'tab_modules' => 'Modüller',
         'tab_docs' => 'Belgeler',
         'badge_builtin' => 'Yerleşik',
         'badge_plugin' => 'Eklenti',
+        'depends_warning' => 'Bunu kapatmak şunları da devre dışı bırakır: :list',
         'admin_plugin_title' => 'Admin eklentisi',
         'admin_plugin_hint' => 'Admins, Bans ve RCON hangi eklentiden veri okuyor. Bunu değiştirmek her admin/yetki sorgusunu farklı bir şemaya yönlendirir - sadece bu sunucunun gerçekte hangi eklentiyi çalıştırdığını biliyorsanız değiştirin.',
         'admin_plugin_confirm' => 'Aktif admin eklentisi değiştirilsin mi? Her admin/yetki kontrolü hemen farklı bir şemayı okumaya başlayacak. Sadece bu sunucunun gerçekte hangi eklentiyi çalıştırdığını biliyorsanız yapın.',

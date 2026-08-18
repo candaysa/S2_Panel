@@ -155,11 +155,28 @@ return [
                 'name' => 'Rangs',
                 'description' => 'Suivi des rangs et niveaux des joueurs (CS2_Ranks).',
             ],
+            'report' => [
+                'name' => 'Signalements',
+                'description' => 'Signalements de joueurs et candidatures admin sur la page Tickets.',
+            ],
+            'appeal' => [
+                'name' => 'Appels de bannissement',
+                'description' => 'Permet aux joueurs bannis de faire appel depuis la page Tickets.',
+            ],
+            'rcon' => [
+                'name' => 'RCON',
+                'description' => 'Console serveur en direct et exécution de commandes.',
+            ],
+            'cheat_check' => [
+                'name' => 'Contrôle anti-triche',
+                'description' => 'Sessions de partage d\'écran et rapports de contrôle.',
+            ],
         ],
         'tab_modules' => 'Modules',
         'tab_docs' => 'Documentation',
         'badge_builtin' => 'Intégré',
         'badge_plugin' => 'Extension',
+        'depends_warning' => 'Le désactiver désactive aussi : :list',
         'admin_plugin_title' => 'Extension admin',
         'admin_plugin_hint' => 'De quelle extension les Admins, Bans et RCON lisent les données. Changer ceci fait immédiatement lire un schéma différent à chaque vérification admin/permission - ne le faites que si vous savez quelle extension ce serveur utilise réellement.',
         'admin_plugin_confirm' => 'Changer l\'extension admin active ? Chaque vérification admin/permission lira immédiatement un schéma différent. Ne le faites que si vous savez quelle extension ce serveur utilise réellement.',
