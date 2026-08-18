@@ -178,14 +178,30 @@ class CatalogService
      * gloves is a normal paintkit stored against the same defindex in
      * wp_player_skins, so both tables are written when gloves are equipped.
      *
-     * Unlike every other slot, gloves have no unpainted artwork at all -
-     * there is no "{glove}.png", only "{glove}-{paint}.png" - because a
-     * bare glove model is not an item a player can own. `preview_paint` is
-     * therefore attached here (that family's first paintkit) purely so the
-     * picker card has something to draw before a finish has been chosen;
-     * without it the gloves tab renders as a wall of unlabelled boxes.
+     * Only families that actually have finishes. items.json also lists
+     * t_gloves/ct_gloves - the default bare hands, which carry no paintkits
+     * and are not an item anyone owns. Same reasoning that keeps knives out
+     * of weapons(): listing them produces a card that can never show or do
+     * anything. Taking gloves off is what the detail screen's Remove button
+     * is for.
      *
-     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string, preview_paint?: int}>
+     * Unlike every other slot, gloves have no unpainted artwork at all -
+     * there is no "{glove}.png", only "{glove}-{paint}.png" - because a bare
+     * glove model is not an item a player can own. `preview_paints` is
+     * therefore attached here so the picker card has something to draw
+     * before a finish has been chosen; without it the gloves tab renders as
+     * a wall of unlabelled boxes.
+     *
+     * It is a list rather than one id because the artwork set does not cover
+     * every finish: the recent additions (Brocade Crane, Hand Sweaters, ...)
+     * have catalog entries but no published image, and on three of the eight
+     * families one of those sorts first - which is exactly how the "gloves
+     * have no images" report survived a first fix. The frontend walks the
+     * list until an image loads. Ordered high id first only because that
+     * finds a working one sooner; every entry is equally valid, so nothing
+     * breaks if the artwork set later fills the gaps.
+     *
+     * @return array<int, array{name: string, index: int, label: string, rarity_color: ?string, preview_paints: array<int, int>}>
      */
     public function gloves(): array
     {
@@ -194,13 +210,20 @@ class CatalogService
         return collect($this->rawItems())
             ->filter(fn (array $item): bool => str_contains((string) ($item['Name'] ?? ''), 'glove')
                 || str_contains((string) ($item['Name'] ?? ''), 'handwrap'))
+            ->filter(fn (array $item): bool => ! empty($paintable[(string) ($item['Name'] ?? '')]))
             ->map(function (array $item) use ($paintable): array {
                 $slim = $this->slim($item, withRarity: true);
-                $first = $paintable[(string) ($item['Name'] ?? '')][0]['Index'] ?? null;
 
-                if ($first !== null) {
-                    $slim['preview_paint'] = (int) $first;
-                }
+                $candidates = collect($paintable[(string) ($item['Name'] ?? '')])
+                    ->pluck('Index')
+                    ->filter()
+                    ->map(fn ($index): int => (int) $index)
+                    ->sortDesc()
+                    ->take(8)
+                    ->values()
+                    ->all();
+
+                $slim['preview_paints'] = $candidates;
 
                 return $slim;
             })

@@ -127,7 +127,7 @@
                                         alt=""
                                         loading="lazy"
                                         class="max-h-full max-w-full object-contain p-2 transition-transform duration-200 group-hover:scale-105"
-                                        @@error="$el.style.visibility = 'hidden'"
+                                        @@error="section === 'gloves' && nextPreviewPaint(item) || ($el.style.visibility = 'hidden')"
                                     >
                                 </div>
                                 <div class="border-t-2 p-3" :style="accent(rarityOf(item))" :class="rarityOf(item) ? '' : 'border-transparent'">
@@ -405,6 +405,10 @@
                 search: '',
                 paintSearch: '',
 
+                // glove name -> which preview candidate is currently being
+                // tried. See previewPaint().
+                previewAttempt: {},
+
                 // Weapons, knives and gloves share one detail screen and one
                 // form (all three are "an item with a defindex that carries a
                 // paintkit"); selectedKind remembers which tab opened it,
@@ -528,10 +532,29 @@
                     const equipped = this.equippedPaintId(item.index);
 
                     if (this.section === 'gloves') {
-                        return this.skinImageUrl(item.name, equipped || item.preview_paint || 0);
+                        return this.skinImageUrl(item.name, equipped || this.previewPaint(item));
                     }
 
                     return this.skinImageUrl(this.imageName(item.name), equipped);
+                },
+
+                // The artwork set does not cover every glove finish - the
+                // recent additions have catalog entries but no published
+                // image, and on three of the eight families one of those is
+                // the first candidate. So a card starts at the first
+                // candidate and nextPreviewPaint() advances on a failed load
+                // until something renders (see CatalogService::gloves()).
+                previewPaint(item) {
+                    const candidates = item.preview_paints ?? [];
+                    return candidates[this.previewAttempt[item.name] ?? 0] ?? candidates[0] ?? 0;
+                },
+
+                nextPreviewPaint(item) {
+                    const candidates = item.preview_paints ?? [];
+                    const at = (this.previewAttempt[item.name] ?? 0) + 1;
+                    if (at >= candidates.length) return false;
+                    this.previewAttempt[item.name] = at;
+                    return true;
                 },
 
                 detailImageUrl() {
@@ -539,7 +562,7 @@
                     const paint = this.form.weapon_paint_id;
 
                     if (this.selectedKind === 'gloves') {
-                        return this.skinImageUrl(this.selected.name, paint || this.selected.preview_paint || 0);
+                        return this.skinImageUrl(this.selected.name, paint || this.previewPaint(this.selected));
                     }
 
                     return this.skinImageUrl(this.imageName(this.selected.name), paint);
@@ -748,9 +771,9 @@
                             weapon_keychain: row.weapon_keychain || this.EMPTY_KEYCHAIN,
                         }
                         : {
-                            // Gloves open on their first finish rather than
-                            // "none", which for gloves is not a wearable state.
-                            weapon_paint_id: this.section === 'gloves' ? (item.preview_paint ?? 0) : 0,
+                            // Gloves open on a real finish rather than "none",
+                            // which for gloves is not a wearable state.
+                            weapon_paint_id: this.section === 'gloves' ? this.previewPaint(item) : 0,
                             weapon_wear: 0.01,
                             weapon_seed: 0,
                             weapon_stattrak: false,
