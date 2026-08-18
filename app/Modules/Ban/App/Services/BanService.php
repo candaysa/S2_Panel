@@ -62,9 +62,21 @@ class BanService
             // question - reviewing a new moderator, or checking a complaint
             // about one - and answering it previously meant reading every
             // page by eye because only the target was searchable.
-            $query->where(function ($q) use ($search): void {
-                $q->where('target_name', 'like', "%{$search}%")
-                    ->orWhere('admin_name', 'like', "%{$search}%");
+            //
+            // target_name only really exists on admin_bans - confirmed
+            // against the live schema, where admin_mutes/gags/warns carry a
+            // steamid for the target but never captured a display name for
+            // one. Querying a column a table does not have is a hard SQL
+            // error, not an empty result, so this is conditional per type
+            // rather than assumed universal the way it first shipped.
+            $hasTargetName = $type === 'ban';
+
+            $query->where(function ($q) use ($search, $hasTargetName): void {
+                if ($hasTargetName) {
+                    $q->where('target_name', 'like', "%{$search}%");
+                }
+
+                $q->orWhere('admin_name', 'like', "%{$search}%");
 
                 if (SteamId::isValid($search)) {
                     $steam64 = (int) SteamId::parse($search)->steamId64();
