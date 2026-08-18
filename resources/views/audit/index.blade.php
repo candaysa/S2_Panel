@@ -1,76 +1,322 @@
 <x-layout.app :title="__('i18n::messages.nav.audit')">
     <div x-data="auditPage()" x-init="init()">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-            <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.audit') }}</h1>
-            <input
-                type="search"
-                x-model="action"
-                @input.debounce.350ms="load()"
-                placeholder="{{ __('i18n::messages.audit.filter_action') }}"
-                class="w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none sm:w-64"
-            >
+        <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.audit') }}</h1>
+
+        <x-settings-tabs current="logs" />
+
+        {{-- Two logs that answer different questions and must not be merged.
+             The panel trail says what someone did *in the panel* - granted an
+             admin, edited a group, changed a setting. The admin log says what
+             an admin did *on a server* - a ban, a kick, a slay - and the panel
+             is only ever a reader of it (see AdminLogService). Same audience,
+             same gate, two tables that share no columns. --}}
+        <div class="mt-5 flex flex-wrap gap-1 border-b border-line">
+            <template x-for="t in tabs" :key="t.key">
+                <button
+                    type="button"
+                    @click="switchTab(t.key)"
+                    :class="tab === t.key ? 'border-brand-strong text-brand-strong' : 'border-transparent text-ink-muted hover:text-ink'"
+                    class="-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition-colors"
+                    x-text="t.label"
+                ></button>
+            </template>
         </div>
 
-        <div class="mt-4 overflow-x-auto rounded-xl border border-line bg-surface">
-            <table class="w-full text-left text-sm">
-                <thead class="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-faint">
-                    <tr>
-                        <th class="px-4 py-3"><x-sort-th key="actor_name" :label="__('i18n::messages.audit.actor')" /></th>
-                        <th class="px-4 py-3"><x-sort-th key="action" :label="__('i18n::messages.audit.action')" /></th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.audit.target') }}</th>
-                        <th class="hidden px-4 py-3 lg:table-cell">{{ __('i18n::messages.audit.source') }}</th>
-                        <th class="px-4 py-3"><x-sort-th key="created_at" :label="__('i18n::messages.audit.when')" /></th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-line-soft">
-                    <template x-for="log in logs" :key="log.id">
-                        <tr class="text-ink-muted">
-                            <td class="px-4 py-3">
-                                <a
-                                    :href="log.actor_steamid ? 'https://steamcommunity.com/profiles/' + log.actor_steamid : null"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="flex items-center gap-2.5"
-                                >
-                                    <img x-show="log.actor_avatar" :src="log.actor_avatar" alt="" loading="lazy" class="size-7 shrink-0 rounded-full object-cover ring-1 ring-line">
-                                    <span x-show="!log.actor_avatar" class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-faint" x-text="actorName(log).charAt(0).toUpperCase()"></span>
-                                    <span class="min-w-0">
-                                        <span class="block truncate font-medium text-ink transition-colors hover:text-brand-strong" x-text="actorName(log)"></span>
-                                        <span class="block truncate font-mono text-[11px] text-ink-faint" x-text="log.actor_steamid"></span>
-                                    </span>
-                                </a>
-                            </td>
-                            <td class="px-4 py-3">
-                                <span :title="log.action" x-text="describe(log)"></span>
-                            </td>
-                            <td class="px-4 py-3" x-text="(log.target_type ?? '') + (log.target_id ? ' #' + log.target_id : '')"></td>
-                            <td class="hidden px-4 py-3 font-mono text-xs lg:table-cell" x-text="log.ip_address || '—'"></td>
-                            <td class="px-4 py-3" x-text="formatDate(log.created_at)"></td>
-                        </tr>
-                    </template>
-                </tbody>
-            </table>
+        {{-- ======================== PANEL ACTIVITY ======================== --}}
+        <div x-show="tab === 'panel'" x-cloak>
+            <div class="mt-4 flex flex-wrap items-center justify-end gap-3">
+                <input
+                    type="search"
+                    x-model="action"
+                    @input.debounce.350ms="load(true)"
+                    placeholder="{{ __('i18n::messages.audit.filter_action') }}"
+                    class="w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none sm:w-64"
+                >
+            </div>
 
-            <p x-show="loading" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
-            <p x-show="!loading && !forbidden && !error && logs.length === 0" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.empty') }}</p>
-            <p x-show="forbidden" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.forbidden') }}</p>
-            <p x-show="error" x-cloak class="px-4 py-8 text-center text-sm text-red-400">{{ __('i18n::messages.common.error') }}</p>
+            <div class="mt-4 overflow-x-auto rounded-xl border border-line bg-surface">
+                <table class="w-full text-left text-sm">
+                    <thead class="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-faint">
+                        <tr>
+                            <th class="px-4 py-3"><x-sort-th key="actor_name" :label="__('i18n::messages.audit.actor')" /></th>
+                            <th class="px-4 py-3"><x-sort-th key="action" :label="__('i18n::messages.audit.action')" /></th>
+                            <th class="px-4 py-3">{{ __('i18n::messages.audit.target') }}</th>
+                            <th class="hidden px-4 py-3 lg:table-cell">{{ __('i18n::messages.audit.source') }}</th>
+                            <th class="px-4 py-3"><x-sort-th key="created_at" :label="__('i18n::messages.audit.when')" /></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line-soft">
+                        <template x-for="log in logs" :key="log.id">
+                            <tr class="text-ink-muted">
+                                <td class="px-4 py-3">
+                                    <a
+                                        :href="log.actor_steamid ? 'https://steamcommunity.com/profiles/' + log.actor_steamid : null"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="flex items-center gap-2.5"
+                                    >
+                                        <img x-show="log.actor_avatar" :src="log.actor_avatar" alt="" loading="lazy" class="size-7 shrink-0 rounded-full object-cover ring-1 ring-line">
+                                        <span x-show="!log.actor_avatar" class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-faint" x-text="actorName(log).charAt(0).toUpperCase()"></span>
+                                        <span class="min-w-0">
+                                            <span class="block truncate font-medium text-ink transition-colors hover:text-brand-strong" x-text="actorName(log)"></span>
+                                            <span class="block truncate font-mono text-[11px] text-ink-faint" x-text="log.actor_steamid"></span>
+                                        </span>
+                                    </a>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span :title="log.action" x-text="describe(log)"></span>
+                                </td>
+                                <td class="px-4 py-3" x-text="(log.target_type ?? '') + (log.target_id ? ' #' + log.target_id : '')"></td>
+                                <td class="hidden px-4 py-3 font-mono text-xs lg:table-cell" x-text="log.ip_address || '—'"></td>
+                                <td class="px-4 py-3" x-text="formatDate(log.created_at)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+
+                <p x-show="loading" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
+                <p x-show="!loading && !forbidden && !error && logs.length === 0" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.empty') }}</p>
+                <p x-show="forbidden" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.forbidden') }}</p>
+                <p x-show="error" x-cloak class="px-4 py-8 text-center text-sm text-red-400">{{ __('i18n::messages.common.error') }}</p>
+            </div>
+
+            <x-pagination :jump="true" />
+        </div>
+
+        {{-- ========================== ADMIN LOGS ========================== --}}
+        <div x-show="tab === 'admin'" x-cloak>
+            <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {{-- Admin picker. Built from the log itself rather than from
+                     the admin list, so it never offers a name with nothing
+                     behind it and still includes admins who have since been
+                     removed - whose history is what someone reviewing this
+                     page is most likely looking for. --}}
+                <select
+                    x-model="adminFilter"
+                    @change="loadAdminLog(true)"
+                    class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none"
+                >
+                    <option value="">{{ __('i18n::messages.audit.all_admins') }}</option>
+                    <template x-for="a in adminOptions" :key="a.steamid">
+                        <option :value="a.steamid" x-text="`${a.name} (${a.actions})`"></option>
+                    </template>
+                </select>
+
+                <select
+                    x-model="actionFilter"
+                    @change="loadAdminLog(true)"
+                    class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none"
+                >
+                    <option value="">{{ __('i18n::messages.audit.all_actions') }}</option>
+                    <template x-for="a in actionOptions" :key="a">
+                        <option :value="a" x-text="a"></option>
+                    </template>
+                </select>
+
+                <input
+                    type="search"
+                    x-model="adminSearch"
+                    @input.debounce.350ms="loadAdminLog(true)"
+                    placeholder="{{ __('i18n::messages.audit.admin_log_search') }}"
+                    class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none lg:col-span-2"
+                >
+            </div>
+
+            <div class="mt-4 overflow-x-auto rounded-xl border border-line bg-surface">
+                <table class="w-full text-left text-sm">
+                    <thead class="border-b border-line text-xs font-semibold uppercase tracking-wider text-ink-faint">
+                        <tr>
+                            <th class="px-4 py-3"><x-sort-th key="admin_name" :label="__('i18n::messages.audit.actor')" /></th>
+                            <th class="px-4 py-3"><x-sort-th key="action" :label="__('i18n::messages.audit.action')" /></th>
+                            <th class="px-4 py-3">{{ __('i18n::messages.audit.against') }}</th>
+                            <th class="hidden px-4 py-3 xl:table-cell">{{ __('i18n::messages.audit.details') }}</th>
+                            <th class="hidden px-4 py-3 lg:table-cell">{{ __('i18n::messages.audit.where') }}</th>
+                            <th class="px-4 py-3"><x-sort-th key="created_at" :label="__('i18n::messages.audit.when')" /></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line-soft">
+                        <template x-for="row in adminLogs" :key="row.id">
+                            <tr class="text-ink-muted">
+                                <td class="px-4 py-3">
+                                    <a
+                                        :href="row.admin_steamid ? 'https://steamcommunity.com/profiles/' + row.admin_steamid : null"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="flex items-center gap-2.5"
+                                    >
+                                        <img x-show="row.admin_avatar" :src="row.admin_avatar" alt="" loading="lazy" class="size-7 shrink-0 rounded-full object-cover ring-1 ring-line">
+                                        <span x-show="!row.admin_avatar" class="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-semibold text-ink-faint" x-text="adminName(row).charAt(0).toUpperCase()"></span>
+                                        <span class="min-w-0">
+                                            <span class="block truncate font-medium text-ink transition-colors hover:text-brand-strong" x-text="adminName(row)"></span>
+                                            <span class="block truncate font-mono text-[11px] text-ink-faint" x-text="row.admin_steamid || '—'"></span>
+                                        </span>
+                                    </a>
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center rounded-full bg-surface-raised px-2.5 py-0.5 text-xs font-medium text-ink" x-text="row.action"></span>
+                                </td>
+                                <td class="px-4 py-3">
+                                    {{-- admin_log stores only a SteamID for the
+                                         player acted upon; the name is overlaid
+                                         from the live profile, because a bare
+                                         17-digit number is the one thing nobody
+                                         can identify at a glance. --}}
+                                    <a
+                                        x-show="row.target_steamid"
+                                        :href="'https://steamcommunity.com/profiles/' + row.target_steamid"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="flex items-center gap-2.5"
+                                    >
+                                        <img x-show="row.target_avatar" :src="row.target_avatar" alt="" loading="lazy" class="size-7 shrink-0 rounded-full object-cover ring-1 ring-line">
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-ink transition-colors hover:text-brand-strong" x-text="row.target_name || '—'"></span>
+                                            <span class="block truncate font-mono text-[11px] text-ink-faint" x-text="row.target_steamid"></span>
+                                        </span>
+                                    </a>
+                                    <span x-show="!row.target_steamid" class="text-ink-faint">—</span>
+                                </td>
+                                <td class="hidden max-w-xs px-4 py-3 xl:table-cell">
+                                    <span class="line-clamp-2" :title="row.details" x-text="row.details || '—'"></span>
+                                </td>
+                                <td class="hidden px-4 py-3 lg:table-cell" x-text="serverLabel(row)"></td>
+                                <td class="whitespace-nowrap px-4 py-3" x-text="formatDate(row.created_at)"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+
+                <p x-show="loading" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
+
+                {{-- "This plugin keeps no such log" is a different answer from
+                     "no admin has done anything yet", and only one of them is
+                     worth investigating - see AdminLogService::available(). --}}
+                <p x-show="!loading && !adminAvailable" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">
+                    {{ __('i18n::messages.audit.admin_log_unavailable') }}
+                </p>
+                <p x-show="!loading && adminAvailable && !error && adminLogs.length === 0" x-cloak class="px-4 py-8 text-center text-sm text-ink-faint">
+                    {{ __('i18n::messages.common.empty') }}
+                </p>
+                <p x-show="error" x-cloak class="px-4 py-8 text-center text-sm text-red-400">{{ __('i18n::messages.common.error') }}</p>
+            </div>
+
+            <x-pagination :jump="true" />
         </div>
     </div>
 
     @push('scripts')
         <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
             window.auditPage = () => ({
+                tab: 'panel',
+
+                // <x-sort-th> and <x-pagination> bind to sort/dir and
+                // page/lastPage/total/perPage by name in this scope. Only
+                // one tab is ever on screen, so rather than a second set of
+                // fields the shared components know nothing about, both tabs
+                // share these and switchTab() stashes/restores them.
                 loading: true,
                 forbidden: false,
                 error: false,
-                action: '',
                 sort: 'created_at',
                 dir: 'desc',
+                page: 1,
+                perPage: 50,
+                lastPage: 1,
+                total: 0,
+
+                tabState: {
+                    panel: { sort: 'created_at', dir: 'desc', page: 1 },
+                    admin: { sort: 'id', dir: 'desc', page: 1 },
+                },
+
+                // --- panel activity ---
+                action: '',
                 logs: [],
+
+                // --- in-game admin log ---
+                adminAvailable: true,
+                adminLoaded: false,
+                adminLogs: [],
+                adminFilter: '',
+                actionFilter: '',
+                adminSearch: '',
+                adminOptions: [],
+                actionOptions: [],
+
                 t: @js(__('i18n::messages.audit')),
 
-                async load() {
+                tabs: [
+                    { key: 'panel', label: @js(__('i18n::messages.audit.tab_panel')) },
+                    { key: 'admin', label: @js(__('i18n::messages.audit.tab_admin')) },
+                ],
+
+                init() {
+                    this.load();
+                },
+
+                // Each tab keeps its own sort column and page across a
+                // switch - they sort by different columns entirely, and
+                // coming back to a list you had paged into only to find it
+                // reset to page 1 is its own small annoyance.
+                switchTab(key) {
+                    if (key === this.tab) return;
+
+                    this.tabState[this.tab] = { sort: this.sort, dir: this.dir, page: this.page };
+                    this.tab = key;
+                    Object.assign(this, this.tabState[key]);
+                    this.error = false;
+                    this.forbidden = false;
+
+                    // The admin log is a second round-trip against a table
+                    // this install may not even have, so its first load waits
+                    // until someone actually opens the tab.
+                    if (key === 'admin' && !this.adminLoaded) {
+                        this.adminLoaded = true;
+                        this.loadAdminFilters();
+                    }
+
+                    key === 'admin' ? this.loadAdminLog() : this.load();
+                },
+
+                // A short window around the current page plus the two ends, so
+                // 60 pages do not render 60 buttons.
+                get pageNumbers() {
+                    const span = 2;
+                    const pages = new Set([1, this.lastPage]);
+                    for (let i = this.page - span; i <= this.page + span; i++) {
+                        if (i >= 1 && i <= this.lastPage) pages.add(i);
+                    }
+                    const sorted = [...pages].sort((a, b) => a - b);
+                    const out = [];
+                    let prev = 0;
+                    for (const n of sorted) {
+                        if (prev && n - prev > 1) out.push('…');
+                        out.push(n);
+                        prev = n;
+                    }
+                    return out;
+                },
+
+                get rangeFrom() {
+                    return this.total === 0 ? 0 : (this.page - 1) * this.perPage + 1;
+                },
+
+                get rangeTo() {
+                    return Math.min(this.page * this.perPage, this.total);
+                },
+
+                go(page) {
+                    if (page < 1 || page > this.lastPage || page === this.page) return;
+                    this.page = page;
+                    this.tab === 'admin' ? this.loadAdminLog() : this.load();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+
+                // resetPage on anything that changes what the result set IS -
+                // narrowing a list from page 7 otherwise lands on an empty
+                // page that reads as "no results".
+                async load(resetPage = false) {
+                    if (resetPage) this.page = 1;
                     this.loading = true;
                     this.error = false;
                     this.forbidden = false;
@@ -79,11 +325,17 @@
                         if (this.action) url.searchParams.set('action', this.action);
                         url.searchParams.set('sort', this.sort);
                         url.searchParams.set('dir', this.dir);
+                        url.searchParams.set('per_page', String(this.perPage));
+                        url.searchParams.set('page', String(this.page));
                         const res = await fetch(url, { headers: { Accept: 'application/json' } });
                         if (res.status === 403) { this.forbidden = true; return; }
                         if (!res.ok) throw new Error('request_failed');
                         const body = await res.json();
                         this.logs = body.data;
+                        const p = body.meta?.pagination ?? {};
+                        this.lastPage = p.last_page ?? 1;
+                        this.total = p.total ?? this.logs.length;
+                        this.page = p.current_page ?? this.page;
                     } catch (e) {
                         this.error = true;
                     } finally {
@@ -91,14 +343,78 @@
                     }
                 },
 
+                async loadAdminFilters() {
+                    try {
+                        const res = await fetch('/api/audit/admin-log/filters', { headers: { Accept: 'application/json' } });
+                        if (!res.ok) return;
+                        const body = await res.json();
+                        this.adminOptions = body.data.admins ?? [];
+                        this.actionOptions = body.data.actions ?? [];
+                    } catch (e) {
+                        // Filters are a convenience; the table below still
+                        // loads and is still searchable without them.
+                    }
+                },
+
+                async loadAdminLog(resetPage = false) {
+                    if (resetPage) this.page = 1;
+                    this.loading = true;
+                    this.error = false;
+                    this.forbidden = false;
+                    try {
+                        const url = new URL('/api/audit/admin-log', window.location.origin);
+                        if (this.adminFilter) url.searchParams.set('admin', this.adminFilter);
+                        if (this.actionFilter) url.searchParams.set('action', this.actionFilter);
+                        if (this.adminSearch) url.searchParams.set('search', this.adminSearch);
+                        url.searchParams.set('sort', this.sort);
+                        url.searchParams.set('dir', this.dir);
+                        url.searchParams.set('per_page', String(this.perPage));
+                        url.searchParams.set('page', String(this.page));
+                        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+                        if (res.status === 403) { this.forbidden = true; return; }
+                        if (!res.ok) throw new Error('request_failed');
+                        const body = await res.json();
+                        this.adminAvailable = body.meta?.available !== false;
+                        this.adminLogs = body.data;
+                        const p = body.meta?.pagination ?? {};
+                        this.lastPage = p.last_page ?? 1;
+                        this.total = p.total ?? this.adminLogs.length;
+                        this.page = p.current_page ?? this.page;
+                    } catch (e) {
+                        this.error = true;
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                // <x-sort-th> calls this. The two tables share no column
+                // names, so which list reloads depends on the tab; names sort
+                // A-Z on first click, everything else newest-first.
                 sortBy(key) {
-                    if (this.sort === key) { this.dir = this.dir === 'asc' ? 'desc' : 'asc'; }
-                    else { this.sort = key; this.dir = key === 'actor_name' || key === 'action' ? 'asc' : 'desc'; }
-                    this.load();
+                    if (this.sort === key) {
+                        this.dir = this.dir === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        this.sort = key;
+                        this.dir = ['actor_name', 'admin_name', 'action'].includes(key) ? 'asc' : 'desc';
+                    }
+
+                    this.tab === 'admin' ? this.loadAdminLog(true) : this.load(true);
                 },
 
                 formatDate(value) {
                     return value ? new Date(value).toLocaleString() : '—';
+                },
+
+                serverLabel(row) {
+                    if (row.server_ip) return `${row.server_ip}:${row.server_port ?? ''}`.replace(/:$/, '');
+                    return row.server_id ? `#${row.server_id}` : '—';
+                },
+
+                // Prefer the live Steam profile the API overlays onto every row
+                // over the stored snapshot - a nickname can change after the
+                // action, and the snapshot is whatever it was at the time.
+                adminName(row) {
+                    return row.admin_current_name || row.admin_name || '—';
                 },
 
                 // Prefer the live Steam profile the API overlays onto every row
@@ -167,8 +483,6 @@
                     const words = (parts[parts.length - 1] || '').replace(/_/g, ' ');
                     return words.charAt(0).toUpperCase() + words.slice(1);
                 },
-
-                init() { this.load(); },
             });
         </script>
     @endpush
