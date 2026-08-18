@@ -543,6 +543,7 @@ return [
         'port_placeholder' => 'Port',
         'invalid' => 'Geçerli bir IP ve port girin.',
         'last_seen' => 'Son görülme',
+        'rcon_status_configured' => 'Bu sunucu için RCON şifresi ayarlı.',
     ],
 
     'update' => [

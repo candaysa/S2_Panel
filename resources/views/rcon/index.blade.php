@@ -70,13 +70,12 @@
                     </button>
                 </div>
 
-                <div class="rounded-xl border border-line bg-surface p-4">
-                    <p class="text-xs font-semibold uppercase tracking-wider text-ink-faint">{{ __('i18n::messages.rcon.password_settings') }}</p>
-                    <input type="password" x-model="password" placeholder="{{ __('i18n::messages.rcon.password_placeholder') }}" class="mt-2 w-full rounded-lg border border-line bg-canvas px-3 py-1.5 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                    <button type="button" @click="savePassword()" class="mt-2 w-full rounded-lg border border-line py-1.5 text-sm text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
-                        {{ __('i18n::messages.rcon.save_password') }}
-                    </button>
-                </div>
+                {{-- RCON password is configured from Settings > Servers now,
+                     not here - see settings/servers.blade.php. That page is
+                     owner-only, which is a deliberate tightening: an
+                     admin.rcon holder can still run every command below, but
+                     setting the credential itself is now an owner action
+                     like every other Settings page. --}}
             </div>
         </div>
     </div>
@@ -94,7 +93,6 @@
                 kick: { target: '', reason: '' },
                 ban: { target: '', duration: '0', reason: '' },
                 slay: { target: '' },
-                password: '',
 
                 async loadServers() {
                     try {
@@ -191,22 +189,6 @@
                         this.error = e.message;
                     } finally {
                         this.running = false;
-                    }
-                },
-
-                async savePassword() {
-                    if (!this.password.trim() || !this.serverId) return;
-                    this.error = '';
-                    try {
-                        const res = await fetch('/api/rcon/settings', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                            body: JSON.stringify({ server_id: Number(this.serverId), password: this.password }),
-                        });
-                        if (!res.ok) throw new Error('request_failed');
-                        this.password = '';
-                    } catch (e) {
-                        this.error = @js(__('i18n::messages.common.error'));
                     }
                 },
 

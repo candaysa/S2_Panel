@@ -60,4 +60,11 @@ return Application::configure(basePath: dirname(__DIR__))
         if (config('modules.modules.health.enabled', false)) {
             $schedule->command('health:check')->everyFiveMinutes();
         }
+
+        // Keeps Bans/Admins/Ranks off the critical path of a live Steam API
+        // call - see WarmSteamProfileCache. Hourly, well inside the 12h
+        // cache window it is refreshing, so a real page load only ever
+        // needs a genuinely new player's profile fetched live, not
+        // whichever page happens to load first after the cache expires.
+        $schedule->command('steam:warm-profiles')->hourly();
     })->create();

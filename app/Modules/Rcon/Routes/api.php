@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('api/rcon')->middleware('steam.auth')->group(function (): void {
+    Route::get('settings', [RconController::class, 'listSettings'])
+        ->middleware('flag:admin.rcon')
+        ->name('rcon.settings.index');
     Route::post('settings', [RconController::class, 'saveSettings'])
         ->middleware('flag:admin.rcon')
         ->name('rcon.settings.save');

@@ -15,6 +15,11 @@ use InvalidArgumentException;
  * admin.rcon flag (the owner always passes via RequireFlag). Passwords are
  * stored encrypted in the panel database – never in plugin tables.
  *
+ * Password management is only ever reached from Settings > Servers, which
+ * is owner-only on top of this gate - see routes/web.php. This controller
+ * itself still allows any admin.rcon flag holder through, matching the
+ * command endpoints below.
+ *
  * Failures map to stable messages:
  *   - unknown server            -> 404 not_found
  *   - no password configured    -> 422 rcon_not_configured
@@ -36,6 +41,16 @@ class RconController extends Controller
 
     public function __construct(private readonly RconService $rcon)
     {
+    }
+
+    /**
+     * GET /api/rcon/settings - which servers have an RCON password
+     * configured. Never the passwords themselves - Settings > Servers uses
+     * this to show a configured/not-configured state per row.
+     */
+    public function listSettings(): JsonResponse
+    {
+        return Api::success(['server_ids' => $this->rcon->configuredServerIds()]);
     }
 
     public function saveSettings(Request $request): JsonResponse

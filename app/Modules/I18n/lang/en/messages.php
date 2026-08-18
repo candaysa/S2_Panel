@@ -543,6 +543,7 @@ return [
         'port_placeholder' => 'Port',
         'invalid' => 'Enter a valid IP and port.',
         'last_seen' => 'Last seen',
+        'rcon_status_configured' => 'RCON password is configured for this server.',
     ],
 
     'update' => [
