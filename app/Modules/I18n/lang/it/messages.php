@@ -205,6 +205,7 @@ return [
     ],
     'bans' => [
         'type_ban' => 'Ban',
+        'search_placeholder' => 'Giocatore o admin (nome o SteamID)',
         'type_mute' => 'Silenziamenti',
         'type_gag' => 'Blocchi chat',
         'type_warn' => 'Avvisi',
@@ -673,5 +674,11 @@ return [
         'test_ok' => 'Messaggio di test inviato.',
         'test_subject' => ':site — test SMTP',
         'test_body' => 'Questo è un messaggio di test da :site. Se lo stai leggendo, la posta in uscita funziona.',
+    ],
+
+    'pagination' => [
+        'go_to' => 'Vai a',
+        'page' => 'pagina',
+        'per_page' => 'Righe per pagina',
     ],
 ];

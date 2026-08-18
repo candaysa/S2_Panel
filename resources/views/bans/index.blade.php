@@ -10,13 +10,21 @@
             sort: 'id',
             dir: 'desc',
             rows: [],
+            page: 1,
+            perPage: 50,
+            lastPage: 1,
+            total: 0,
             types: [
                 { key: 'ban', label: @js(__('i18n::messages.bans.type_ban')) },
                 { key: 'mute', label: @js(__('i18n::messages.bans.type_mute')) },
                 { key: 'gag', label: @js(__('i18n::messages.bans.type_gag')) },
                 { key: 'warn', label: @js(__('i18n::messages.bans.type_warn')) },
             ],
-            async load() {
+            // resetPage on anything that changes what the result set IS
+            // (search, type, status, sort) - otherwise narrowing a list while
+            // on page 7 lands on an empty page and looks like no results.
+            async load(resetPage = false) {
+                if (resetPage) this.page = 1;
                 this.loading = true;
                 this.error = false;
                 this.forbidden = false;
@@ -26,22 +34,58 @@
                     url.searchParams.set('status', this.status);
                     url.searchParams.set('sort', this.sort);
                     url.searchParams.set('dir', this.dir);
+                    url.searchParams.set('per_page', String(this.perPage));
+                    url.searchParams.set('page', String(this.page));
                     if (this.search) url.searchParams.set('search', this.search);
                     const res = await fetch(url, { headers: { Accept: 'application/json' } });
                     if (res.status === 403) { this.forbidden = true; return; }
                     if (!res.ok) throw new Error('request_failed');
                     const body = await res.json();
                     this.rows = body.data;
+                    const p = body.meta?.pagination ?? {};
+                    this.lastPage = p.last_page ?? 1;
+                    this.total = p.total ?? this.rows.length;
+                    this.page = p.current_page ?? this.page;
                 } catch (e) {
                     this.error = true;
                 } finally {
                     this.loading = false;
                 }
             },
+            go(page) {
+                if (page < 1 || page > this.lastPage || page === this.page) return;
+                this.page = page;
+                this.load();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
+            // A short window around the current page plus the two ends, so
+            // 60 pages do not render 60 buttons.
+            get pageNumbers() {
+                const span = 2;
+                const pages = new Set([1, this.lastPage]);
+                for (let i = this.page - span; i <= this.page + span; i++) {
+                    if (i >= 1 && i <= this.lastPage) pages.add(i);
+                }
+                const sorted = [...pages].sort((a, b) => a - b);
+                const out = [];
+                let prev = 0;
+                for (const n of sorted) {
+                    if (prev && n - prev > 1) out.push('…');
+                    out.push(n);
+                    prev = n;
+                }
+                return out;
+            },
+            get rangeFrom() {
+                return this.total === 0 ? 0 : (this.page - 1) * this.perPage + 1;
+            },
+            get rangeTo() {
+                return Math.min(this.page * this.perPage, this.total);
+            },
             sortBy(key) {
                 if (this.sort === key) { this.dir = this.dir === 'asc' ? 'desc' : 'asc'; }
                 else { this.sort = key; this.dir = key === 'target_name' || key === 'admin_name' ? 'asc' : 'desc'; }
-                this.load();
+                this.load(true);
             },
             init() { this.load(); },
             formatDate(value) {
@@ -68,8 +112,8 @@
             <input
                 type="search"
                 x-model="search"
-                @input.debounce.350ms="load()"
-                placeholder="{{ __('i18n::messages.common.search') }}"
+                @input.debounce.350ms="load(true)"
+                placeholder="{{ __('i18n::messages.bans.search_placeholder') }}"
                 class="w-full max-w-xs rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-brand-strong focus:outline-none sm:w-64"
             >
         </div>
@@ -79,7 +123,7 @@
                 <template x-for="t in types" :key="t.key">
                     <button
                         type="button"
-                        @click="type = t.key; load()"
+                        @click="type = t.key; load(true)"
                         :class="type === t.key ? 'bg-brand-soft text-brand-strong' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'"
                         class="rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
                         x-text="t.label"
@@ -87,15 +131,28 @@
                 </template>
             </div>
 
-            <select
-                x-model="status"
-                @change="load()"
-                class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none"
-            >
-                <option value="active">{{ __('i18n::messages.bans.status_active') }}</option>
-                <option value="expired">{{ __('i18n::messages.bans.status_expired') }}</option>
-                <option value="all">{{ __('i18n::messages.bans.status_all') }}</option>
-            </select>
+            <div class="flex items-center gap-2">
+                <select
+                    x-model="status"
+                    @change="load(true)"
+                    class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none"
+                >
+                    <option value="active">{{ __('i18n::messages.bans.status_active') }}</option>
+                    <option value="expired">{{ __('i18n::messages.bans.status_expired') }}</option>
+                    <option value="all">{{ __('i18n::messages.bans.status_all') }}</option>
+                </select>
+
+                <select
+                    x-model.number="perPage"
+                    @change="load(true)"
+                    class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none"
+                    aria-label="{{ __('i18n::messages.pagination.per_page') }}"
+                >
+                    @foreach ([25, 50, 100] as $n)
+                        <option value="{{ $n }}">{{ $n }} / {{ __('i18n::messages.pagination.page') }}</option>
+                    @endforeach
+                </select>
+            </div>
         </div>
 
         <div class="mt-4 overflow-x-auto rounded-xl border border-line bg-surface">
@@ -165,5 +222,10 @@
                 {{ __('i18n::messages.common.error') }}
             </p>
         </div>
+
+        {{-- jump: a busy server has hundreds of pages of bans, and the
+             windowed buttons only ever reach the two ends and the five
+             around you. --}}
+        <x-pagination :jump="true" />
     </div>
 </x-layout.app>
