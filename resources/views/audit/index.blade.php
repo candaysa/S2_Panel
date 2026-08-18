@@ -216,11 +216,12 @@
             window.auditPage = () => ({
                 tab: 'panel',
 
-                // <x-sort-th> and <x-pagination> bind to sort/dir and
-                // page/lastPage/total/perPage by name in this scope. Only
-                // one tab is ever on screen, so rather than a second set of
-                // fields the shared components know nothing about, both tabs
-                // share these and switchTab() stashes/restores them.
+                // The sort-th and pagination components bind to sort/dir
+                // and page/lastPage/total/perPage by name in this scope.
+                // Only one tab is ever on screen, so rather than a second
+                // set of fields the shared components know nothing about,
+                // both tabs share these and switchTab() stashes/restores
+                // them.
                 loading: true,
                 forbidden: false,
                 error: false,
@@ -394,9 +395,10 @@
                     }
                 },
 
-                // <x-sort-th> calls this. The two tables share no column
-                // names, so which list reloads depends on the tab; names sort
-                // A-Z on first click, everything else newest-first.
+                // The sort-th component calls this. The two tables share no
+                // column names, so which list reloads depends on the tab;
+                // names sort A-Z on first click, everything else
+                // newest-first.
                 sortBy(key) {
                     if (this.sort === key) {
                         this.dir = this.dir === 'asc' ? 'desc' : 'asc';

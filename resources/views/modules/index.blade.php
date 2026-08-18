@@ -220,6 +220,27 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                 <p class="mt-2 text-sm leading-relaxed text-amber-400/90">{{ __('i18n::messages.modules.docs.security_body') }}</p>
             </section>
         </div>
+
+        {{-- In-app confirm dialog, replacing window.confirm() - native
+             confirm() popups are unreliable in some embedded/extension
+             browser contexts and can be silently suppressed, which looks
+             identical to a dead switch. --}}
+        <div x-show="confirmModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/70" @click="resolveConfirm(false)"></div>
+            <div x-show="confirmModal.open" x-transition class="relative w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-surface shadow-2xl">
+                <div class="p-5">
+                    <p class="text-sm text-ink" x-text="confirmModal.message"></p>
+                </div>
+                <div class="flex justify-end gap-2 border-t border-line p-4">
+                    <button type="button" @click="resolveConfirm(false)" class="rounded-lg border border-line px-3 py-2 text-sm font-medium text-ink-muted transition-colors hover:bg-surface-raised hover:text-ink">
+                        {{ __('i18n::messages.common.cancel') }}
+                    </button>
+                    <button type="button" @click="resolveConfirm(true)" class="rounded-lg bg-brand-strong px-3 py-2 text-sm font-medium text-canvas transition-colors hover:opacity-90">
+                        {{ __('i18n::messages.common.confirm') }}
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     @push('scripts')
@@ -234,6 +255,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                 uploading: false,
                 adminPlugin: 'cs2_admin',
                 adminPluginSaving: false,
+                confirmModal: { open: false, message: '', resolve: null },
 
                 dependsWarning: @js(__('i18n::messages.modules.depends_warning')),
 
@@ -291,6 +313,18 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                     return document.querySelector('meta[name=csrf-token]').content;
                 },
 
+                confirmDialog(message) {
+                    return new Promise((resolve) => {
+                        this.confirmModal = { open: true, message, resolve };
+                    });
+                },
+
+                resolveConfirm(result) {
+                    const resolve = this.confirmModal.resolve;
+                    this.confirmModal = { open: false, message: '', resolve: null };
+                    if (resolve) resolve(result);
+                },
+
                 async init() {
                     await Promise.all([this.loadModules(), this.loadPlugins()]);
                     this.loading = false;
@@ -331,7 +365,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
 
                     if (!next) {
                         const affected = this.dependentNames(item);
-                        if (affected.length && !confirm(this.dependsWarning.replace(':list', affected.join(', ')))) {
+                        if (affected.length && !(await this.confirmDialog(this.dependsWarning.replace(':list', affected.join(', '))))) {
                             return;
                         }
                     }
@@ -361,7 +395,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
 
                 async setAdminPlugin(plugin) {
                     if (plugin === this.adminPlugin) return;
-                    if (!confirm(@js(__('i18n::messages.modules.admin_plugin_confirm')))) return;
+                    if (!(await this.confirmDialog(@js(__('i18n::messages.modules.admin_plugin_confirm'))))) return;
                     this.adminPluginSaving = true;
                     this.error = '';
                     try {
@@ -404,7 +438,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                 },
 
                 async uninstall(item) {
-                    if (!confirm(@js(__('i18n::messages.plugins.uninstall_confirm')))) return;
+                    if (!(await this.confirmDialog(@js(__('i18n::messages.plugins.uninstall_confirm'))))) return;
                     this.error = '';
                     try {
                         const res = await fetch(`/api/plugins/${item.rawKey}`, {
