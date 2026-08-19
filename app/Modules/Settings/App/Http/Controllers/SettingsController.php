@@ -203,7 +203,7 @@ class SettingsController
                 fn ($message) => $message->to($to)->subject(__('i18n::messages.smtp.test_subject', ['site' => $siteName])),
             );
         } catch (Throwable $e) {
-            return Api::error($e->getMessage(), null, 422);
+            return Api::error($e->getMessage(), [], 422);
         }
 
         return Api::success(['sent_to' => $to]);
@@ -297,8 +297,14 @@ class SettingsController
 
     private function upload(Request $request, string $kind): JsonResponse
     {
+        // Not the `image` rule: its own mime whitelist is hardcoded in
+        // Laravel itself (jpg/jpeg/png/gif/bmp/webp/avif/heic/heif, plus
+        // svg only with an explicit allow_svg parameter this never passed)
+        // and never includes ico under any parameter - so a genuine
+        // favicon.ico, and even a plain logo.svg, failed validation
+        // unconditionally regardless of what mimes: below allowed.
         $validator = Validator::make($request->all(), [
-            'file' => 'required|image|mimes:png,jpg,jpeg,webp,svg,ico|max:2048',
+            'file' => ['required', 'file', 'mimes:png,jpg,jpeg,webp,svg,ico', 'max:2048'],
         ]);
 
         if ($validator->fails()) {
