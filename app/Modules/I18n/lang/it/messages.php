@@ -129,14 +129,6 @@ return [
         'site_name_placeholder' => 'La mia community CS2',
         'site_name_hint' => 'Mostrato nella barra laterale, nella scheda del browser e quando il pannello viene installato come app. Modificabile in seguito nelle Impostazioni.',
     ],
-    'backup' => [
-        'title' => 'Backup',
-        'subtitle' => 'Scarica un backup.zip completo: connessioni al database, credenziali Steam, SteamID del proprietario, moduli attivi, dati del pannello e logo/favicon.',
-        'warning' => 'Contiene credenziali in chiaro — conservalo in un luogo sicuro.',
-        'download' => 'Scarica backup.zip',
-        'downloading' => 'Preparazione…',
-        'plugins_note' => 'Il codice dei plugin non è incluso — reinstallali dal loro .zip dopo aver ripristinato un backup.',
-    ],
     'modules' => [
         'title' => 'Moduli',
         'subtitle' => 'Attiva o disattiva le funzionalità integrate del pannello.',

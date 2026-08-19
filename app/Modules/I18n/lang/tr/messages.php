@@ -129,14 +129,6 @@ return [
         'site_name_placeholder' => 'CS2 Topluluğum',
         'site_name_hint' => "Kenar çubuğunda, tarayıcı sekmesinde ve panel uygulama olarak kurulduğunda görünür. Daha sonra Ayarlar'dan değiştirebilirsiniz.",
     ],
-    'backup' => [
-        'title' => 'Yedekleme',
-        'subtitle' => 'Tam bir backup.zip indirin: veritabanı bağlantıları, Steam kimlik bilgileri, sahibin SteamID\'si, modül ayarları, panel verileri ve logo/favicon.',
-        'warning' => 'Düz metin kimlik bilgileri içerir — güvenli bir yerde saklayın.',
-        'download' => 'backup.zip indir',
-        'downloading' => 'Hazırlanıyor…',
-        'plugins_note' => 'Eklenti kodu dahil değildir — bir yedeği geri yükledikten sonra eklentileri .zip dosyalarından yeniden kurun.',
-    ],
     'modules' => [
         'title' => 'Modüller',
         'subtitle' => 'Panele dahil özellikleri açıp kapatın.',

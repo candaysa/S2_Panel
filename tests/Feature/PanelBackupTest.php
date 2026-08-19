@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Modules\Install\App\Services\ConnectionProbe;
 use App\Modules\Settings\App\Services\SettingService;
 use App\Support\PanelBackup;
@@ -27,11 +26,6 @@ class PanelBackupTest extends TestCase
         config()->set('settings.upload_path', storage_path('framework/testing/uploads'));
         $this->envFile = tempnam(sys_get_temp_dir(), 's2panel_env_');
         config()->set('install.env_path', $this->envFile);
-
-        // phpunit.xml sets INSTALLED=true globally (this file also covers
-        // Settings > Backup download, which must run against an *installed*
-        // panel). Only the restore-backup tests below need to flip this -
-        // see InstallTest's setUp() for the same distinction.
     }
 
     protected function tearDown(): void
@@ -46,78 +40,51 @@ class PanelBackupTest extends TestCase
     }
 
     /**
+     * Hand-builds a backup.zip in exactly the format PanelBackup::restore()
+     * expects. There is no export path in the panel itself to generate one
+     * from any more (Settings > Backup was removed) - restore is the only
+     * half of this format that still exists in production code, so the
+     * fixture for it now lives here instead.
+     *
      * @param  array<string, mixed>  $manifestOverrides
      */
     private function buildBackupZip(array $manifestOverrides = []): UploadedFile
     {
-        $path = app(PanelBackup::class)->create();
+        $manifest = array_replace_recursive([
+            'version' => PanelBackup::FORMAT_VERSION,
+            'created_at' => now()->toIso8601String(),
+            'app_url' => config('app.url'),
+            'locale' => 'en',
+            'database' => [
+                'panel' => ['host' => '127.0.0.1', 'port' => 3306, 'database' => 'panel', 'username' => 'root', 'password' => ''],
+                'swiftly' => ['host' => '127.0.0.1', 'port' => 3306, 'database' => 'swiftly', 'username' => 'root', 'password' => ''],
+                'ranks' => ['host' => '127.0.0.1', 'port' => 3306, 'database' => 'ranks', 'username' => 'root', 'password' => ''],
+                'weaponskins' => ['host' => '127.0.0.1', 'port' => 3306, 'database' => 'weaponskins', 'username' => 'root', 'password' => ''],
+                'vip' => ['host' => '127.0.0.1', 'port' => 3306, 'database' => 'vip', 'username' => 'root', 'password' => ''],
+            ],
+            'steam' => ['api_key' => 'test-key', 'client_id' => null, 'client_secret' => null, 'callback_url' => null],
+            'owner_steam_id' => '76561198000000000',
+            'modules' => [],
+        ], $manifestOverrides);
 
-        if ($manifestOverrides !== []) {
-            $zip = new ZipArchive();
-            $zip->open($path);
-            $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
-            $manifest = array_replace_recursive($manifest, $manifestOverrides);
-            $zip->deleteName('manifest.json');
-            $zip->addFromString('manifest.json', json_encode($manifest));
-            $zip->close();
-        }
+        $path = tempnam(sys_get_temp_dir(), 'backup_zip_');
+        $zip = new ZipArchive();
+        $zip->open($path, ZipArchive::OVERWRITE);
+        $zip->addFromString('manifest.json', json_encode($manifest));
+
+        // The `settings` table's `value` column is a raw JSON-encoded string
+        // under the hood (Setting model casts it 'json' on the Eloquent
+        // side) - importData() below inserts these rows with the query
+        // builder directly, bypassing that cast, so each value has to
+        // already be pre-encoded exactly as it would sit in the column.
+        $settingsRows = app(SettingService::class)->all();
+        $zip->addFromString('data/settings.json', json_encode(
+            collect($settingsRows)->map(fn ($value, $key) => ['key' => $key, 'value' => json_encode($value)])->values()
+        ));
+
+        $zip->close();
 
         return new UploadedFile($path, 'backup.zip', 'application/zip', null, true);
-    }
-
-    public function test_create_produces_a_zip_with_manifest_and_table_data(): void
-    {
-        app(SettingService::class)->set('site_name', 'My Backed Up Panel');
-
-        $path = app(PanelBackup::class)->create();
-        $this->assertFileExists($path);
-
-        $zip = new ZipArchive();
-        $this->assertTrue($zip->open($path) === true);
-
-        $manifest = json_decode((string) $zip->getFromName('manifest.json'), true);
-        $this->assertSame(PanelBackup::FORMAT_VERSION, $manifest['version']);
-        $this->assertArrayHasKey('panel', $manifest['database']);
-        $this->assertArrayHasKey('swiftly', $manifest['database']);
-
-        $settingsRows = json_decode((string) $zip->getFromName('data/settings.json'), true);
-        $this->assertContains('site_name', array_column($settingsRows, 'key'));
-
-        $zip->close();
-        @unlink($path);
-    }
-
-    public function test_create_includes_uploaded_logo(): void
-    {
-        $uploadDir = (string) config('settings.upload_path');
-        @mkdir($uploadDir, 0755, true);
-        file_put_contents($uploadDir.'/logo.png', 'fake-png-bytes');
-
-        $path = app(PanelBackup::class)->create();
-
-        $zip = new ZipArchive();
-        $zip->open($path);
-        $this->assertSame('fake-png-bytes', $zip->getFromName('uploads/logo.png'));
-        $zip->close();
-        @unlink($path);
-    }
-
-    public function test_backup_download_requires_owner(): void
-    {
-        $this->getJson('/api/settings/backup')->assertStatus(401);
-
-        $this->actingAs(User::factory()->create())
-            ->getJson('/api/settings/backup')
-            ->assertStatus(403);
-    }
-
-    public function test_backup_download_streams_a_zip(): void
-    {
-        $response = $this->actingAs(User::factory()->owner()->create())
-            ->get('/api/settings/backup');
-
-        $response->assertOk();
-        $this->assertStringContainsString('backup.zip', (string) $response->headers->get('content-disposition'));
     }
 
     public function test_restore_requires_a_file(): void

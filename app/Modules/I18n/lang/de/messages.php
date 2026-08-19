@@ -129,14 +129,6 @@ return [
         'site_name_placeholder' => 'Meine CS2-Community',
         'site_name_hint' => 'Erscheint in der Seitenleiste, im Browser-Tab und wenn das Panel als App installiert wird. Später in den Einstellungen änderbar.',
     ],
-    'backup' => [
-        'title' => 'Backup',
-        'subtitle' => 'Lade ein vollständiges backup.zip herunter: Datenbankverbindungen, Steam-Zugangsdaten, die SteamID des Besitzers, Modul-Einstellungen, Paneldaten und Logo/Favicon.',
-        'warning' => 'Enthält Zugangsdaten im Klartext — sicher aufbewahren.',
-        'download' => 'backup.zip herunterladen',
-        'downloading' => 'Wird vorbereitet…',
-        'plugins_note' => 'Plugin-Code ist nicht enthalten — installiere Plugins nach einer Wiederherstellung erneut über ihre .zip-Datei.',
-    ],
     'modules' => [
         'title' => 'Module',
         'subtitle' => 'Integrierte Panel-Funktionen ein- oder ausschalten.',

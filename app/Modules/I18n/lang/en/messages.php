@@ -129,14 +129,6 @@ return [
         'site_name_placeholder' => 'My CS2 Community',
         'site_name_hint' => 'Shown in the sidebar, the browser tab and when the panel is installed as an app. You can change it later in Settings.',
     ],
-    'backup' => [
-        'title' => 'Backup',
-        'subtitle' => 'Download a full backup.zip: database connections, Steam credentials, the owner SteamID, module toggles, panel data, and the logo/favicon.',
-        'warning' => 'Contains plaintext credentials — store it somewhere safe.',
-        'download' => 'Download backup.zip',
-        'downloading' => 'Preparing…',
-        'plugins_note' => "Plugin code isn't included — reinstall plugins from their .zip after restoring a backup.",
-    ],
     'modules' => [
         'title' => 'Modules',
         'subtitle' => 'Turn built-in panel features on or off.',

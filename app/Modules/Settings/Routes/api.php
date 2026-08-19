@@ -23,5 +23,4 @@ Route::prefix('api/settings')->middleware(['steam.auth', 'owner.only'])->group(f
     Route::post('brand-color/reset', [SettingsController::class, 'resetBrandColor'])->name('settings.brand-color.reset');
     Route::put('theme', [SettingsController::class, 'updateTheme'])->name('settings.theme.update');
     Route::post('theme/reset', [SettingsController::class, 'resetTheme'])->name('settings.theme.reset');
-    Route::get('backup', [SettingsController::class, 'backup'])->name('settings.backup');
 });

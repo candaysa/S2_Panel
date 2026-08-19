@@ -36,10 +36,10 @@ or bridge is required on the game server.
   previously downloaded `backup.zip` can be uploaded on the very first
   screen to skip the wizard entirely and restore straight into a working
   panel (see **Backup & restore** below).
-- **Backup & restore**: Settings > Backup downloads a `backup.zip` —
-  database connections, Steam credentials, the owner's SteamID, module
-  toggles, every table the panel owns, and the logo/favicon — for disaster
-  recovery or moving to a new server.
+- **Restore from backup**: the install wizard can skip straight to a
+  working panel from a `backup.zip` — database connections, Steam
+  credentials, the owner's SteamID, module toggles, every table the panel
+  owns, and the logo/favicon.
 - 6-language UI (English, Turkish, German, French, Italian, Russian),
   dark/light theme, and an owner-customizable accent color.
 
