@@ -5,14 +5,12 @@ namespace App\Modules\Settings\App\Http\Controllers;
 use App\Modules\Settings\App\Services\SettingService;
 use App\Support\Api;
 use App\Support\MailConfig;
-use App\Support\PanelBackup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
 
 /**
@@ -27,7 +25,6 @@ use Throwable;
  * POST /api/settings/smtp/test    – send one test message and report back
  * PUT  /api/settings/theme        – set the full color palette override
  * POST /api/settings/theme/reset  – drop it, back to app.css factory colors
- * GET  /api/settings/backup       – download a full backup.zip
  */
 class SettingsController
 {
@@ -43,19 +40,6 @@ class SettingsController
 
     public function __construct(private readonly SettingService $settings)
     {
-    }
-
-    /**
-     * Streams a freshly-built backup.zip (see PanelBackup) and deletes the
-     * scratch copy once it's been sent. Contains database credentials and
-     * Steam secrets in plain text - the response has no cache headers on
-     * purpose, and this route is owner-only (steam.auth + owner.only).
-     */
-    public function backup(PanelBackup $backup): BinaryFileResponse
-    {
-        $path = $backup->create();
-
-        return response()->download($path, 'backup.zip')->deleteFileAfterSend(true);
     }
 
     public function index(): JsonResponse

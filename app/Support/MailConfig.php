@@ -19,9 +19,8 @@ use Throwable;
  * through .env keeps working and is never half-overridden by blank fields.
  *
  * The password is encrypted at rest with the app key (see encrypt()) because
- * the settings table is dumped verbatim by the backup endpoint and read by
- * anything with database access; everything else here is ordinary
- * configuration.
+ * the settings table is otherwise readable in plain text by anything with
+ * database access; everything else here is ordinary configuration.
  */
 class MailConfig
 {

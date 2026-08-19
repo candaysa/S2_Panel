@@ -10,15 +10,16 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-use RuntimeException;
 use Throwable;
-use ZipArchive;
 
 /**
- * Builds and restores "backup.zip" — a portable snapshot of everything the
- * install wizard would otherwise ask for by hand (database connections,
- * Steam credentials, the owner's SteamID, module toggles) plus every table
- * the panel itself owns and its logo/favicon uploads.
+ * Restores a panel from a "backup.zip" during the install wizard - a
+ * portable snapshot of everything the wizard would otherwise ask for by
+ * hand (database connections, Steam credentials, the owner's SteamID,
+ * module toggles) plus every table the panel itself owns and its
+ * logo/favicon uploads. There is no export path in the panel itself
+ * (Settings > Backup was removed); a backup.zip in this format has to come
+ * from wherever the install it is restoring from was backed up.
  *
  * Deliberately NOT included: third-party plugin *code*. Restoring PHP from
  * an unauthenticated pre-install endpoint (see InstallLock — this runs
@@ -69,42 +70,6 @@ class PanelBackup
     }
 
     /**
-     * Builds backup.zip in a scratch directory and returns its path. The
-     * caller is responsible for streaming/deleting it.
-     */
-    public function create(): string
-    {
-        $workDir = storage_path('app/backup-export/'.Str::random(20));
-        File::ensureDirectoryExists($workDir);
-        $zipPath = $workDir.'/backup.zip';
-
-        $zip = new ZipArchive();
-
-        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('backup_zip_create_failed');
-        }
-
-        $zip->addFromString('manifest.json', json_encode($this->buildManifest(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-
-        foreach (self::TABLES as $table) {
-            $rows = $this->tableExists($table) ? DB::table($table)->get()->toArray() : [];
-            $zip->addFromString("data/{$table}.json", json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        }
-
-        $uploadPath = (string) config('settings.upload_path');
-
-        if (is_dir($uploadPath)) {
-            foreach (File::allFiles($uploadPath) as $file) {
-                $zip->addFile($file->getPathname(), 'uploads/'.$file->getRelativePathname());
-            }
-        }
-
-        $zip->close();
-
-        return $zipPath;
-    }
-
-    /**
      * Restores a full panel from an uploaded backup.zip during the install
      * wizard. Only reachable while INSTALLED is still false (InstallLock),
      * matching the rest of the installer's "first visitor configures the
@@ -139,48 +104,6 @@ class PanelBackup
         } finally {
             File::deleteDirectory($workDir);
         }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildManifest(): array
-    {
-        // Same exclusion list as InstallController::modules() - these are
-        // always-on core plumbing, never installer/backup-selectable.
-        $modules = collect(config('modules.modules', []))
-            ->except(['auth', 'install', 'modules', 'plugins'])
-            ->map(fn (array $module) => (bool) ($module['enabled'] ?? true))
-            ->all();
-
-        $database = [];
-
-        foreach (self::DB_CONNECTIONS as $connection) {
-            $config = (array) config("database.connections.{$connection}", []);
-            $database[$connection] = [
-                'host' => $config['host'] ?? '127.0.0.1',
-                'port' => $config['port'] ?? 3306,
-                'database' => $config['database'] ?? '',
-                'username' => $config['username'] ?? 'root',
-                'password' => $config['password'] ?? '',
-            ];
-        }
-
-        return [
-            'version' => self::FORMAT_VERSION,
-            'created_at' => now()->toIso8601String(),
-            'app_url' => config('app.url'),
-            'locale' => $this->settings->get('default_locale') ?: config('app.locale'),
-            'database' => $database,
-            'steam' => [
-                'api_key' => config('services.steam.api_key'),
-                'client_id' => config('services.steam.client_id'),
-                'client_secret' => config('services.steam.client_secret'),
-                'callback_url' => config('services.steam.redirect'),
-            ],
-            'owner_steam_id' => config('app.owner_steam_id'),
-            'modules' => $modules,
-        ];
     }
 
     /**

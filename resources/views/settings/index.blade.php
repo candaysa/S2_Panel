@@ -239,21 +239,6 @@
             </div>
         </div>
 
-        <div x-show="!loading" x-cloak class="mt-6 max-w-xl rounded-xl border border-line bg-surface p-5">
-            <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.backup.title') }}</h2>
-            <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.backup.subtitle') }}</p>
-            <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.backup.plugins_note') }}</p>
-
-            <a
-                href="{{ route('settings.backup') }}"
-                class="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-surface-raised"
-            >
-                <x-icon name="upload" class="size-4 rotate-180" />
-                {{ __('i18n::messages.backup.download') }}
-            </a>
-
-            <p class="mt-3 text-xs text-ink-faint">{{ __('i18n::messages.backup.warning') }}</p>
-        </div>
     </div>
 
     @push('scripts')

@@ -129,14 +129,6 @@ return [
         'site_name_placeholder' => 'Ma communauté CS2',
         'site_name_hint' => "Affiché dans la barre latérale, l'onglet du navigateur et lorsque le panel est installé comme application. Modifiable ensuite dans les Réglages.",
     ],
-    'backup' => [
-        'title' => 'Sauvegarde',
-        'subtitle' => 'Téléchargez un backup.zip complet : connexions aux bases de données, identifiants Steam, SteamID du propriétaire, modules activés, données du panneau et logo/favicon.',
-        'warning' => 'Contient des identifiants en clair — conservez-le en lieu sûr.',
-        'download' => 'Télécharger backup.zip',
-        'downloading' => 'Préparation…',
-        'plugins_note' => "Le code des extensions n'est pas inclus — réinstallez-les depuis leur .zip après une restauration.",
-    ],
     'modules' => [
         'title' => 'Modules',
         'subtitle' => 'Activez ou désactivez les fonctionnalités intégrées du panel.',
