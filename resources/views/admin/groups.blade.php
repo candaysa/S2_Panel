@@ -93,11 +93,15 @@
                         <label class="block text-xs font-medium text-ink-muted">{{ __('i18n::messages.admins.flags') }}</label>
                         <div class="mt-1.5 space-y-1.5">
                             <template x-for="flag in allFlags" :key="flag">
-                                <label class="flex cursor-pointer items-start gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-raised">
-                                    <input type="checkbox" :checked="form.flags.includes(flag)" @change="toggle(form.flags, flag)" class="mt-0.5 size-4 rounded border-line text-brand-strong focus:ring-brand-strong">
+                                <label class="flex cursor-pointer items-center justify-between gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-raised">
                                     <span class="min-w-0">
                                         <span class="rounded px-1.5 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset" :class="flagColorClass(flag)" x-text="flag"></span>
                                         <span class="ml-1.5 text-xs text-ink-muted" x-text="flagLabels[flag] ?? ''"></span>
+                                    </span>
+                                    <span class="relative inline-flex h-6 w-11 shrink-0 items-center">
+                                        <input type="checkbox" :checked="form.flags.includes(flag)" @change="toggle(form.flags, flag)" class="peer sr-only">
+                                        <span class="pointer-events-none absolute inset-0 rounded-full bg-surface-raised transition-colors peer-checked:bg-brand-strong"></span>
+                                        <span class="pointer-events-none absolute left-1 inline-block size-4 rounded-full bg-canvas transition-transform peer-checked:translate-x-5"></span>
                                     </span>
                                 </label>
                             </template>

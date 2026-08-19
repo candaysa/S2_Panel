@@ -298,8 +298,8 @@ Uninstalling deletes `app/Modules/{Key}/` entirely. Back up first.
 
 A plugin is PHP running inside the panel with the panel's own privileges:
 full database access, full filesystem access. There is no sandbox, and none
-is planned — this is the same trust model as a WordPress plugin or a WHMCS
-module. The installer validates *structure*, not behaviour. Only install
+is planned — this is the same trust model as any other third-party plugin
+system. The installer validates *structure*, not behaviour. Only install
 zips from sources you trust.
 
 ### Known limitations

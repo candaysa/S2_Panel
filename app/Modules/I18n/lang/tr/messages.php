@@ -202,7 +202,7 @@ return [
             'install_title' => 'Kurulum',
             'install_body' => '.zip\'i yukarıdaki yükleme kutusuna bırakın. Panel onu açar, plugin.json\'ı okur, key\'in boşta olduğunu kontrol eder, provider sınıfının var olduğunu ve ModuleServiceProvider\'ı genişlettiğini doğrular, sonra app/Modules/ altına taşır ve hemen etkinleştirir - yeniden başlatma gerekmez. Bir kontrolden geçemeyen her şey reddedilir ve geriye hiçbir şey kalmaz.',
             'security_title' => 'Bir şey kurmadan önce',
-            'security_body' => 'Bir eklenti, panelin geri kalanıyla birebir aynı yetkilerle çalışan sıradan PHP kodudur: tam veritabanı erişimi, tam dosya sistemi erişimi, her şey. Sanal alan (sandbox) yoktur ve planlanmıyor - bu, bir WordPress eklentisi ya da WHMCS modülüyle aynı güven modelidir. Sadece güvendiğiniz kaynaklardan .zip kurun.',
+            'security_body' => 'Bir eklenti, panelin geri kalanıyla birebir aynı yetkilerle çalışan sıradan PHP kodudur: tam veritabanı erişimi, tam dosya sistemi erişimi, her şey. Sanal alan (sandbox) yoktur ve planlanmıyor - bu, herhangi bir üçüncü taraf eklenti sistemiyle aynı güven modelidir. Sadece güvendiğiniz kaynaklardan .zip kurun.',
         ],
     ],
     'bans' => [
@@ -467,9 +467,9 @@ return [
         'upload_zip' => 'Eklenti yükle (.zip)',
         'uninstall' => 'Kaldır',
         'uninstall_confirm' => 'Bu eklenti kaldırılsın mı? Dosyaları silinecek. Bu işlem geri alınamaz.',
-        'trust_note' => 'Bir eklenti, çalıştırmayı seçtiğiniz koddur — tıpkı bir WordPress eklentisi veya WHMCS modülü gibi. Sadece güvendiğiniz kaynaklardan gelen .zip dosyalarını yükleyin.',
+        'trust_note' => 'Bir eklenti, çalıştırmayı seçtiğiniz koddur — herhangi bir üçüncü taraf eklenti sistemiyle aynı güven modeliyle. Sadece güvendiğiniz kaynaklardan gelen .zip dosyalarını yükleyin.',
         'upload_title' => 'Eklenti yükle',
-        'upload_hint' => 'Bir .zip yükleyin. Eklenti, çalıştırmayı seçtiğiniz koddur - tıpkı WordPress eklentisi gibi, yalnızca güvendiğiniz kaynaklardan yükleyin.',
+        'upload_hint' => 'Bir .zip yükleyin. Eklenti, çalıştırmayı seçtiğiniz koddur - herhangi bir üçüncü taraf eklenti sistemiyle aynı güven modeliyle, yalnızca güvendiğiniz kaynaklardan yükleyin.',
         'none_installed' => 'Henüz eklenti yüklenmemiş.',
     ],
     'cheat_check' => [
@@ -639,6 +639,7 @@ return [
         'members' => 'üye',
         'sort_by' => 'Sırala',
         'group_name_locked' => 'Bu isim grubu her yerde tanımlar ve değiştirilemez.',
+        'select_groups' => 'Grup seçin',
     ],
 
     'api_errors' => [
