@@ -473,7 +473,7 @@ return [
         'generate_link' => 'Bağlantı oluştur',
         'command_ready' => 'Bu komutu oyuncuya gönderin',
         'command_hint' => 'Oyuncu bunu PowerShell\'e yapıştırır. Yönetici yetkisini kendisi ister; yetki verilmezse bazı katmanlar atlanır.',
-        'command_expiry' => 'Bağlantı tek kullanımlıktır ve 30 dakika sonra geçersiz olur. Taramanın kendisi birkaç dakika sürebilir.',
+        'command_expiry' => 'Bağlantı 60 dakika sonra geçersiz olur ve birkaç yeniden denemeyi tolere eder (yetki yükseltme istemleri, kazara tekrar çalıştırma). Taramanın kendisi birkaç dakika sürebilir.',
         'copy' => 'Kopyala',
         'copied' => 'Kopyalandı',
         'status_all' => 'Tümü',

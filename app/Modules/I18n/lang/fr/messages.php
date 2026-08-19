@@ -473,7 +473,7 @@ return [
         'generate_link' => 'Générer le lien',
         'command_ready' => 'Envoyez cette commande au joueur',
         'command_hint' => 'Il la colle dans PowerShell. Les droits administrateur sont demandés automatiquement ; sans eux certaines couches sont ignorées.',
-        'command_expiry' => 'Le lien fonctionne une seule fois et expire au bout de 30 minutes. L\'analyse peut durer plusieurs minutes.',
+        'command_expiry' => 'Le lien expire au bout de 60 minutes et tolère quelques nouvelles tentatives (invites d\'élévation, relance accidentelle). L\'analyse elle-même peut durer plusieurs minutes.',
         'copy' => 'Copier',
         'copied' => 'Copié',
         'status_all' => 'Tous',

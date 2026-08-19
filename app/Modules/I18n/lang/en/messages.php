@@ -473,7 +473,7 @@ return [
         'generate_link' => 'Generate link',
         'command_ready' => 'Send this command to the player',
         'command_hint' => 'They paste it into PowerShell. It asks for administrator rights on its own; without them some layers are skipped.',
-        'command_expiry' => 'The link works once and expires after 30 minutes. The scan itself may take several minutes.',
+        'command_expiry' => 'The link expires after 60 minutes and tolerates a few retries (elevation prompts, an accidental re-run). The scan itself may take several minutes.',
         'copy' => 'Copy',
         'copied' => 'Copied',
         'status_all' => 'All',

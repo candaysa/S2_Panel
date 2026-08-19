@@ -7,7 +7,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CheatScanToken extends Model
 {
-    public const MAX_DOWNLOADS = 2;
+    // The elevation bootstrap alone needs 2 (the plain fetch, then its
+    // UAC-elevated retry) - see CheatCheckService::elevationBootstrap().
+    // The extra budget above that is for the same link surviving real
+    // friction between "the admin generates it" and "the player actually
+    // runs it": a re-paste after a UAC prompt opened behind another
+    // window and visibly nothing happened, or one prefetch by a chat
+    // client's own link scanner. Once a scan actually resolves,
+    // serveScript() rejects any further download regardless of this
+    // budget (the scan's own status, not the count, is what closes the
+    // token for good) - so this only bounds how much friction the
+    // handshake itself can absorb before it succeeds once.
+    public const MAX_DOWNLOADS = 5;
 
     public $timestamps = false;
 
