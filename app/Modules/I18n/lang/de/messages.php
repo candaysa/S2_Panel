@@ -473,7 +473,7 @@ return [
         'generate_link' => 'Link erzeugen',
         'command_ready' => 'Diesen Befehl an den Spieler senden',
         'command_hint' => 'Der Spieler fügt ihn in PowerShell ein. Administratorrechte fordert er selbst an; ohne sie werden Ebenen übersprungen.',
-        'command_expiry' => 'Der Link funktioniert einmal und läuft nach 30 Minuten ab. Der Scan selbst kann mehrere Minuten dauern.',
+        'command_expiry' => 'Der Link läuft nach 60 Minuten ab und verträgt ein paar Wiederholungsversuche (UAC-Aufforderungen, ein versehentlicher erneuter Start). Der Scan selbst kann mehrere Minuten dauern.',
         'copy' => 'Kopieren',
         'copied' => 'Kopiert',
         'status_all' => 'Alle',

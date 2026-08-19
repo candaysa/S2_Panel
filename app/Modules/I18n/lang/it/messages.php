@@ -473,7 +473,7 @@ return [
         'generate_link' => 'Genera link',
         'command_ready' => 'Invia questo comando al giocatore',
         'command_hint' => 'Il giocatore lo incolla in PowerShell. I permessi di amministratore vengono richiesti da soli; senza di essi alcuni livelli vengono saltati.',
-        'command_expiry' => 'Il link funziona una volta sola e scade dopo 30 minuti. La scansione può richiedere alcuni minuti.',
+        'command_expiry' => 'Il link scade dopo 60 minuti e tollera alcuni nuovi tentativi (richieste di elevazione, una riesecuzione accidentale). La scansione stessa può richiedere alcuni minuti.',
         'copy' => 'Copia',
         'copied' => 'Copiato',
         'status_all' => 'Tutti',
