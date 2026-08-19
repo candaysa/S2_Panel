@@ -202,7 +202,7 @@ return [
             'install_title' => 'Installation',
             'install_body' => 'Das .zip in das Upload-Feld oben ziehen. Das Panel entpackt es, liest plugin.json, prüft ob der key frei ist, verifiziert dass die Provider-Klasse existiert und ModuleServiceProvider erweitert, verschiebt es dann nach app/Modules/ und aktiviert es sofort - kein Neustart nötig. Alles, was eine Prüfung nicht besteht, wird abgelehnt, ohne Reste zu hinterlassen.',
             'security_title' => 'Bevor du etwas installierst',
-            'security_body' => 'Ein Plugin ist gewöhnlicher PHP-Code, der mit exakt denselben Rechten läuft wie der Rest des Panels: voller Datenbankzugriff, voller Dateisystemzugriff, alles. Es gibt keine Sandbox und keine ist geplant - dasselbe Vertrauensmodell wie bei einem WordPress-Plugin oder einem WHMCS-Modul. Nur .zip-Dateien aus vertrauenswürdigen Quellen installieren.',
+            'security_body' => 'Ein Plugin ist gewöhnlicher PHP-Code, der mit exakt denselben Rechten läuft wie der Rest des Panels: voller Datenbankzugriff, voller Dateisystemzugriff, alles. Es gibt keine Sandbox und keine ist geplant - dasselbe Vertrauensmodell wie bei jedem anderen Drittanbieter-Plugin-System. Nur .zip-Dateien aus vertrauenswürdigen Quellen installieren.',
         ],
     ],
     'bans' => [
@@ -467,9 +467,9 @@ return [
         'upload_zip' => 'Plugin hochladen (.zip)',
         'uninstall' => 'Deinstallieren',
         'uninstall_confirm' => 'Dieses Plugin deinstallieren? Seine Dateien werden gelöscht. Kann nicht rückgängig gemacht werden.',
-        'trust_note' => 'Ein Plugin ist Code, den du bewusst ausführst - genau wie ein WordPress-Plugin oder ein WHMCS-Modul. Installiere nur .zip-Dateien aus vertrauenswürdigen Quellen.',
+        'trust_note' => 'Ein Plugin ist Code, den du bewusst ausführst - mit demselben Vertrauensmodell wie bei jedem anderen Drittanbieter-Plugin-System. Installiere nur .zip-Dateien aus vertrauenswürdigen Quellen.',
         'upload_title' => 'Plugin installieren',
-        'upload_hint' => 'Eine .zip hochladen. Ein Plugin ist Code, den Sie ausführen - wie ein WordPress-Plugin. Nur aus vertrauenswürdigen Quellen installieren.',
+        'upload_hint' => 'Eine .zip hochladen. Ein Plugin ist Code, den Sie ausführen - mit demselben Vertrauensmodell wie bei jedem anderen Drittanbieter-Plugin. Nur aus vertrauenswürdigen Quellen installieren.',
         'none_installed' => 'Noch keine Plugins installiert.',
     ],
     'cheat_check' => [
@@ -639,6 +639,7 @@ return [
         'members' => 'Mitglieder',
         'sort_by' => 'Sortieren',
         'group_name_locked' => 'Der Name identifiziert diese Gruppe überall und kann nicht geändert werden.',
+        'select_groups' => 'Gruppen auswählen',
     ],
 
     'api_errors' => [

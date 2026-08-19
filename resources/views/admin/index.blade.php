@@ -175,8 +175,12 @@
                     </div>
 
                     <div>
-                        <label class="flex items-center gap-2 text-sm text-ink-muted">
-                            <input type="checkbox" x-model="form.permanent" class="size-4 rounded border-line text-brand-strong focus:ring-brand-strong">
+                        <label class="flex items-center gap-2.5 text-sm text-ink-muted">
+                            <span class="relative inline-flex h-6 w-11 shrink-0 items-center">
+                                <input type="checkbox" x-model="form.permanent" class="peer sr-only">
+                                <span class="pointer-events-none absolute inset-0 rounded-full bg-surface-raised transition-colors peer-checked:bg-brand-strong"></span>
+                                <span class="pointer-events-none absolute left-1 inline-block size-4 rounded-full bg-canvas transition-transform peer-checked:translate-x-5"></span>
+                            </span>
                             {{ __('i18n::messages.admins.permanent') }}
                         </label>
                         <div x-show="!form.permanent" x-cloak class="mt-2">
@@ -185,19 +189,29 @@
                         </div>
                     </div>
 
-                    <div>
+                    <div x-data="{ groupsOpen: false }" class="relative">
                         <label class="block text-xs font-medium text-ink-muted">{{ __('i18n::messages.nav.groups') }}</label>
-                        <div class="mt-1.5 flex flex-wrap gap-1.5">
+                        <button
+                            type="button"
+                            @click="groupsOpen = !groupsOpen"
+                            @click.outside="groupsOpen = false"
+                            class="mt-1 flex w-full items-center justify-between gap-2 rounded-lg border border-line bg-canvas px-3 py-2 text-left text-sm focus:border-brand-strong focus:outline-none"
+                        >
+                            <span class="truncate" :class="form.groups.length ? 'text-ink' : 'text-ink-faint'" x-text="form.groups.length ? form.groups.join(', ') : @js(__('i18n::messages.admins.select_groups'))"></span>
+                            <x-icon name="chevron-left" class="size-3.5 shrink-0 -rotate-90 text-ink-faint transition-transform" ::class="groupsOpen && 'rotate-90'" />
+                        </button>
+                        <div x-show="groupsOpen" x-cloak x-transition class="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-line bg-surface p-1.5 shadow-lg">
                             <template x-for="g in availableGroups" :key="g.name">
-                                <button
-                                    type="button"
-                                    @click="toggle(form.groups, g.name)"
-                                    class="rounded-lg px-2.5 py-1 text-xs font-medium ring-1 ring-inset transition-colors"
-                                    :class="form.groups.includes(g.name) ? 'bg-brand-soft text-brand-strong ring-brand-strong/40' : 'text-ink-muted ring-line hover:bg-surface-raised'"
-                                    x-text="g.name"
-                                ></button>
+                                <label class="flex cursor-pointer items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-sm text-ink-muted transition-colors hover:bg-surface-raised">
+                                    <span x-text="g.name"></span>
+                                    <span class="relative inline-flex h-6 w-11 shrink-0 items-center">
+                                        <input type="checkbox" :checked="form.groups.includes(g.name)" @change="toggle(form.groups, g.name)" class="peer sr-only">
+                                        <span class="pointer-events-none absolute inset-0 rounded-full bg-surface-raised transition-colors peer-checked:bg-brand-strong"></span>
+                                        <span class="pointer-events-none absolute left-1 inline-block size-4 rounded-full bg-canvas transition-transform peer-checked:translate-x-5"></span>
+                                    </span>
+                                </label>
                             </template>
-                            <span x-show="availableGroups.length === 0" class="text-xs text-ink-faint">—</span>
+                            <p x-show="availableGroups.length === 0" class="px-2.5 py-1.5 text-xs text-ink-faint">—</p>
                         </div>
                     </div>
 
@@ -205,11 +219,15 @@
                         <label class="block text-xs font-medium text-ink-muted">{{ __('i18n::messages.admins.flags') }}</label>
                         <div class="mt-1.5 space-y-1.5">
                             <template x-for="flag in allFlags" :key="flag">
-                                <label class="flex cursor-pointer items-start gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-raised">
-                                    <input type="checkbox" :checked="form.flags.includes(flag)" @change="toggle(form.flags, flag)" class="mt-0.5 size-4 rounded border-line text-brand-strong focus:ring-brand-strong">
+                                <label class="flex cursor-pointer items-center justify-between gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-surface-raised">
                                     <span class="min-w-0">
                                         <span class="rounded px-1.5 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset" :class="flagColorClass(flag)" x-text="flag"></span>
                                         <span class="ml-1.5 text-xs text-ink-muted" x-text="flagLabels[flag] ?? ''"></span>
+                                    </span>
+                                    <span class="relative inline-flex h-6 w-11 shrink-0 items-center">
+                                        <input type="checkbox" :checked="form.flags.includes(flag)" @change="toggle(form.flags, flag)" class="peer sr-only">
+                                        <span class="pointer-events-none absolute inset-0 rounded-full bg-surface-raised transition-colors peer-checked:bg-brand-strong"></span>
+                                        <span class="pointer-events-none absolute left-1 inline-block size-4 rounded-full bg-canvas transition-transform peer-checked:translate-x-5"></span>
                                     </span>
                                 </label>
                             </template>

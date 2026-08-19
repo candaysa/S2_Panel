@@ -202,7 +202,7 @@ return [
             'install_title' => 'L\'installer',
             'install_body' => 'Déposez le .zip dans la zone de téléversement ci-dessus. Le panneau l\'extrait, lit plugin.json, vérifie que la clé est libre, vérifie que la classe provider existe et étend ModuleServiceProvider, puis la déplace dans app/Modules/ et l\'active immédiatement - aucun redémarrage nécessaire. Tout ce qui échoue à une vérification est rejeté sans rien laisser derrière.',
             'security_title' => 'Avant d\'installer quoi que ce soit',
-            'security_body' => 'Une extension est du code PHP ordinaire qui s\'exécute avec exactement les mêmes privilèges que le reste du panneau : accès complet à la base de données, accès complet au système de fichiers, tout. Il n\'y a pas de sandbox et aucune n\'est prévue - c\'est le même modèle de confiance qu\'une extension WordPress ou un module WHMCS. N\'installez des .zip que depuis des sources en qui vous avez confiance.',
+            'security_body' => 'Une extension est du code PHP ordinaire qui s\'exécute avec exactement les mêmes privilèges que le reste du panneau : accès complet à la base de données, accès complet au système de fichiers, tout. Il n\'y a pas de sandbox et aucune n\'est prévue - c\'est le même modèle de confiance que n\'importe quel autre système d\'extensions tierces. N\'installez des .zip que depuis des sources en qui vous avez confiance.',
         ],
     ],
     'bans' => [
@@ -467,9 +467,9 @@ return [
         'upload_zip' => 'Téléverser une extension (.zip)',
         'uninstall' => 'Désinstaller',
         'uninstall_confirm' => 'Désinstaller cette extension ? Ses fichiers seront supprimés. Action irréversible.',
-        'trust_note' => 'Une extension est du code que vous choisissez d\'exécuter, comme une extension WordPress ou un module WHMCS. N\'installez que des .zip provenant de sources fiables.',
+        'trust_note' => 'Une extension est du code que vous choisissez d\'exécuter, avec le même modèle de confiance que n\'importe quel autre système d\'extensions tierces. N\'installez que des .zip provenant de sources fiables.',
         'upload_title' => 'Installer un plugin',
-        'upload_hint' => "Envoyez un .zip. Un plugin est du code que vous choisissez d'exécuter, comme une extension WordPress - n'installez que depuis des sources fiables.",
+        'upload_hint' => "Envoyez un .zip. Un plugin est du code que vous choisissez d'exécuter, avec le même modèle de confiance que n'importe quelle autre extension tierce - n'installez que depuis des sources fiables.",
         'none_installed' => 'Aucun plugin installé.',
     ],
     'cheat_check' => [
@@ -639,6 +639,7 @@ return [
         'members' => 'membres',
         'sort_by' => 'Trier',
         'group_name_locked' => 'Ce nom identifie le groupe partout où il est référencé et ne peut pas être modifié.',
+        'select_groups' => 'Sélectionner des groupes',
     ],
 
     'api_errors' => [

@@ -26,7 +26,7 @@ use Throwable;
  *                        boot by AppServiceProvider::register()
  *
  * Trust model: a plugin is PHP code the owner chooses to install, exactly
- * like a WordPress plugin or a WHMCS module - this system validates its
+ * like any other third-party plugin system - this system validates its
  * *structure* (manifest, key uniqueness, safe extraction, that its
  * provider actually extends ModuleServiceProvider) but cannot and does not
  * attempt to sandbox what an installed plugin's code does once it runs.

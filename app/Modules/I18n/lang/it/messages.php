@@ -202,7 +202,7 @@ return [
             'install_title' => 'Installazione',
             'install_body' => 'Trascina lo .zip nella casella di caricamento sopra. Il pannello lo estrae, legge plugin.json, verifica che la key sia libera, verifica che la classe provider esista ed estenda ModuleServiceProvider, poi lo sposta in app/Modules/ e lo attiva immediatamente - nessun riavvio necessario. Tutto ciò che non supera un controllo viene rifiutato senza lasciare residui.',
             'security_title' => 'Prima di installare qualsiasi cosa',
-            'security_body' => 'Un plugin è normale codice PHP che gira con esattamente gli stessi privilegi del resto del pannello: accesso completo al database, accesso completo al filesystem, tutto. Non c\'è alcuna sandbox e non è prevista - stesso modello di fiducia di un plugin WordPress o un modulo WHMCS. Installa solo .zip da fonti di cui ti fidi.',
+            'security_body' => 'Un plugin è normale codice PHP che gira con esattamente gli stessi privilegi del resto del pannello: accesso completo al database, accesso completo al filesystem, tutto. Non c\'è alcuna sandbox e non è prevista - stesso modello di fiducia di qualsiasi altro sistema di plugin di terze parti. Installa solo .zip da fonti di cui ti fidi.',
         ],
     ],
     'bans' => [
@@ -467,9 +467,9 @@ return [
         'upload_zip' => 'Carica plugin (.zip)',
         'uninstall' => 'Disinstalla',
         'uninstall_confirm' => 'Disinstallare questo plugin? I suoi file verranno eliminati. Azione irreversibile.',
-        'trust_note' => 'Un plugin è codice che scegli di eseguire, esattamente come un plugin WordPress o un modulo WHMCS - installa solo file .zip da fonti attendibili.',
+        'trust_note' => 'Un plugin è codice che scegli di eseguire, con lo stesso modello di fiducia di qualsiasi altro sistema di plugin di terze parti - installa solo file .zip da fonti attendibili.',
         'upload_title' => 'Installa un plugin',
-        'upload_hint' => 'Carica un .zip. Un plugin è codice che scegli di eseguire, come un plugin WordPress - installa solo da fonti affidabili.',
+        'upload_hint' => 'Carica un .zip. Un plugin è codice che scegli di eseguire, con lo stesso modello di fiducia di qualsiasi altro plugin di terze parti - installa solo da fonti affidabili.',
         'none_installed' => 'Nessun plugin installato.',
     ],
     'cheat_check' => [
@@ -639,6 +639,7 @@ return [
         'members' => 'membri',
         'sort_by' => 'Ordina',
         'group_name_locked' => 'Questo nome identifica il gruppo ovunque venga referenziato e non può essere modificato.',
+        'select_groups' => 'Seleziona gruppi',
     ],
 
     'api_errors' => [

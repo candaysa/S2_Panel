@@ -202,7 +202,7 @@ return [
             'install_title' => 'Installing it',
             'install_body' => 'Drop the .zip in the upload box above. The panel extracts it, reads plugin.json, checks the key is free, verifies the provider class exists and extends ModuleServiceProvider, then moves it into app/Modules/ and enables it immediately - no restart needed. Anything that fails a check is rejected and nothing is left behind.',
             'security_title' => 'Before you install anything',
-            'security_body' => 'A plugin is ordinary PHP code that runs with exactly the same privileges as the rest of the panel: full database access, full filesystem access, everything. There is no sandbox and none is planned - this is the same trust model as a WordPress plugin or a WHMCS module. Only install .zips from sources you trust.',
+            'security_body' => 'A plugin is ordinary PHP code that runs with exactly the same privileges as the rest of the panel: full database access, full filesystem access, everything. There is no sandbox and none is planned - this is the same trust model as any other third-party plugin system. Only install .zips from sources you trust.',
         ],
     ],
     'bans' => [
@@ -467,9 +467,9 @@ return [
         'upload_zip' => 'Upload plugin (.zip)',
         'uninstall' => 'Uninstall',
         'uninstall_confirm' => 'Uninstall this plugin? Its files will be deleted. This cannot be undone.',
-        'trust_note' => 'A plugin is code you choose to run, exactly like a WordPress plugin or a WHMCS module - only install .zips from sources you trust.',
+        'trust_note' => 'A plugin is code you choose to run, with the same trust model as any other third-party plugin system - only install .zips from sources you trust.',
         'upload_title' => 'Install a plugin',
-        'upload_hint' => 'Upload a .zip. A plugin is code you choose to run, exactly like a WordPress plugin - only install from sources you trust.',
+        'upload_hint' => 'Upload a .zip. A plugin is code you choose to run, with the same trust model as any other third-party plugin - only install from sources you trust.',
         'none_installed' => 'No plugins installed yet.',
     ],
     'cheat_check' => [
@@ -639,6 +639,7 @@ return [
         'members' => 'members',
         'sort_by' => 'Sort',
         'group_name_locked' => 'The name identifies this group everywhere it is referenced and cannot be changed.',
+        'select_groups' => 'Select groups',
     ],
 
     'api_errors' => [
