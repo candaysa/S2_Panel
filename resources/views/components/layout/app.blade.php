@@ -41,9 +41,18 @@
 
     <title>{{ $title ? "{$title} · {$siteName}" : $siteName }}</title>
 
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ $siteFavicon }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+    {{-- A custom upload replaces every icon reference with the one file the
+         owner provided - the previous version only ever swapped this first
+         tag, so the 16x16 and apple-touch variants silently kept showing
+         the factory icon no matter what was uploaded. --}}
+    @if ($settingService->get('favicon'))
+        <link rel="icon" href="{{ $siteFavicon }}">
+        <link rel="apple-touch-icon" href="{{ $siteFavicon }}">
+    @else
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ $siteFavicon }}">
+        <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('favicon-16x16.png') }}">
+        <link rel="apple-touch-icon" href="{{ asset('apple-touch-icon.png') }}">
+    @endif
 
     {{-- Installable web app. theme-color has to be a literal here (not a
          CSS variable) because the browser reads it before any stylesheet. --}}
