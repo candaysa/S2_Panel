@@ -98,7 +98,7 @@
                                 role="switch"
                                 :aria-checked="item.enabled.toString()"
                                 @click="toggle(item)"
-                                :disabled="pending[item.key]"
+                                :disabled="pending.includes(item.key)"
                                 class="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-50"
                                 :class="item.enabled ? 'bg-brand-strong' : 'bg-surface-raised'"
                             >
@@ -251,7 +251,16 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                 tab: 'modules',
                 modules: [],
                 plugins: [],
-                pending: {},
+                // An array checked with .includes(), not an object keyed by
+                // item.key: `combined` (below) is a getter that returns a
+                // brand-new item object on every access, and Alpine's
+                // reactivity failed to track `pending[item.key]` reads
+                // against a key that did not exist on the object yet -
+                // every switch rendered permanently disabled from first
+                // paint, since the very first evaluation never registered
+                // as a dependency that a later `pending[key] = true` could
+                // invalidate. An array's .includes() has no such gap.
+                pending: [],
                 uploading: false,
                 adminPlugin: 'cs2_admin',
                 adminPluginSaving: false,
@@ -370,7 +379,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                         }
                     }
 
-                    this.pending[item.key] = true;
+                    this.pending.push(item.key);
                     this.error = '';
                     try {
                         const url = item.origin === 'plugin' ? `/api/plugins/${item.rawKey}` : `/api/modules/${item.rawKey}`;
@@ -389,7 +398,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                     } catch (e) {
                         this.error = @js(__('i18n::messages.common.error'));
                     } finally {
-                        delete this.pending[item.key];
+                        this.pending = this.pending.filter((k) => k !== item.key);
                     }
                 },
 

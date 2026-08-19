@@ -163,20 +163,37 @@ class ModuleRegistry
             return $this->overrides;
         }
 
-        try {
-            $this->overrides = Cache::remember(self::OVERRIDE_CACHE_KEY, self::OVERRIDE_CACHE_TTL, function (): array {
-                return ModuleToggle::query()->pluck('enabled', 'module_key')
-                    ->map(fn ($enabled): bool => (bool) $enabled)
-                    ->all();
-            });
-        } catch (Throwable) {
-            // module_toggles may not exist yet (fresh checkout, pre-migrate,
-            // or this call landing during a ServiceProvider's register()
-            // phase) - silently fall back to env-driven config defaults.
-            $this->overrides = [];
-        }
+        $fetch = fn (): array => ModuleToggle::query()->pluck('enabled', 'module_key')
+            ->map(fn ($enabled): bool => (bool) $enabled)
+            ->all();
 
-        return $this->overrides;
+        try {
+            return $this->overrides = Cache::remember(self::OVERRIDE_CACHE_KEY, self::OVERRIDE_CACHE_TTL, $fetch);
+        } catch (Throwable) {
+            // 'cache' is a deferred binding, and this lookup runs from a
+            // ServiceProvider's own register() phase (see
+            // ModuleServiceProvider::moduleEnabled()) - early enough,
+            // reliably on every single request, that the container hasn't
+            // resolved it yet ("Target class [cache] does not exist").
+            // 'db' has no such problem this early (AppServiceProvider
+            // already queries it directly above), so read straight from
+            // the table instead of going without an override for the rest
+            // of the request. $this->overrides deliberately is not set to
+            // [] on total failure below: memoizing an empty result here
+            // used to mean a real, saved module_toggles row was silently
+            // ignored for an entire request the moment this lookup failed
+            // once early in boot - which it always did - leaving every
+            // module stuck at its env default no matter what an owner
+            // toggled.
+            try {
+                return $this->overrides = $fetch();
+            } catch (Throwable) {
+                // module_toggles genuinely does not exist yet (fresh
+                // checkout, pre-migrate) - fall back to env-driven config
+                // defaults for this call only.
+                return [];
+            }
+        }
     }
 
     /**
