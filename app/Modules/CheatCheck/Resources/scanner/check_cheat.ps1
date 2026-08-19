@@ -150,7 +150,7 @@ $script:kwStrongLoose = @(
     'crimson cheats','venom cheats','matrix softworks','redline cheats','valkyrie cheats',
     'rebellion cheats','ownage pro','gowin cheats','exort cheats','kinetic cheats',
     'covenant cheats','reversal cheats','byfron bypass','nightfall dma','clutch solution',
-    'fantasy cat','phantom overlay','extreme injector'
+    'fantasy cat','phantom overlay','extreme injector','fluidaim'
 )
 
 # Strong (exact): brand names that are short or can appear inside other words.
@@ -172,7 +172,7 @@ $script:kwMedium = @(
     'anticheat bypass','vanguard bypass','easyanticheat bypass','trust factor bypass',
     'manualmap','manual map','driver mapper','process hollowing','dll injection',
     'bootkit loader','vmread','vmwrite','kdriver','aimstar','midnight','pandora','sensum',
-    'interium','legendware','hexui','lethality','obstructions','skush','airflow'
+    'interium','legendware','hexui','lethality','obstructions','skush','airflow','enigma hack'
 )
 
 # Weak: generic terms. NEVER a finding on their own; they only act as
