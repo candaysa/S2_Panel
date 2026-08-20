@@ -67,4 +67,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // needs a genuinely new player's profile fetched live, not
         // whichever page happens to load first after the cache expires.
         $schedule->command('steam:warm-profiles')->hourly();
+
+        // Server Details activity chart (C21): a population sample every 5
+        // minutes, pruned once a day rather than on every tick - see
+        // SampleServerStats and ServerDetailsService::prune().
+        if (config('modules.modules.server_details.enabled', false)) {
+            $schedule->command('server-details:sample')->everyFiveMinutes();
+            $schedule->call(fn () => app(\App\Modules\ServerDetails\App\Services\ServerDetailsService::class)->prune())
+                ->daily();
+        }
     })->create();

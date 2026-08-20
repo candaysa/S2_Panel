@@ -163,6 +163,10 @@ return [
                 'name' => 'Cheat-Prüfung',
                 'description' => 'Bildschirmfreigabe-Sitzungen und Cheat-Prüfprotokolle.',
             ],
+            'server_details' => [
+                'name' => 'Serverdetails',
+                'description' => 'Aktivitätsverlauf pro Server und eine Live-Spielerliste, vom Dashboard aus.',
+            ],
         ],
         'tab_modules' => 'Module',
         'tab_docs' => 'Dokumentation',
@@ -537,6 +541,20 @@ return [
         'invalid' => 'Gültige IP und Port eingeben.',
         'last_seen' => 'Zuletzt gesehen',
         'rcon_status_configured' => 'Für diesen Server ist ein RCON-Passwort eingerichtet.',
+    ],
+
+    'server_details' => [
+        'title' => 'Serverdetails',
+        'activity' => 'Aktivität',
+        'online_players' => 'Online-Spieler',
+        'player' => 'Spieler',
+        'score' => 'Punkte',
+        'time_connected' => 'Verbindungsdauer',
+        'range_1h' => 'Letzte Stunde',
+        'range_12h' => 'Letzte 12 Stunden',
+        'range_1w' => 'Letzte Woche',
+        'range_12m' => 'Letzte 12 Monate',
+        'unnamed_player' => 'Unbenannter Spieler',
     ],
 
     'update' => [

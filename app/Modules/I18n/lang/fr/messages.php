@@ -163,6 +163,10 @@ return [
                 'name' => 'Contrôle anti-triche',
                 'description' => 'Sessions de partage d\'écran et rapports de contrôle.',
             ],
+            'server_details' => [
+                'name' => 'Détails du serveur',
+                'description' => 'Historique d\'activité par serveur et liste des joueurs en direct, depuis le tableau de bord.',
+            ],
         ],
         'tab_modules' => 'Modules',
         'tab_docs' => 'Documentation',
@@ -537,6 +541,20 @@ return [
         'invalid' => 'Saisissez une IP et un port valides.',
         'last_seen' => 'Vu pour la dernière fois',
         'rcon_status_configured' => 'Un mot de passe RCON est configuré pour ce serveur.',
+    ],
+
+    'server_details' => [
+        'title' => 'Détails du serveur',
+        'activity' => 'Activité',
+        'online_players' => 'Joueurs en ligne',
+        'player' => 'Joueur',
+        'score' => 'Score',
+        'time_connected' => 'Temps de connexion',
+        'range_1h' => 'Dernière heure',
+        'range_12h' => 'Dernières 12 heures',
+        'range_1w' => 'Dernière semaine',
+        'range_12m' => 'Derniers 12 mois',
+        'unnamed_player' => 'Joueur sans nom',
     ],
 
     'update' => [

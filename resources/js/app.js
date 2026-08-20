@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import { Chart } from 'chart.js/auto';
 
 /**
  * Turn an API failure into something worth showing a person.
@@ -78,6 +79,8 @@ const hashString = (value) => {
 };
 
 window.flagColorClass = (flag) => FLAG_COLORS[flag] ?? FLAG_PALETTE[hashString(String(flag)) % FLAG_PALETTE.length];
+
+window.Chart = Chart;
 
 window.Alpine = Alpine;
 Alpine.start();

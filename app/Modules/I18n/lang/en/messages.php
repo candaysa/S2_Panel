@@ -163,6 +163,10 @@ return [
                 'name' => 'Cheat check',
                 'description' => 'Screen-share sessions and cheat-check records.',
             ],
+            'server_details' => [
+                'name' => 'Server details',
+                'description' => 'Per-server activity history and a live player list, from the dashboard.',
+            ],
         ],
         'tab_modules' => 'Modules',
         'tab_docs' => 'Docs',
@@ -537,6 +541,20 @@ return [
         'invalid' => 'Enter a valid IP and port.',
         'last_seen' => 'Last seen',
         'rcon_status_configured' => 'RCON password is configured for this server.',
+    ],
+
+    'server_details' => [
+        'title' => 'Server details',
+        'activity' => 'Activity',
+        'online_players' => 'Online players',
+        'player' => 'Player',
+        'score' => 'Score',
+        'time_connected' => 'Time connected',
+        'range_1h' => 'Last hour',
+        'range_12h' => 'Last 12 hours',
+        'range_1w' => 'Last week',
+        'range_12m' => 'Last 12 months',
+        'unnamed_player' => 'Unnamed player',
     ],
 
     'update' => [
