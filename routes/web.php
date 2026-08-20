@@ -71,6 +71,14 @@ Route::get('/login', function (Request $request) {
 Route::view('/dashboard', 'dashboard')->name('dashboard');
 Route::view('/ranks', 'ranks.index')->middleware('module:rank')->name('ranks.page');
 
+// Drill-down from the dashboard's server list - same public-read rule as
+// everything else in this block, since it shows nothing the list itself
+// does not already (map, population, IP), just with history added.
+Route::get('/servers/{id}', fn (string $id) => view('server-details.show', ['serverId' => $id]))
+    ->where('id', '[0-9]+')
+    ->middleware('module:server_details')
+    ->name('server-details.page');
+
 // Public player profile. The SteamID is only passed through to the page so
 // its Alpine component can fetch /api/ranks/{steam}; that endpoint does the
 // real validation and 404s on anything malformed, so nothing here trusts it.

@@ -163,6 +163,10 @@ return [
                 'name' => 'Controllo cheat',
                 'description' => 'Sessioni di condivisione schermo e registri dei controlli.',
             ],
+            'server_details' => [
+                'name' => 'Dettagli server',
+                'description' => 'Cronologia attività per server ed elenco giocatori in tempo reale, dalla dashboard.',
+            ],
         ],
         'tab_modules' => 'Moduli',
         'tab_docs' => 'Documentazione',
@@ -537,6 +541,20 @@ return [
         'invalid' => 'Inserisci un IP e una porta validi.',
         'last_seen' => 'Ultimo accesso',
         'rcon_status_configured' => 'Per questo server è configurata una password RCON.',
+    ],
+
+    'server_details' => [
+        'title' => 'Dettagli server',
+        'activity' => 'Attività',
+        'online_players' => 'Giocatori online',
+        'player' => 'Giocatore',
+        'score' => 'Punteggio',
+        'time_connected' => 'Tempo di connessione',
+        'range_1h' => 'Ultima ora',
+        'range_12h' => 'Ultime 12 ore',
+        'range_1w' => 'Ultima settimana',
+        'range_12m' => 'Ultimi 12 mesi',
+        'unnamed_player' => 'Giocatore senza nome',
     ],
 
     'update' => [

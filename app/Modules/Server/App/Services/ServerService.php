@@ -212,9 +212,13 @@ class ServerService
     /**
      * Every server plus its live state (best-effort).
      */
-    public function listWithLive(?string $search = null, int $perPage = 25): LengthAwarePaginator
+    public function listWithLive(?string $search = null, int $perPage = 25, bool $includeHidden = false): LengthAwarePaginator
     {
-        $servers = $this->list($search, $perPage);
+        // $includeHidden was silently dropped here before - the controller
+        // has always passed it, but this signature never had a third
+        // parameter to receive it, so "show hidden servers" never actually
+        // reached list() and always saw the public-only view.
+        $servers = $this->list($search, $perPage, $includeHidden);
 
         $live = $this->liveFor($servers->getCollection());
 

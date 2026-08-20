@@ -66,7 +66,11 @@
                     <li class="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-4 px-5 py-3 sm:grid-cols-[auto_minmax(0,1fr)_9rem_auto_auto] lg:grid-cols-[auto_minmax(0,1fr)_10rem_11rem_auto_auto]">
                         <span class="size-2 shrink-0 rounded-full" :class="server.online ? 'bg-emerald-400' : 'bg-ink-faint/40'"></span>
 
-                        <p class="min-w-0 truncate text-sm font-medium text-ink" x-text="server.live?.name || (server.server_ip + ':' + server.server_port)"></p>
+                        <a
+                            :href="'/servers/' + server.id"
+                            class="min-w-0 truncate text-sm font-medium text-ink transition-colors hover:text-brand-strong"
+                            x-text="server.live?.name || (server.server_ip + ':' + server.server_port)"
+                        ></a>
 
                         <p class="hidden truncate text-sm text-ink-muted sm:block" x-text="server.live?.map || '—'"></p>
 
