@@ -259,7 +259,6 @@
                 // The API applies the same moderation-flag gate the Ban
                 // module's own endpoint does.
                 canViewBanDetail: false,
-                tierLabels: @js(__('i18n::messages.rank_tiers')),
                 t: @js(__('i18n::messages.ranks')),
                 activeLabel: @js(__('i18n::messages.bans.status_active')),
 
@@ -288,7 +287,7 @@
                 },
 
                 rankLabel(player) {
-                    return this.tierLabels[player.rank_tier?.key] ?? this.tierLabels.unranked;
+                    return player.rank_tier?.label || this.t.unranked;
                 },
 
                 // Gold / silver / bronze for the podium, nothing for the rest.

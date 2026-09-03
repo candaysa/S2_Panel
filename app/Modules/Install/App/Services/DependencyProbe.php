@@ -27,7 +27,7 @@ class DependencyProbe
     private const REQUIREMENTS = [
         'admin' => ['admin_admins', 'admin_groups', 'admin_servers'],
         'ban' => ['admin_bans', 'admin_mutes', 'admin_gags', 'admin_warns'],
-        'rank' => ['rank_base', 'rank_hits'],
+        'rank' => ['lvl_base', 'lvl_base_hits'],
         'skin' => ['wp_player_skins', 'wp_player_knife', 'wp_player_gloves', 'wp_player_agents', 'wp_player_music'],
         'vip' => ['vip_users', 'vip_servers'],
     ];

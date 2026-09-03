@@ -5,25 +5,30 @@ namespace App\Modules\Rank\App\Services;
 use App\Modules\Audit\App\Services\AuditService;
 use App\Modules\Rank\App\Models\RankHit;
 use App\Modules\Rank\App\Models\RankPlayer;
-use App\Support\CsRank;
+use App\Modules\Rank\App\Models\RankWeapon;
 use App\Support\SteamId;
 use App\Support\SteamProfiles;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use InvalidArgumentException;
+use Throwable;
 
 /**
- * Rank module (C5) – reads the Swiftly CS2_Ranks tables and edits points.
+ * Rank module (C5) – reads the K4-LevelRanks-SwiftlyS2 tables and edits
+ * points.
  *
  * The plugin stores steam as a STEAM_0:x:y string; every lookup normalizes
  * the caller-provided SteamID (any of the three formats) through SteamId.
- * Points updates write straight to rank_base.value – the panel keeps an
+ * Points updates write straight to lvl_base.value – the panel keeps an
  * audit trail in its own panel_logs (service layer log), never in the
  * plugin database (Decision 5).
  */
 class RankService
 {
-    public function __construct(private readonly AuditService $audit)
-    {
+    public function __construct(
+        private readonly AuditService $audit,
+        private readonly RankCatalogService $catalog,
+    ) {
     }
 
     /** Columns a caller may sort the VIEW by. Standing (`position`) never changes. */
@@ -53,7 +58,7 @@ class RankService
     ): LengthAwarePaginator {
         $query = RankPlayer::query()
             ->select('*')
-            ->selectRaw('(SELECT COUNT(*) + 1 FROM rank_base AS peer WHERE peer.value > rank_base.value) AS position');
+            ->selectRaw('(SELECT COUNT(*) + 1 FROM lvl_base AS peer WHERE peer.value > lvl_base.value) AS position');
 
         if ($search !== null && $search !== '') {
             $query->where(function ($q) use ($search): void {
@@ -85,17 +90,20 @@ class RankService
     }
 
     /**
-     * @return array{key: string, index: int, group: string, tiers: int}
+     * @return array{key: string, label: string, tag: string, hex: ?string, index: int, tiers: int}
      */
     public function tier(RankPlayer $player): array
     {
-        return CsRank::for((int) $player->value, (int) $player->rank);
+        return $this->catalog->tierFor((int) $player->value);
     }
 
     /**
-     * Full profile: rank_base row plus the optional rank_hits breakdown.
+     * Full profile: lvl_base row plus the optional lvl_base_hits and
+     * lvl_base_weapons breakdowns, and the ranks.json point ladder (so the
+     * profile page's progress-toward-next-tier bar doesn't need a second
+     * request just for that).
      *
-     * @return array{player: RankPlayer, hits: RankHit|null}|null
+     * @return array{player: RankPlayer, hits: RankHit|null, weapons: Collection<int, RankWeapon>, ranks_ladder: list<int>}|null
      */
     public function profile(string $steamid): ?array
     {
@@ -121,7 +129,26 @@ class RankService
         return [
             'player' => $player,
             'hits' => RankHit::query()->where('SteamID', $steam)->first(),
+            'weapons' => $this->weaponsFor($steam),
+            'ranks_ladder' => $this->catalog->thresholds(),
         ];
+    }
+
+    /**
+     * The WeaponStats module is optional server-side - lvl_base_weapons may
+     * simply not exist. Reported as "no weapon stats" rather than a 500,
+     * same reasoning DependencyProbe already documents for optional
+     * integrations.
+     *
+     * @return Collection<int, RankWeapon>
+     */
+    private function weaponsFor(string $steam): Collection
+    {
+        try {
+            return RankWeapon::query()->where('steam', $steam)->orderByDesc('kills')->get();
+        } catch (Throwable) {
+            return collect();
+        }
     }
 
     /**

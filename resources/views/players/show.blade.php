@@ -151,6 +151,28 @@
                         </template>
                     </div>
                 </div>
+
+                {{-- Per-weapon breakdown - new with K4-LevelRanks-SwiftlyS2's
+                     optional WeaponStats module (lvl_base_weapons); the old
+                     Swiftly CS2_Ranks schema had no equivalent, so this
+                     simply doesn't render for a profile the module never
+                     tracked. --}}
+                <div class="rounded-xl border border-line bg-surface" x-show="weapons.length > 0" x-cloak>
+                    <div class="border-b border-line px-5 py-3.5">
+                        <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.ranks.top_weapons') }}</h2>
+                    </div>
+                    <dl class="divide-y divide-line-soft">
+                        <template x-for="w in weapons.slice(0, 5)" :key="w.classname">
+                            <div class="flex items-center justify-between px-5 py-2.5">
+                                <dt class="text-sm text-ink-muted" x-text="weaponLabel(w.classname)"></dt>
+                                <dd class="text-sm font-medium tabular-nums text-ink">
+                                    <span x-text="num(w.kills)"></span> {{ __('i18n::messages.ranks.kills') }}
+                                    <span class="text-ink-faint">&middot; <span x-text="num(w.headshots)"></span> {{ __('i18n::messages.ranks.headshots') }}</span>
+                                </dd>
+                            </div>
+                        </template>
+                    </dl>
+                </div>
             </div>
         </template>
     </div>
@@ -163,10 +185,14 @@
                 notFound: false,
                 player: null,
                 hits: null,
+                weapons: [],
                 steam64: '',
-                labels: @js(__('i18n::messages.rank_tiers')),
                 t: @js(__('i18n::messages.ranks')),
-                ladder: @js(collect(config('rank.ladder'))->pluck(0)->all()),
+                // Point thresholds ladder, now server-defined (ranks.json via
+                // RankCatalogService) - comes back inside the profile
+                // response itself rather than a static config() value, since
+                // it can genuinely differ per install.
+                ladder: [],
 
                 async init() {
                     try {
@@ -176,6 +202,8 @@
                         const body = await res.json();
                         this.player = body.data.player ?? body.data;
                         this.hits = body.data.hits ?? null;
+                        this.weapons = body.data.weapons ?? [];
+                        this.ladder = body.data.ranks_ladder ?? [];
                         this.steam64 = this.toSteam64(this.player.steam);
                     } catch (e) {
                         this.error = true;
@@ -192,7 +220,16 @@
                 },
 
                 rankLabel() {
-                    return this.labels[this.player?.rank_tier?.key] ?? this.labels.unranked;
+                    return this.player?.rank_tier?.label || this.t.unranked;
+                },
+
+                // "weapon_ak47" -> "Ak47" - no catalog lookup, just enough
+                // to be readable; the Skin module's own weapon labels live
+                // behind a session-gated API this public page has no access
+                // to anyway.
+                weaponLabel(classname) {
+                    return (classname ?? '').replace(/^weapon_/, '').replace(/_/g, ' ')
+                        .replace(/\b\w/g, (c) => c.toUpperCase());
                 },
 
                 num(v) { return (v ?? 0).toLocaleString(); },
