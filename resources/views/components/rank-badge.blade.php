@@ -1,30 +1,40 @@
 @props(['rank' => null, 'label' => null, 'showLabel' => false, 'size' => 'md'])
 
 @php
-    // Competitive insignia, keyed by CsRank::for()['index'] - 0 is unranked
-    // (no plate), 1-18 map to public/images/ranks/{index}.png in the same
-    // order as the ladder in config/rank.php.
-    $heights = ['sm' => 'h-5', 'md' => 'h-7', 'lg' => 'h-9'];
-    $height = $heights[$size] ?? $heights['md'];
+    // Tiers are server-defined now (K4-LevelRanks-SwiftlyS2's ranks.json via
+    // RankCatalogService), not a fixed 18-entry enum with matching artwork -
+    // so the plate is a small chip colored from the tier's own hex, the same
+    // minimal class-for-shape/inline-style-for-color split the Skin module
+    // already uses for rarity (see accent()/glow() there), rather than a
+    // /images/ranks/{index}.png lookup that only ever matched one hardcoded
+    // ladder.
+    $sizes = [
+        'sm' => 'h-5 min-w-5 px-1.5 text-[10px]',
+        'md' => 'h-6 min-w-6 px-2 text-xs',
+        'lg' => 'h-8 min-w-8 px-2.5 text-sm',
+    ];
+    $chipSize = $sizes[$size] ?? $sizes['md'];
 @endphp
 
 <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-2']) }}>
     <template x-if="({{ $rank }}?.index ?? 0) > 0">
-        {{-- When the label is rendered beside it the plate is decorative, so
-             alt is empty: otherwise the rank name is announced twice by a
-             screen reader and appears twice when the page is copied as text. --}}
-        <img
-            :src="'/images/ranks/' + {{ $rank }}.index + '.png'"
-            alt="{{ $showLabel ? '' : '' }}"
-            @if (! $showLabel) :alt="{{ $label }}" @endif
+        {{-- Background/border/text all come from the tier's own hex (light
+             tint, not a solid fill, so it stays readable regardless of the
+             hue - identical reasoning to glow()'s radial wash in the Skin
+             module); falls back to a neutral chip if ranks.json carried no
+             valid hex. The tag is short by design ("GN1", "GE", ...), sized
+             for a chip this small - the full name sits beside it via
+             $showLabel instead. --}}
+        <span
+            class="inline-flex shrink-0 items-center justify-center rounded-md border font-bold uppercase tracking-wide {{ $chipSize }}"
+            :class="{{ $rank }}?.hex ? '' : 'border-line bg-surface-raised text-ink-faint'"
+            :style="{{ $rank }}?.hex ? ('background:' + {{ $rank }}.hex + '1a;border-color:' + {{ $rank }}.hex + '66;color:' + {{ $rank }}.hex) : ''"
             :title="{{ $label }}"
-            class="{{ $height }} w-auto shrink-0"
-            loading="lazy"
-            decoding="async"
-        >
+            x-text="{{ $rank }}?.tag || '?'"
+        ></span>
     </template>
 
-    {{-- Unranked has no plate of its own, so it needs a visible fallback
+    {{-- Unranked has no tier of its own, so it needs a visible fallback
          rather than rendering as an empty cell. --}}
     <template x-if="({{ $rank }}?.index ?? 0) === 0">
         <span class="inline-flex items-center rounded-md bg-surface-raised px-2 py-1 text-xs font-medium text-ink-faint ring-1 ring-inset ring-line" x-text="{{ $label }}"></span>

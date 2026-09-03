@@ -7,10 +7,10 @@ use App\Modules\Ban\App\Models\AdminBan;
 use App\Modules\Ban\App\Models\AdminMute;
 use App\Modules\Ban\App\Services\BanService;
 use App\Modules\Rank\App\Models\RankPlayer;
+use App\Modules\Rank\App\Services\RankCatalogService;
 use App\Modules\Server\App\Models\AdminServer;
 use App\Modules\Server\App\Services\ServerService;
 use App\Support\Api;
-use App\Support\CsRank;
 use App\Support\Flags;
 use App\Support\ModuleRegistry;
 use App\Support\SteamProfiles;
@@ -40,6 +40,7 @@ class DashboardController extends Controller
     public function __construct(
         private readonly ModuleRegistry $modules,
         private readonly BanService $bans,
+        private readonly RankCatalogService $rankCatalog,
     ) {
     }
 
@@ -117,7 +118,7 @@ class DashboardController extends Controller
 
         return $players
             ->map(fn (RankPlayer $p): array => array_merge($p->toArray(), [
-                'rank_tier' => CsRank::for((int) $p->value, (int) $p->rank),
+                'rank_tier' => $this->rankCatalog->tierFor((int) $p->value),
                 'avatar' => $profiles[$p->steam]['avatar'] ?? null,
             ]))
             ->all();

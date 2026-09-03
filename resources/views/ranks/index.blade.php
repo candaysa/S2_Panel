@@ -152,7 +152,6 @@
                 saving: false,
                 canEdit: @js($canEditPoints ?? false),
 
-                labels: @js(__('i18n::messages.rank_tiers')),
                 t: @js(__('i18n::messages.ranks')),
 
                 page: 1,
@@ -231,8 +230,12 @@
                     return Math.min(this.page * this.perPage, this.total);
                 },
 
+                // rank_tier now carries its own label straight from
+                // ranks.json (see RankCatalogService) - no client-side
+                // lookup table needed, and no i18n gap for a tier name an
+                // operator made up themselves.
                 rankLabel(player) {
-                    return this.labels[player.rank_tier?.key] ?? this.labels.unranked;
+                    return player.rank_tier?.label || this.t.unranked;
                 },
 
                 // Gold / silver / bronze for the podium, nothing for the rest.
@@ -260,7 +263,7 @@
                     return (player.kills / player.deaths).toFixed(2);
                 },
 
-                // rank_base.playtime counts seconds. Hours is the only unit
+                // lvl_base.playtime counts seconds. Hours is the only unit
                 // that stays readable across a brand new player and someone
                 // with 300+ hours on the server.
                 playtime(seconds) {

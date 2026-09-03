@@ -5,15 +5,16 @@ namespace App\Modules\Rank\App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Swiftly CS2_Ranks rank_base row (C5). The plugin stores the player key as
- * a STEAM_0:x:y string; the panel reads on the "ranks" connection and never
- * mutates the plugin schema.
+ * K4-LevelRanks-SwiftlyS2 lvl_base row (C5). The plugin stores the player
+ * key as a STEAM_0:x:y string; the panel reads on the "ranks" connection and
+ * never mutates the plugin schema beyond the one `value` column (Decision
+ * 5 - point editing).
  */
 class RankPlayer extends Model
 {
     protected $connection = 'ranks';
 
-    protected $table = 'rank_base';
+    protected $table = 'lvl_base';
 
     protected $primaryKey = 'steam';
 
@@ -24,7 +25,7 @@ class RankPlayer extends Model
     public $timestamps = false;
 
     /**
-     * Only rank_base.value may be written by the panel (Decision 5 – point
+     * Only lvl_base.value may be written by the panel (Decision 5 – point
      * editing); every other column belongs to the plugin.
      */
     protected $fillable = ['value'];

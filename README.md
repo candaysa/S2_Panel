@@ -1,9 +1,9 @@
 # S2 Panel
 
 A modular admin panel for Counter-Strike 2 servers running the **Swiftly**
-plugin ecosystem — CS2_Admin, CS2_Ranks, weapon skins, and VIPCore. It reads
-and writes those plugins' own database tables directly; no separate agent
-or bridge is required on the game server.
+plugin ecosystem — CS2_Admin, K4-LevelRanks-SwiftlyS2, weapon skins, and
+VIPCore. It reads and writes those plugins' own database tables directly;
+no separate agent or bridge is required on the game server.
 
 ## Features
 
@@ -12,8 +12,8 @@ or bridge is required on the game server.
 - **Moderation**: admins & groups, bans/mutes/gags/warns, player reports
   and admin applications (ticket system), ban appeals, an RCON console
   with kick/ban/slay shortcuts, and a full audit log.
-- **Community**: VIP group management (VIPCore), player ranks (CS2_Ranks),
-  and weapon skin loadouts.
+- **Community**: VIP group management (VIPCore), player ranks
+  (K4-LevelRanks-SwiftlyS2), and weapon skin loadouts.
 - **Operations**: server list with live A2S queries, health monitoring
   with owner notifications, Discord webhook notifications, and panel-wide
   stats.
@@ -112,7 +112,7 @@ CREATE DATABASE s2_panel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 Only the panel's own database has to be created by hand. The plugin
-databases (Swiftly admin, CS2_Ranks, weapon skins, VIPCore) already exist —
+databases (Swiftly admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore) already exist —
 the panel only reads and writes their tables.
 
 ### 3. Create the environment file
@@ -221,7 +221,7 @@ finishes. The wizard walks through:
 
 1. **Language** — the panel's default locale.
 2. **Database** — the panel's own database, plus a connection per plugin
-   database (Swiftly admin, CS2_Ranks, weapon skins, VIPCore). Each one is
+   database (Swiftly admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore). Each one is
    connection-tested before it is accepted.
 3. **Steam & owner** — Steam Web API key, OpenID credentials, and the
    owner's SteamID64. The owner always has full access, independent of the
