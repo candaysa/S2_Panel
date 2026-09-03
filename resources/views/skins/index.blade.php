@@ -223,7 +223,13 @@
                                     <div class="mt-4">
                                         <label class="block text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.stickers') }}</label>
                                         <div class="mt-2 flex flex-wrap gap-2">
-                                            <template x-for="i in [0, 1, 2, 3, 4, 5]" :key="i">
+                                            {{-- CS2 caps every weapon at 5 stickers (raised from 4 in
+                                                 the Feb 2024 "A Call to Arms" update) - a 6th slot here
+                                                 would let a player place a sticker the game itself never
+                                                 renders. weapon_sticker_5 stays in the schema (the plugin's
+                                                 own column set) but is intentionally never shown or
+                                                 written to from this picker. --}}
+                                            <template x-for="i in [0, 1, 2, 3, 4]" :key="i">
                                                 <button
                                                     type="button"
                                                     @click="openStickerPicker(i)"
@@ -363,7 +369,7 @@
                 </div>
             </template>
 
-            {{-- Sticker/keychain picker - shared by all 6 sticker slots and
+            {{-- Sticker/keychain picker - shared by all 5 sticker slots and
                  the keychain slot above. Search only applies to stickers
                  (~8,800 of them); keychains (143) just list in full. --}}
             <div
@@ -794,7 +800,6 @@
                             weapon_sticker_2: row.weapon_sticker_2 || empty,
                             weapon_sticker_3: row.weapon_sticker_3 || empty,
                             weapon_sticker_4: row.weapon_sticker_4 || empty,
-                            weapon_sticker_5: row.weapon_sticker_5 || empty,
                             weapon_keychain: row.weapon_keychain || this.EMPTY_KEYCHAIN,
                         }
                         : {
@@ -806,7 +811,7 @@
                             weapon_stattrak: false,
                             weapon_nametag: '',
                             weapon_sticker_0: empty, weapon_sticker_1: empty, weapon_sticker_2: empty,
-                            weapon_sticker_3: empty, weapon_sticker_4: empty, weapon_sticker_5: empty,
+                            weapon_sticker_3: empty, weapon_sticker_4: empty,
                             weapon_keychain: this.EMPTY_KEYCHAIN,
                         };
 
@@ -814,7 +819,7 @@
                     // sticker/keychain, load the catalogs in the background so
                     // the slot labels show a real name rather than a bare id,
                     // without making the page wait on an 8,800-item fetch.
-                    if ([0, 1, 2, 3, 4, 5].some((i) => this.stickerAt(i).id)) this.ensureStickerCatalog();
+                    if ([0, 1, 2, 3, 4].some((i) => this.stickerAt(i).id)) this.ensureStickerCatalog();
                     if (this.keychainCurrentId) this.ensureKeychainCatalog();
                 },
 
@@ -951,7 +956,7 @@
                     if (this.supports('nametag')) payload.weapon_nametag = this.form.weapon_nametag;
 
                     if (this.supports('stickers')) {
-                        for (const i of [0, 1, 2, 3, 4, 5]) {
+                        for (const i of [0, 1, 2, 3, 4]) {
                             payload[`weapon_sticker_${i}`] = this.form[`weapon_sticker_${i}`];
                         }
                     }
