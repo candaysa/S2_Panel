@@ -255,7 +255,12 @@ step "Writing .env"
 if [ ! -f .env ]; then
     cp .env.example .env
 fi
-set_env APP_URL "$([ "$SKIP_SSL" -eq 1 ] && echo "http://$DOMAIN" || echo "https://$DOMAIN")"
+# Always http here: nginx is still HTTP-only at this point regardless of
+# --skip-ssl - certbot (below) is what actually adds the 443 listener, and
+# only on success does APP_URL get upgraded. Writing https up front would
+# leave APP_URL claiming a scheme the vhost doesn't serve whenever --skip-ssl
+# was passed, or certbot failed (e.g. DNS for the domain isn't live yet).
+set_env APP_URL "http://$DOMAIN"
 set_env APP_ENV production
 set_env APP_DEBUG false
 set_env DB_CONNECTION panel
