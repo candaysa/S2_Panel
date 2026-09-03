@@ -108,9 +108,22 @@ class RankTest extends TestCase
             ->assertOk();
     }
 
-    public function test_index_requires_authentication(): void
+    /**
+     * Pre-existing bug, unrelated to the K4-LevelRanks migration: this test
+     * used to assert the opposite (401 for a guest) and had been failing
+     * against the actual route ever since. Routes/api.php's own docblock and
+     * routes/web.php's "Public read-only pages" comment both say the
+     * leaderboard is intentionally public - "exactly what a visitor would
+     * want to see before logging in" - and RankController::index() carries
+     * no steam.auth middleware. The test was wrong, not the route.
+     */
+    public function test_index_visible_without_authentication(): void
     {
-        $this->getJson('/api/ranks')->assertStatus(401);
+        $this->insertPlayer();
+
+        $this->getJson('/api/ranks')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
     }
 
     public function test_index_visible_to_any_authenticated_user(): void
