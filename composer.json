@@ -2,7 +2,7 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "candaysa/s2-panel",
     "type": "project",
-    "description": "Admin panel for CS2 servers running the Swiftly plugin ecosystem (CS2_Admin, CS2_Ranks, weapon skins, VIPCore).",
+    "description": "Admin panel for CS2 servers running the Swiftly plugin ecosystem (CS2_Admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore).",
     "keywords": ["cs2", "counter-strike-2", "admin-panel", "swiftly", "laravel"],
     "license": "MIT",
     "require": {

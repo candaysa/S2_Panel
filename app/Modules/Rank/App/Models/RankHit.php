@@ -5,15 +5,15 @@ namespace App\Modules\Rank\App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Swiftly CS2_Ranks rank_hits row (C5) – per-bodypart damage stats. Column
- * names come straight from the plugin migration (pascal case) and are kept
- * verbatim.
+ * K4-LevelRanks-SwiftlyS2 lvl_base_hits row (C5) – per-bodypart damage
+ * stats. Column names come straight from the plugin migration (pascal case,
+ * "Neak" typo included) and are kept verbatim.
  */
 class RankHit extends Model
 {
     protected $connection = 'ranks';
 
-    protected $table = 'rank_hits';
+    protected $table = 'lvl_base_hits';
 
     protected $primaryKey = 'SteamID';
 

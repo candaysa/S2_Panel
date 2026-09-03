@@ -69,15 +69,15 @@ class VipService
      * derives active/expired from `expires` - VIPCore's own "0 = never
      * expires" convention.
      *
-     * Playtime reads CS2_Ranks' rank_base.playtime (seconds, converted to
-     * minutes here to match the column's own unit) rather than the
-     * CS2_Admin plugin's admin_playtime table. admin_playtime only has a
+     * Playtime reads K4-LevelRanks-SwiftlyS2's lvl_base.playtime (seconds,
+     * converted to minutes here to match the column's own unit) rather than
+     * the CS2_Admin plugin's admin_playtime table. admin_playtime only has a
      * row for someone who has actually held staff - 40 rows total on this
      * install versus 3000+ tracked players - so keying VIP's playtime
      * column off it left it blank for every VIP who isn't also an admin,
      * and for the ones who are, showed their staff console session time
-     * mislabeled as how long they've played. rank_base tracks every
-     * player CS2_Ranks has ever seen, which is what this column is for.
+     * mislabeled as how long they've played. lvl_base tracks every player
+     * the Rank plugin has ever seen, which is what this column is for.
      *
      * @param  Collection<int, VipUser>  $users
      */
@@ -99,7 +99,7 @@ class VipService
         try {
             $playtimeSeconds = RankPlayer::query()->whereIn('steam', $ids2)->pluck('playtime', 'steam');
         } catch (Throwable) {
-            // rank_base belongs to the optional Rank module.
+            // lvl_base belongs to the optional Rank module.
             $playtimeSeconds = collect();
         }
 
