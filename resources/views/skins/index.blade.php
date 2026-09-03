@@ -44,7 +44,7 @@
                 <template x-for="t in [2, 3]" :key="t">
                     <button
                         type="button"
-                        @click="team = t; loadSection()"
+                        @click="setTeam(t)"
                         :class="team === t ? 'bg-brand-soft text-brand-strong' : 'text-ink-muted hover:bg-surface-raised hover:text-ink'"
                         class="rounded-lg px-4 py-1.5 text-sm font-medium transition-colors"
                         x-text="t === 2 ? @js(__('i18n::messages.skins.team_t')) : @js(__('i18n::messages.skins.team_ct'))"
@@ -298,7 +298,17 @@
                         </div>
 
                         {{-- ------------------ right: the finish catalogue ------------------ --}}
-                        <div class="rounded-xl border border-line bg-surface p-4">
+                        {{-- lg:self-start matches the left column's own self-start (it's
+                             sticky, so it already opts out of row-stretch): without it, a
+                             CSS grid item stretches to the row's full height by default, and
+                             on a weapon whose left column (wear/seed/stattrak/nametag/
+                             stickers/keychain) comes up shorter than this card's own content,
+                             that stretch left a band of empty card below the last paint row
+                             for no reason - the card was tall enough to reach the row height,
+                             just not tall enough to have anything left to show there. Without
+                             the stretch, this card is exactly as tall as its own content
+                             (search bar + the max-h-[68vh] paint grid), full stop. --}}
+                        <div class="rounded-xl border border-line bg-surface p-4 lg:self-start">
                             <div class="flex flex-wrap items-center justify-between gap-3">
                                 <label class="text-sm font-medium text-ink-muted">{{ __('i18n::messages.skins.choose_paint') }}</label>
                                 <label class="relative ml-auto w-full sm:w-56">
@@ -495,6 +505,8 @@
                 },
 
                 async init() {
+                    const loc = this.readLocation();
+
                     try {
                         this.profile = await this.fetchJson(`/api/skins/${this.ownSteamId}`);
                         this.weapons = await this.fetchJson('/api/skins/catalog/weapons');
@@ -503,11 +515,22 @@
                         // tint its equipped paint without first opening that
                         // item's own paint picker.
                         this.paintNames = await this.fetchJson('/api/skins/catalog/paint-names').catch(() => ({}));
+                        await this.applyLocation(loc);
                     } catch (e) {
                         this.error = true;
                     } finally {
                         this.loading = false;
                     }
+
+                    // Gives the very first Back press something real to land
+                    // on (a bare "/skins" becomes its own canonical entry)
+                    // and normalizes a deep link's URL to match what actually
+                    // loaded, e.g. an item the profile no longer owns.
+                    this.replaceUrl(this.section, this.selected?.name ?? null, this.team);
+
+                    window.addEventListener('popstate', (event) => {
+                        this.applyLocation(event.state ?? this.readLocation());
+                    });
                 },
 
                 switchSection(key) {
@@ -516,6 +539,76 @@
                     this.selectedKind = null;
                     this.search = '';
                     this.loadSection();
+                    this.pushUrl(key, null, this.team);
+                },
+
+                // --------------------------------------------------------- URL / history
+                //
+                // Every move in here - switching tabs, opening an item, going back to
+                // the list - used to be pure in-memory Alpine state with no URL of its
+                // own. That's exactly why the browser's own Back button skipped past
+                // all of it straight to whatever page was open before /skins: there was
+                // nothing on this page in its history to step back through. Each such
+                // move now pushes its own /skins/<section>[/<item>] entry instead, so
+                // Back walks back through them like any other multi-page site - and the
+                // URL is bookmarkable/shareable as a side effect.
+
+                // The catalog entry's own `name` (already the x-for :key, unique within
+                // a section) rather than its numeric index - stabler to round-trip
+                // through a URL and back.
+                urlFor(section, itemName, team) {
+                    let url = `/skins/${section}`;
+                    if (itemName) url += `/${encodeURIComponent(itemName)}`;
+                    if (section === 'agent' && team) url += `?team=${team}`;
+                    return url;
+                },
+
+                pushUrl(section, itemName, team) {
+                    const url = this.urlFor(section, itemName, team);
+                    if (url === location.pathname + location.search) return;
+                    history.pushState({ section, item: itemName ?? null, team }, '', url);
+                },
+
+                replaceUrl(section, itemName, team) {
+                    history.replaceState({ section, item: itemName ?? null, team }, '', this.urlFor(section, itemName, team));
+                },
+
+                // Reconstructs {section, item, team} from wherever the browser
+                // currently is - the page's initial URL, or wherever Back/Forward just
+                // landed. Falls back to the default tab for anything unrecognized
+                // rather than failing, the same way an invalid `section` value would
+                // simply never match the route on the server.
+                readLocation() {
+                    const parts = location.pathname.replace(/^\/skins\/?/, '').split('/').filter(Boolean);
+                    const known = this.sections.map((s) => s.key);
+                    const section = known.includes(parts[0]) ? parts[0] : 'weapons';
+                    const item = parts[1] ? decodeURIComponent(parts[1]) : null;
+                    const team = Number(new URLSearchParams(location.search).get('team'));
+
+                    return { section, item, team: team === 2 || team === 3 ? team : 2 };
+                },
+
+                // Applies {section, item, team} to the visible state without touching
+                // history - used for both the very first load and popstate, which has
+                // already moved history on its own by the time this runs.
+                async applyLocation({ section, item, team }) {
+                    this.section = section;
+                    this.team = team;
+                    this.selected = null;
+                    this.selectedKind = null;
+                    this.search = '';
+                    await this.loadSection();
+
+                    if (item) {
+                        const found = this.currentCatalog().find((i) => i.name === item);
+                        if (found) await this.openDetail(found, { push: false });
+                    }
+                },
+
+                setTeam(t) {
+                    this.team = t;
+                    this.loadSection();
+                    this.pushUrl('agent', null, t);
                 },
 
                 async loadSection() {
@@ -779,7 +872,7 @@
                     return false;
                 },
 
-                async openDetail(item) {
+                async openDetail(item, { push = true } = {}) {
                     this.selectedKind = this.section;
                     this.selected = item;
                     this.paintSearch = '';
@@ -821,6 +914,11 @@
                     // without making the page wait on an 8,800-item fetch.
                     if ([0, 1, 2, 3, 4].some((i) => this.stickerAt(i).id)) this.ensureStickerCatalog();
                     if (this.keychainCurrentId) this.ensureKeychainCatalog();
+
+                    // push:false is applyLocation() restoring this exact detail from
+                    // the URL itself (initial load, or Back/Forward) - pushing again
+                    // here would double up the history entry it just navigated to.
+                    if (push) this.pushUrl(this.section, item.name, this.team);
                 },
 
                 closeDetail() {
@@ -828,6 +926,7 @@
                     this.selectedKind = null;
                     this.paints = [];
                     this.paintSearch = '';
+                    this.pushUrl(this.section, null, this.team);
                 },
 
                 pickPaint(id) {
