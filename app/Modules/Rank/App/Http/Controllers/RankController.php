@@ -13,7 +13,7 @@ use InvalidArgumentException;
  * Rank endpoints (C5).
  *
  * GET    /api/ranks                – leaderboard (search + pagination)
- * GET    /api/ranks/{steamid}      – player profile (rank_base + rank_hits)
+ * GET    /api/ranks/{steamid}      – player profile (lvl_base + lvl_base_hits + lvl_base_weapons)
  * PATCH  /api/ranks/{steamid}/points – edit points (requires admin.root)
  */
 class RankController

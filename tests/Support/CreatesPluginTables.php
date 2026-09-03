@@ -91,11 +91,13 @@ trait CreatesPluginTables
     }
 
     /**
-     * Swiftly CS2_Ranks tables (subset used by the Rank module).
+     * K4-LevelRanks-SwiftlyS2 tables (subset used by the Rank module) - see
+     * M001_CoreTables/M002_WeaponStatsTable/M003_HitStatsTable in that
+     * plugin's own source for the schema this mirrors.
      */
     protected function createRankTables(): void
     {
-        Schema::connection('ranks')->create('rank_base', function ($table): void {
+        Schema::connection('ranks')->create('lvl_base', function ($table): void {
             $table->string('steam', 32)->primary();
             $table->string('name', 64)->default('');
             $table->integer('value')->default(0);
@@ -117,7 +119,7 @@ trait CreatesPluginTables
             $table->bigInteger('damage')->default(0);
         });
 
-        Schema::connection('ranks')->create('rank_hits', function ($table): void {
+        Schema::connection('ranks')->create('lvl_base_hits', function ($table): void {
             $table->string('SteamID', 32)->primary();
             $table->bigInteger('DmgHealth')->default(0);
             $table->bigInteger('DmgArmor')->default(0);
@@ -131,9 +133,27 @@ trait CreatesPluginTables
             $table->integer('Neak')->default(0);
         });
 
-        Schema::connection('ranks')->create('rank_settings', function ($table): void {
+        // Optional module server-side (WeaponStatsEnabled in modules.json) -
+        // created here so tests can cover both "present" and "table simply
+        // doesn't exist" (RankService::weaponsFor()'s try/catch) by dropping
+        // it again in the specific test that needs that.
+        Schema::connection('ranks')->create('lvl_base_weapons', function ($table): void {
+            $table->string('steam', 32);
+            $table->string('classname', 64);
+            $table->integer('kills')->default(0);
+            $table->integer('deaths')->default(0);
+            $table->integer('headshots')->default(0);
+            $table->bigInteger('hits')->default(0);
+            $table->bigInteger('shots')->default(0);
+            $table->bigInteger('damage')->default(0);
+            $table->primary(['steam', 'classname']);
+        });
+
+        Schema::connection('ranks')->create('lvl_base_settings', function ($table): void {
             $table->string('steam', 32)->primary();
-            $table->boolean('messages')->default(false);
+            $table->boolean('messages')->default(true);
+            $table->boolean('summary')->default(false);
+            $table->boolean('rankchanges')->default(true);
         });
     }
 
