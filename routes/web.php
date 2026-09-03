@@ -94,9 +94,20 @@ Route::middleware('steam.auth')->group(function (): void {
 
     // Own SteamID64 resolved server-side once here - the page has no
     // "look up another player" mode, so it never needs one from the client.
-    Route::get('/skins', fn () => view('skins.index', [
+    //
+    // {section?}/{item?} exist purely so the tab/detail navigation the
+    // Alpine component pushes onto the browser's history (see skinsPage()'s
+    // pushUrl()) resolves to a real page on refresh or a shared link, not a
+    // 404 - the component reads them straight from location.pathname
+    // itself, so the closure doesn't need them at all. Constrained to the
+    // component's own five tab keys; anything else 404s same as before.
+    Route::get('/skins/{section?}/{item?}', fn () => view('skins.index', [
         'ownSteamId' => \App\Support\SteamId::parse((string) auth()->user()->steam_id)->steamId64(),
-    ]))->middleware('module:skin')->name('skins.page');
+    ]))
+        ->where('section', 'weapons|knife|gloves|agent|music')
+        ->where('item', '[^/]+')
+        ->middleware('module:skin')
+        ->name('skins.page');
 
     // Reports, admin applications, and ban appeals share one page (a
     // category dropdown switches between them); canDecide is resolved
