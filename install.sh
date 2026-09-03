@@ -236,7 +236,12 @@ fi
 cd "$INSTALL_DIR"
 
 step "Installing PHP dependencies (composer install)"
-sudo -u www-data COMPOSER_HOME=/tmp/composer-home composer install --no-dev --optimize-autoloader --no-interaction --quiet
+# Runs as root, same as the clone above - the tree is only handed to
+# www-data at the very end (see "Fixing ownership and permissions"). Doing
+# that here instead would make composer create vendor/ as www-data inside a
+# directory git just created as root, which fails outright: www-data has no
+# write access to it yet.
+composer install --no-dev --optimize-autoloader --no-interaction --quiet
 ok "vendor/ ready"
 
 step "Building frontend assets (npm)"
