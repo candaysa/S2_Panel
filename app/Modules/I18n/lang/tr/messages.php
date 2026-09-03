@@ -163,6 +163,10 @@ return [
                 'name' => 'Hile kontrolü',
                 'description' => 'Ekran paylaşımı oturumları ve hile kontrol kayıtları.',
             ],
+            'server_details' => [
+                'name' => 'Sunucu detayları',
+                'description' => 'Dashboard üzerinden sunucu bazlı aktivite geçmişi ve canlı oyuncu listesi.',
+            ],
         ],
         'tab_modules' => 'Modüller',
         'tab_docs' => 'Belgeler',
@@ -537,6 +541,20 @@ return [
         'invalid' => 'Geçerli bir IP ve port girin.',
         'last_seen' => 'Son görülme',
         'rcon_status_configured' => 'Bu sunucu için RCON şifresi ayarlı.',
+    ],
+
+    'server_details' => [
+        'title' => 'Sunucu detayları',
+        'activity' => 'Aktivite',
+        'online_players' => 'Çevrimiçi oyuncular',
+        'player' => 'Oyuncu',
+        'score' => 'Skor',
+        'time_connected' => 'Bağlı kalma süresi',
+        'range_1h' => 'Son 1 saat',
+        'range_12h' => 'Son 12 saat',
+        'range_1w' => 'Son 1 hafta',
+        'range_12m' => 'Son 12 ay',
+        'unnamed_player' => 'İsimsiz oyuncu',
     ],
 
     'update' => [

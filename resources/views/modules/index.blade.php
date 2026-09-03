@@ -281,6 +281,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                     appeal: @js(__('i18n::messages.modules.items.appeal.name')),
                     rcon: @js(__('i18n::messages.modules.items.rcon.name')),
                     cheat_check: @js(__('i18n::messages.modules.items.cheat_check.name')),
+                    server_details: @js(__('i18n::messages.modules.items.server_details.name')),
                 },
                 descriptions: {
                     vip: @js(__('i18n::messages.modules.items.vip.description')),
@@ -290,6 +291,7 @@ class YourModuleServiceProvider extends ModuleServiceProvider
                     appeal: @js(__('i18n::messages.modules.items.appeal.description')),
                     rcon: @js(__('i18n::messages.modules.items.rcon.description')),
                     cheat_check: @js(__('i18n::messages.modules.items.cheat_check.description')),
+                    server_details: @js(__('i18n::messages.modules.items.server_details.description')),
                 },
 
                 // Built-in toggleable modules and installed plugins, merged

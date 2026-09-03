@@ -64,6 +64,34 @@ the **SteamID64 of the panel owner** — the wizard asks for both.
 
 ## Installation
 
+### Quick install (Ubuntu)
+
+One script takes a bare Ubuntu server the rest of the way to "open the
+panel in a browser": it checks for PHP 8.3 (+ every required extension),
+Composer, Node 20+, MySQL and nginx and installs whichever are missing,
+pulls this repo, runs `composer`/`npm`, **creates the panel's own database**
+(the one manual SQL step below), writes just enough of `.env` to boot, runs
+the migrations, points nginx at `public/`, and requests a Let's Encrypt
+certificate. Safe to re-run — every step checks what's already there before
+changing anything.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh \
+  | sudo bash -s -- --domain panel.example.com --email you@example.com
+```
+
+That's steps 1–5 below, done. It ends by printing the URL to the install
+wizard (step 6) — the four Swiftly plugin database connections, your Steam
+API key, and the owner's SteamID64 are still asked there, never on the
+command line. See `./install.sh --help` for flags (custom install
+directory, branch, DB name, `--skip-ssl`, non-interactive `--yes`).
+
+Not on Ubuntu, or want to see/control every step yourself? Expand the manual
+walkthrough below — it's exactly what the script automates.
+
+<details>
+<summary><strong>Manual installation</strong> (non-Ubuntu, or step-by-step by hand)</summary>
+
 ### 1. Get the code and its dependencies
 
 ```bash
@@ -183,6 +211,8 @@ directories:
 ```bash
 chown -R www-data:www-data storage bootstrap/cache
 ```
+
+</details>
 
 ### 6. Run the install wizard
 
