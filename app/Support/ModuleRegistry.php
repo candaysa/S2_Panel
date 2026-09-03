@@ -45,7 +45,7 @@ class ModuleRegistry
      */
     public function toggleable(): array
     {
-        return ['vip', 'skin', 'rank', 'report', 'appeal', 'rcon', 'cheat_check'];
+        return ['vip', 'skin', 'rank', 'report', 'appeal', 'rcon', 'cheat_check', 'server_details'];
     }
 
     /**
