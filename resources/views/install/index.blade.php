@@ -298,7 +298,7 @@
                         :disabled="loading"
                         class="w-full appearance-none rounded-lg border border-line bg-canvas px-3 py-2.5 pr-10 text-sm font-medium text-ink transition-colors hover:bg-surface-raised focus:border-brand-strong focus:outline-none disabled:opacity-50"
                     >
-                        @foreach (['en' => 'English', 'tr' => 'Türkçe', 'de' => 'Deutsch', 'fr' => 'Français', 'it' => 'Italiano', 'ru' => 'Русский'] as $code => $label)
+                        @foreach (['en' => 'English', 'tr' => 'Türkçe', 'de' => 'Deutsch', 'fr' => 'Français', 'it' => 'Italiano', 'ru' => 'Русский', 'hu' => 'Magyar', 'pl' => 'Polski'] as $code => $label)
                             <option value="{{ $code }}">{{ $label }}</option>
                         @endforeach
                     </select>

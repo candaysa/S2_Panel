@@ -241,7 +241,8 @@ digit and every profile link built from it points at a different account.
 ## Translations
 
 User-facing strings go in `app/Modules/I18n/lang/{locale}/messages.php` for
-all six locales (`en`, `tr`, `de`, `fr`, `it`, `ru`), read as
+every locale `I18nController::locales()` lists (`en`, `tr`, `de`, `fr`,
+`it`, `ru`, `hu`, `pl`), read as
 `__('i18n::messages.trophy.title')`. English is the fallback for anything
 missing, so a partial translation degrades rather than breaking.
 
@@ -322,6 +323,6 @@ zips from sources you trust.
 - [ ] Sidebar entry carries the same two gates
 - [ ] Migrations create only your own tables
 - [ ] SteamID64 columns cast to `string`
-- [ ] Strings in all six locales
+- [ ] Strings in every locale `I18nController::locales()` lists
 - [ ] Mutations audit-logged, with an `audit.*` sentence for each action
 - [ ] `ModuleRegistry::toggleable()` + `modules.items.*` if owners may switch it off

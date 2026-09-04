@@ -2,6 +2,7 @@
 
 namespace App\Modules\Settings\App\Http\Controllers;
 
+use App\Modules\I18n\App\Http\Controllers\I18nController;
 use App\Modules\Settings\App\Services\SettingService;
 use App\Support\Api;
 use App\Support\MailConfig;
@@ -62,7 +63,7 @@ class SettingsController
         $validator = Validator::make($request->only($whitelist), [
             'site_name' => 'nullable|string|max:120',
             'site_description' => 'nullable|string|max:500',
-            'default_locale' => 'nullable|string|in:en,tr,de,ru,fr,it',
+            'default_locale' => 'nullable|string|in:'.implode(',', I18nController::locales()),
             // Validated against the system's own tz database rather than a
             // hand-kept list, so it cannot drift out of date.
             'timezone' => ['nullable', 'string', 'max:64', Rule::in(timezone_identifiers_list())],

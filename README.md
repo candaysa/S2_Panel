@@ -40,8 +40,9 @@ no separate agent or bridge is required on the game server.
   working panel from a `backup.zip` — database connections, Steam
   credentials, the owner's SteamID, module toggles, every table the panel
   owns, and the logo/favicon.
-- 6-language UI (English, Turkish, German, French, Italian, Russian),
-  dark/light theme, and an owner-customizable accent color.
+- 8-language UI (English, Turkish, German, French, Italian, Russian,
+  Hungarian, Polish), dark/light theme, and an owner-customizable accent
+  color.
 
 ## Stack
 
