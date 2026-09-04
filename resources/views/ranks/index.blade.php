@@ -75,7 +75,7 @@
                             </td>
                             <td class="px-4 py-3">
                                 <template x-if="editing !== player.steam">
-                                    <span class="font-medium text-ink" x-text="num(player.value)"></span>
+                                    <x-premier-badge points="player.value" size="sm" />
                                 </template>
                                 <template x-if="editing === player.steam">
                                     <div class="flex items-center gap-1.5">
@@ -124,7 +124,7 @@
                         <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" size="sm" class="shrink-0" />
                     </div>
                     <dl class="mt-3 grid grid-cols-4 gap-2 border-t border-line-soft pt-3 text-center">
-                        <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.points') }}</dt><dd class="text-sm font-medium text-ink" x-text="num(player.value)"></dd></div>
+                        <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.points') }}</dt><dd class="mt-0.5"><x-premier-badge points="player.value" size="sm" /></dd></div>
                         <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.kills') }}</dt><dd class="text-sm text-ink-muted" x-text="num(player.kills)"></dd></div>
                         <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.time_on_server') }}</dt><dd class="text-sm text-ink-muted" x-text="playtime(player.playtime)"></dd></div>
                         <div><dt class="text-[11px] text-ink-faint">{{ __('i18n::messages.ranks.kd') }}</dt><dd class="text-sm text-ink-muted" x-text="kd(player)"></dd></div>

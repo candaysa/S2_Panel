@@ -145,7 +145,7 @@
                                 <td class="hidden px-3 py-2.5 sm:table-cell">
                                     <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" />
                                 </td>
-                                <td class="px-3 py-2.5 text-right font-semibold tabular-nums text-ink" x-text="stat(player.value)"></td>
+                                <td class="px-3 py-2.5 text-right"><x-premier-badge points="player.value" size="sm" /></td>
                                 <td class="hidden px-3 py-2.5 text-right tabular-nums md:table-cell" x-text="stat(player.kills)"></td>
                                 <td class="hidden px-3 py-2.5 text-right tabular-nums md:table-cell" x-text="playtime(player.playtime)"></td>
                                 <td class="py-2.5 pl-3 pr-5 text-right">

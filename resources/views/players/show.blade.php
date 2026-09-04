@@ -38,7 +38,7 @@
                         <div class="shrink-0 text-left sm:text-right">
                             <p class="text-xs uppercase tracking-wider text-ink-faint">{{ __('i18n::messages.ranks.position') }}</p>
                             <p class="text-3xl font-semibold text-brand-strong" x-text="'#' + player.position"></p>
-                            <p class="text-sm text-ink-muted"><span x-text="num(player.value)"></span> {{ __('i18n::messages.ranks.points') }}</p>
+                            <x-premier-badge points="player.value" size="lg" class="mt-1" />
                         </div>
                     </div>
 
