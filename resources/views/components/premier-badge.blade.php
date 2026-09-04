@@ -1,45 +1,56 @@
 @props(['points' => null, 'size' => 'md'])
 
 @php
-    // CS2's own in-game "Seçkin" (Premier) rating plate: a gradient chip
-    // banded by score, colored through the same seven families the
-    // competitive ladder uses - grey, light blue, blue, purple, pink, red,
-    // and gold for the top band (30000+, "shining" in the real client).
-    // Thresholds/colors are Valve's well-documented public Premier bands,
-    // not pulled from a live client - close enough for a leaderboard chip;
-    // adjust BANDS below if a confirmed live export ever differs.
+    // CS2's own "Seçkin" (Premier) rating plate, ported 1:1 from the
+    // predecessor panel (CS2_Panel's CommonHelper::getCSRatingImage()) -
+    // same 7 score bands, same Valve rating icon per band, same italic bold
+    // number overlaid in the band's own color - rather than redesigned from
+    // scratch. Assets are the exact rating.{band}.png files from there,
+    // copied verbatim into public/images/ratings/; colors/thresholds match
+    // that helper and its cs2rating-text-* CSS classes exactly.
     //
-    // Self-contained like rank-badge.blade.php: everything is one inline
-    // Alpine expression rather than a page-level helper method, so this
-    // drops into any page's markup without that page having to know it
-    // exists.
-    $sizes = [
-        'sm' => 'h-6 min-w-14 px-2 text-xs',
-        'md' => 'h-7 min-w-16 px-2.5 text-sm',
-        'lg' => 'h-9 min-w-20 px-3 text-base',
-    ];
-    $sizeClass = $sizes[$size] ?? $sizes['md'];
-
-    // [minimum points, gradient start, gradient end], highest first - the
-    // inline expression below takes the first band the value clears.
+    // [minimum points, icon basename, text color]
     $bands = [
-        [30000, '#FFD700', '#FF8C00'],
-        [25000, '#EE4B4B', '#A61E1E'],
-        [20000, '#D94FE0', '#9B1FA8'],
-        [15000, '#8B5CF6', '#5B2C9E'],
-        [10000, '#4C6FFF', '#2A3FB0'],
-        [5000, '#4AC4F0', '#1E7EA8'],
-        [0, '#9CA3AF', '#6B7280'],
+        [30000, 'unusual', '#FFFF00'],
+        [25000, 'ancient', '#EB4B4B'],
+        [20000, 'legendary', '#D22CE6'],
+        [15000, 'mythical', '#8846FF'],
+        [10000, 'rare', '#4B69FF'],
+        [5000, 'uncommon', '#5E98D7'],
+        [0, 'common', '#B1C3D9'],
     ];
+
+    // The source's icon is a fixed 24px (h-6) with a fixed 16px number;
+    // scaled proportionally here for the handful of places this badge
+    // needs to be smaller (a table row) or larger (the profile header).
+    $heights = ['sm' => 'h-5', 'md' => 'h-6', 'lg' => 'h-8'];
+    $height = $heights[$size] ?? $heights['md'];
+    $textSizes = ['sm' => 'text-[9px]', 'md' => 'text-xs', 'lg' => 'text-base'];
+    $textSize = $textSizes[$size] ?? $textSizes['md'];
+    $textPos = ['sm' => 'left-2.5 top-0', 'md' => 'left-3.5 top-0.5', 'lg' => 'left-5 top-1'];
+    $textPosition = $textPos[$size] ?? $textPos['md'];
 @endphp
 
 <span
-    {{ $attributes->merge(['class' => "inline-flex items-center justify-center rounded-lg font-bold tabular-nums text-white shadow-sm $sizeClass"]) }}
-    x-data="{ premierBands: @js($bands) }"
-    :style="(() => {
-        const p = {{ $points }} ?? 0;
-        const [, c1, c2] = premierBands.find(([min]) => p >= min) ?? premierBands[premierBands.length - 1];
-        return `background:linear-gradient(135deg, ${c1}, ${c2})`;
-    })()"
-    x-text="({{ $points }} ?? 0).toLocaleString()"
-></span>
+    {{ $attributes->merge(['class' => "relative inline-flex items-center $height"]) }}
+    x-data="{
+        premierBands: @js($bands),
+        band() {
+            const p = {{ $points }} ?? 0;
+            return this.premierBands.find(([min]) => p >= min) ?? this.premierBands[this.premierBands.length - 1];
+        },
+    }"
+>
+    <img
+        :src="'/images/ratings/rating.' + band()[1] + '.png'"
+        alt="CS Rating"
+        class="{{ $height }} w-auto"
+        loading="lazy"
+        decoding="async"
+    >
+    <span
+        class="absolute font-bold italic {{ $textSize }} {{ $textPosition }}"
+        :style="'text-shadow:0 1px 0 black;color:' + band()[2]"
+        x-text="({{ $points }} ?? 0).toLocaleString()"
+    ></span>
+</span>
