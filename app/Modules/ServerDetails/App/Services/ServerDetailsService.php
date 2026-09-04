@@ -135,16 +135,39 @@ class ServerDetailsService
         }
 
         try {
-            return RankPlayer::query()
-                ->whereIn('name', $names)
-                ->get(['name', 'steam'])
-                ->groupBy('name')
-                ->filter(fn ($rows) => $rows->count() === 1)
-                ->map(fn ($rows) => $rows->first()->steam)
-                ->all();
+            return $this->uniqueSteamByName(RankPlayer::query()->whereIn('name', $names)->get(['name', 'steam']));
         } catch (Throwable) {
-            return [];
+            // One name in the batch can abort the whole IN (...) query -
+            // confirmed live: a 4-byte-UTF8 display name (mathematical
+            // bold letters) against lvl_base's own column collation threw
+            // "Illegal mix of collations for operation 'in'" and silently
+            // blocked every other name in the same player list, not just
+            // the one actually responsible. Falling back to one query per
+            // name means only that one name fails to link.
+            $result = [];
+
+            foreach ($names as $name) {
+                try {
+                    $result += $this->uniqueSteamByName(RankPlayer::query()->where('name', $name)->get(['name', 'steam']));
+                } catch (Throwable) {
+                    // This name's own collation clash (or anything else) - just skip it.
+                }
+            }
+
+            return $result;
         }
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, RankPlayer>  $rows
+     * @return array<string, string>
+     */
+    private function uniqueSteamByName($rows): array
+    {
+        return $rows->groupBy('name')
+            ->filter(fn ($group) => $group->count() === 1)
+            ->map(fn ($group) => $group->first()->steam)
+            ->all();
     }
 
     /**
