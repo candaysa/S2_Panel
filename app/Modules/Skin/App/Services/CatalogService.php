@@ -31,6 +31,8 @@ class CatalogService
         'fr' => 'french',
         'ru' => 'russian',
         'it' => 'italian',
+        'hu' => 'hungarian',
+        'pl' => 'polish',
     ];
 
     /**

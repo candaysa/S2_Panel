@@ -8,9 +8,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Lang;
 
 /**
- * Internationalization (C15). The panel ships six fixed locales (en is the
- * default); API error envelopes stay fixed English (Support\Api), these
+ * Internationalization (C15). The panel ships eight fixed locales (en is
+ * the default); API error envelopes stay fixed English (Support\Api), these
  * messages serve the UI layer (SPA / blade).
+ *
+ * The single source of truth for which locales exist - the install
+ * wizard's validation, Settings' language dropdown and CatalogService's own
+ * locale map (Skin module) all read this list rather than repeating it, so
+ * adding a language only ever means dropping in lang/{locale}/messages.php
+ * and adding it here.
  *
  * GET /api/i18n/locales      – supported locales
  * GET /api/i18n/{locale}     – full message set for a locale
@@ -23,7 +29,7 @@ class I18nController
      */
     public static function locales(): array
     {
-        return ['en', 'tr', 'de', 'ru', 'fr', 'it'];
+        return ['en', 'tr', 'de', 'ru', 'fr', 'it', 'hu', 'pl'];
     }
 
     public function index(): JsonResponse

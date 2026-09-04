@@ -2,6 +2,7 @@
 
 namespace App\Modules\Install\App\Http\Controllers;
 
+use App\Modules\I18n\App\Http\Controllers\I18nController;
 use App\Modules\Install\App\Services\ConnectionProbe;
 use App\Modules\Install\App\Services\DependencyProbe;
 use App\Modules\Install\App\Services\EnvWriter;
@@ -109,7 +110,7 @@ class InstallController
     public function locale(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'locale' => 'required|string|in:en,tr,de,fr,it,ru',
+            'locale' => 'required|string|in:'.implode(',', I18nController::locales()),
             // Asked here rather than left to a post-install trip to Settings:
             // the name appears in the sidebar, the browser tab and the PWA
             // manifest, so a fresh install that still says "S2 Panel"

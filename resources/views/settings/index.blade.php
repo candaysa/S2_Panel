@@ -48,6 +48,8 @@
                         <option value="fr">Français</option>
                         <option value="it">Italiano</option>
                         <option value="ru">Русский</option>
+                        <option value="hu">Magyar</option>
+                        <option value="pl">Polski</option>
                     </select>
                 </div>
 

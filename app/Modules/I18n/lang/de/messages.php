@@ -86,7 +86,7 @@ return [
         'rcon_applies_to' => 'Gilt für:',
         'step_steam' => 'Steam & Besitzer',
         'locale_prompt' => 'Wähle die Panel-Sprache, um fortzufahren. Du kannst dies später in den Einstellungen ändern.',
-        'db_hint' => 'Geben Sie die Datenbank der Swiftly-Plugins an: CS2_Admin, CS2_Ranks, Waffen-Skins und VIPCore. Das Panel liest und schreibt deren Tabellen direkt und legt seine eigenen Tabellen in derselben Datenbank ab.',
+        'db_hint' => 'Geben Sie die Datenbank der Swiftly-Plugins an: CS2_Admin, K4-LevelRanks-SwiftlyS2, Waffen-Skins und VIPCore. Das Panel liest und schreibt deren Tabellen direkt und legt seine eigenen Tabellen in derselben Datenbank ab.',
         'deps_missing_title' => 'Einige Plugin-Tabellen wurden nicht gefunden',
         'deps_missing_body' => 'Die Datenbankverbindung steht, die folgenden Tabellen fehlen jedoch. Lassen Sie die zugehörigen Module deaktiviert oder installieren Sie das Plugin und verbinden Sie sich erneut.',
         'deps_admin' => 'Administratoren und Gruppen',
@@ -145,7 +145,7 @@ return [
             ],
             'rank' => [
                 'name' => 'Ränge',
-                'description' => 'Spieler-Rang- und Levelverfolgung (CS2_Ranks).',
+                'description' => 'Spieler-Rang- und Levelverfolgung (K4-LevelRanks-SwiftlyS2).',
             ],
             'report' => [
                 'name' => 'Meldungen',
