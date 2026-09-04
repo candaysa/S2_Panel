@@ -78,7 +78,23 @@
                         <tbody class="divide-y divide-line-soft">
                             <template x-for="player in players" :key="player.name + player.duration_seconds">
                                 <tr class="text-ink-muted">
-                                    <td class="px-5 py-2.5 font-medium text-ink" x-text="player.name || t.unnamed"></td>
+                                    <td class="px-5 py-2.5 font-medium">
+                                        {{-- steam is a best-effort name match against the Rank
+                                             module's own player table (see
+                                             ServerDetailsService::steamByName()) - the A2S query
+                                             this list comes from carries no SteamID at all, only a
+                                             display name. Only names that matched exactly one
+                                             player link; anything ambiguous or unmatched (Rank
+                                             module off, a shared/default name, ...) just isn't a
+                                             link, same as the rest of the row. --}}
+                                        <a
+                                            x-show="player.steam"
+                                            :href="'/players/' + encodeURIComponent(player.steam)"
+                                            class="text-ink transition-colors hover:text-brand-strong"
+                                            x-text="player.name || t.unnamed"
+                                        ></a>
+                                        <span x-show="!player.steam" class="text-ink" x-text="player.name || t.unnamed"></span>
+                                    </td>
                                     <td class="px-5 py-2.5 text-right tabular-nums" x-text="player.score"></td>
                                     <td class="px-5 py-2.5 text-right tabular-nums" x-text="duration(player.duration_seconds)"></td>
                                 </tr>

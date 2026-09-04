@@ -2,12 +2,14 @@
 
 namespace App\Modules\ServerDetails\App\Services;
 
+use App\Modules\Rank\App\Models\RankPlayer;
 use App\Modules\Server\App\Models\AdminServer;
 use App\Modules\Server\App\Services\ServerService;
 use App\Modules\ServerDetails\App\Models\ServerStat;
 use App\Support\A2s;
 use Carbon\Carbon;
 use Illuminate\Support\Carbon as SupportCarbon;
+use Throwable;
 
 /**
  * Per-server history + live player list (C21).
@@ -77,7 +79,7 @@ class ServerDetailsService
     }
 
     /**
-     * @return array<int, array{name: string, score: int, duration_seconds: int}>|null null when the server did not answer
+     * @return array<int, array{name: string, score: int, duration_seconds: int, steam: ?string}>|null null when the server did not answer
      */
     public function livePlayers(AdminServer $server): ?array
     {
@@ -91,15 +93,58 @@ class ServerDetailsService
             return null;
         }
 
-        return collect($players)
+        $rows = collect($players)
             ->sortByDesc('duration')
             ->values()
             ->map(fn (array $p): array => [
                 'name' => (string) $p['name'],
                 'score' => (int) $p['score'],
                 'duration_seconds' => (int) round((float) $p['duration']),
-            ])
+            ]);
+
+        $steamByName = $this->steamByName($rows->pluck('name')->all());
+
+        return $rows
+            ->map(fn (array $p): array => [...$p, 'steam' => $steamByName[$p['name']] ?? null])
             ->all();
+    }
+
+    /**
+     * Best-effort name -> steamid lookup against the Rank module's own
+     * player table, so a live player's name in this list can link to their
+     * /players/{steam} profile - the A2S query protocol this list is built
+     * from (see livePlayers() above) has no concept of a SteamID at all,
+     * only a display name, so there is no exact source to join on.
+     *
+     * Deliberately conservative: only names that match exactly one
+     * lvl_base row are linked. A shared or default in-game name (multiple
+     * players, or none at all) leaves those rows unlinked rather than
+     * guessing which player it actually is. The Rank module being
+     * disabled, or genuinely absent, degrades to "nothing links" the same
+     * way every other optional Rank integration in this panel does.
+     *
+     * @param  list<string>  $names
+     * @return array<string, string> name -> steam
+     */
+    private function steamByName(array $names): array
+    {
+        $names = array_values(array_unique(array_filter($names, fn (string $n): bool => $n !== '')));
+
+        if ($names === []) {
+            return [];
+        }
+
+        try {
+            return RankPlayer::query()
+                ->whereIn('name', $names)
+                ->get(['name', 'steam'])
+                ->groupBy('name')
+                ->filter(fn ($rows) => $rows->count() === 1)
+                ->map(fn ($rows) => $rows->first()->steam)
+                ->all();
+        } catch (Throwable) {
+            return [];
+        }
     }
 
     /**
