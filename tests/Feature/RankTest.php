@@ -1,0 +1,391 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
+use Tests\Support\CreatesPluginTables;
+use Tests\TestCase;
+
+class RankTest extends TestCase
+{
+    use CreatesPluginTables;
+    use RefreshDatabase;
+
+    /** STEAM_0:0:123456 */
+    private const STEAM_ID2 = 'STEAM_0:0:123456';
+
+    private const STEAM_ID64 = 76561197960512640;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->createSwiftlyCoreTables();
+        $this->createRankTables();
+    }
+
+    private function insertPlayer(array $overrides = []): void
+    {
+        DB::connection('ranks')->table('lvl_base')->insert(array_merge([
+            'steam' => self::STEAM_ID2,
+            'name' => 'RankedPlayer',
+            'value' => 1000,
+            'rank' => 1,
+            'kills' => 150,
+            'deaths' => 80,
+            'shoots' => 5000,
+            'hits' => 2500,
+            'headshots' => 60,
+            'assists' => 30,
+            'round_win' => 20,
+            'round_lose' => 10,
+            'playtime' => 3600,
+            'lastconnect' => 1700000000,
+            'game_wins' => 5,
+            'game_losses' => 2,
+            'games_played' => 7,
+            'rounds_played' => 40,
+            'damage' => 12000,
+        ], $overrides));
+    }
+
+    private function insertHits(array $overrides = []): void
+    {
+        DB::connection('ranks')->table('lvl_base_hits')->insert(array_merge([
+            'SteamID' => self::STEAM_ID2,
+            'DmgHealth' => 9000,
+            'DmgArmor' => 3000,
+            'Head' => 60,
+            'Chest' => 100,
+            'Belly' => 40,
+            'LeftArm' => 20,
+            'RightArm' => 25,
+            'LeftLeg' => 15,
+            'RightLeg' => 15,
+            'Neak' => 5,
+        ], $overrides));
+    }
+
+    private function insertWeapon(array $overrides = []): void
+    {
+        DB::connection('ranks')->table('lvl_base_weapons')->insert(array_merge([
+            'steam' => self::STEAM_ID2,
+            'classname' => 'weapon_ak47',
+            'kills' => 42,
+            'deaths' => 0,
+            'headshots' => 10,
+            'hits' => 300,
+            'shots' => 600,
+            'damage' => 5000,
+        ], $overrides));
+    }
+
+    /**
+     * Points a fixture ranks.json at rank.ranks_path for the duration of one
+     * test. RankCatalogService::ranks() keys its cache by path - every test
+     * here reuses the same fixture path, so the cache is forgotten
+     * explicitly rather than relying on different tests never writing
+     * different content to it within the same (array-driver, per-process)
+     * test run.
+     */
+    private function useRanksFixture(array $ranks): void
+    {
+        $path = storage_path('app/testing-rank/ranks.json');
+        File::ensureDirectoryExists(dirname($path));
+        File::put($path, json_encode(['Ranks' => $ranks]));
+        config(['rank.ranks_path' => $path]);
+        Cache::forget('rank:ranks-json:'.md5($path));
+    }
+
+    public function test_page_renders_for_an_authenticated_user(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->get('/ranks')
+            ->assertOk();
+    }
+
+    /**
+     * Pre-existing bug, unrelated to the K4-LevelRanks migration: this test
+     * used to assert the opposite (401 for a guest) and had been failing
+     * against the actual route ever since. Routes/api.php's own docblock and
+     * routes/web.php's "Public read-only pages" comment both say the
+     * leaderboard is intentionally public - "exactly what a visitor would
+     * want to see before logging in" - and RankController::index() carries
+     * no steam.auth middleware. The test was wrong, not the route.
+     */
+    public function test_index_visible_without_authentication(): void
+    {
+        $this->insertPlayer();
+
+        $this->getJson('/api/ranks')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_index_visible_to_any_authenticated_user(): void
+    {
+        $this->insertPlayer();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.steam', self::STEAM_ID2);
+    }
+
+    public function test_index_orders_by_value_descending(): void
+    {
+        $this->insertPlayer(['steam' => 'STEAM_0:0:1', 'name' => 'Low', 'value' => 100]);
+        $this->insertPlayer(['steam' => 'STEAM_0:0:2', 'name' => 'High', 'value' => 900]);
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'High')
+            ->assertJsonPath('data.1.name', 'Low');
+    }
+
+    public function test_index_searches_by_name(): void
+    {
+        $this->insertPlayer(['steam' => 'STEAM_0:0:1', 'name' => 'Johnny Bravo']);
+        $this->insertPlayer(['steam' => 'STEAM_0:0:2', 'name' => 'Jane Doe']);
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks?search=Johnny')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Johnny Bravo');
+    }
+
+    public function test_index_searches_by_steamid64_and_steamid3(): void
+    {
+        $this->insertPlayer();
+
+        // SteamID64 search.
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks?search=76561197960512640')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.steam', self::STEAM_ID2);
+
+        // SteamID3 search.
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks?search='.urlencode('[U:1:246912]'))
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.steam', self::STEAM_ID2);
+    }
+
+    public function test_index_paginates(): void
+    {
+        for ($i = 1; $i <= 12; $i++) {
+            $this->insertPlayer(['steam' => "STEAM_0:0:{$i}", 'name' => "Player {$i}"]);
+        }
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks?per_page=5')
+            ->assertOk()
+            ->assertJsonCount(5, 'data')
+            ->assertJsonPath('meta.pagination.total', 12)
+            ->assertJsonPath('meta.pagination.last_page', 3);
+    }
+
+    public function test_index_attaches_rank_tier_from_ranks_json(): void
+    {
+        $this->useRanksFixture([
+            ['Name' => 'Rookie', 'Tag' => 'RK', 'Hex' => '#00FF00', 'Points' => 0],
+            ['Name' => 'Veteran', 'Tag' => 'VT', 'Hex' => '#FF00FF', 'Points' => 500],
+        ]);
+        $this->insertPlayer(['value' => 750]);
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks')
+            ->assertOk()
+            ->assertJsonPath('data.0.rank_tier.label', 'Veteran')
+            ->assertJsonPath('data.0.rank_tier.tag', 'VT')
+            ->assertJsonPath('data.0.rank_tier.hex', '#FF00FF')
+            ->assertJsonPath('data.0.rank_tier.index', 2)
+            ->assertJsonPath('data.0.rank_tier.tiers', 2);
+    }
+
+    public function test_index_falls_back_to_default_ladder_when_ranks_json_missing(): void
+    {
+        config(['rank.ranks_path' => storage_path('app/testing-rank/does-not-exist.json')]);
+        $this->insertPlayer(['value' => 0]);
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks')
+            ->assertOk()
+            ->assertJsonPath('data.0.rank_tier.label', 'Silver I')
+            ->assertJsonPath('data.0.rank_tier.tiers', 18);
+    }
+
+    public function test_show_returns_profile_with_hits(): void
+    {
+        $this->insertPlayer();
+        $this->insertHits();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks/76561197960512640')
+            ->assertOk()
+            ->assertJsonPath('data.player.steam', self::STEAM_ID2)
+            ->assertJsonPath('data.player.value', 1000)
+            ->assertJsonPath('data.hits.SteamID', self::STEAM_ID2)
+            ->assertJsonPath('data.hits.Head', 60)
+            ->assertJsonPath('data.weapons', []);
+    }
+
+    public function test_show_returns_null_hits_when_missing(): void
+    {
+        $this->insertPlayer();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks/'.self::STEAM_ID2)
+            ->assertOk()
+            ->assertJsonPath('data.hits', null);
+    }
+
+    public function test_show_returns_weapons_breakdown(): void
+    {
+        $this->insertPlayer();
+        $this->insertWeapon(['classname' => 'weapon_ak47', 'kills' => 42]);
+        $this->insertWeapon(['classname' => 'weapon_awp', 'kills' => 99]);
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks/'.self::STEAM_ID2)
+            ->assertOk()
+            ->assertJsonCount(2, 'data.weapons')
+            // orderByDesc('kills') - AWP's 99 kills first.
+            ->assertJsonPath('data.weapons.0.classname', 'weapon_awp')
+            ->assertJsonPath('data.weapons.1.classname', 'weapon_ak47');
+    }
+
+    public function test_show_tolerates_missing_weapons_table(): void
+    {
+        $this->insertPlayer();
+        Schema::connection('ranks')->drop('lvl_base_weapons');
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks/'.self::STEAM_ID2)
+            ->assertOk()
+            ->assertJsonPath('data.weapons', []);
+    }
+
+    public function test_show_includes_ranks_ladder(): void
+    {
+        $this->useRanksFixture([
+            ['Name' => 'Rookie', 'Tag' => 'RK', 'Hex' => '#00FF00', 'Points' => 0],
+            ['Name' => 'Veteran', 'Tag' => 'VT', 'Hex' => '#FF00FF', 'Points' => 500],
+        ]);
+        $this->insertPlayer();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks/'.self::STEAM_ID2)
+            ->assertOk()
+            ->assertJsonPath('data.ranks_ladder', [0, 500]);
+    }
+
+    public function test_show_accepts_steamid2_path_format(): void
+    {
+        $this->insertPlayer();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks/STEAM_0:0:123456')
+            ->assertOk()
+            ->assertJsonPath('data.player.steam', self::STEAM_ID2);
+    }
+
+    public function test_show_returns_404_for_unknown_player(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks/76561197960512641')
+            ->assertStatus(404)
+            ->assertJsonPath('message', 'not_found');
+    }
+
+    public function test_show_rejects_invalid_steamid(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->getJson('/api/ranks/not-a-steamid')
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'invalid_input');
+    }
+
+    public function test_update_points_requires_admin_root_flag(): void
+    {
+        $this->insertPlayer();
+
+        $this->actingAs(User::factory()->create())
+            ->patchJson('/api/ranks/76561197960512640/points', ['value' => 500])
+            ->assertStatus(403);
+    }
+
+    public function test_update_points_owner_can_edit(): void
+    {
+        $this->insertPlayer();
+
+        $this->actingAs(User::factory()->owner()->create())
+            ->patchJson('/api/ranks/76561197960512640/points', ['value' => 2500])
+            ->assertOk()
+            ->assertJsonPath('data.value', 2500);
+
+        $this->assertDatabaseHas('lvl_base', ['steam' => self::STEAM_ID2, 'value' => 2500], 'ranks');
+    }
+
+    public function test_update_points_admin_with_root_flag_can_edit(): void
+    {
+        $this->insertPlayer();
+
+        $admin = User::factory()->create(['steam_id' => (string) 76561197962734863]);
+        DB::connection('swiftly')->table('admin_admins')->insert([
+            'steamid' => 76561197962734863,
+            'name' => 'Root',
+            'flags' => 'admin.root',
+            'groups' => null,
+            'immunity' => 1,
+            'created_at' => now(),
+            'expires_at' => null,
+        ]);
+
+        $this->actingAs($admin)
+            ->patchJson('/api/ranks/76561197960512640/points', ['value' => 777])
+            ->assertOk()
+            ->assertJsonPath('data.value', 777);
+    }
+
+    public function test_update_points_writes_audit_log(): void
+    {
+        $this->insertPlayer();
+
+        $this->actingAs(User::factory()->owner()->create())
+            ->patchJson('/api/ranks/76561197960512640/points', ['value' => 2500])
+            ->assertOk();
+
+        $this->assertDatabaseHas('panel_logs', [
+            'action' => 'rank.points_updated',
+            'target_type' => 'rank_player',
+            'target_id' => self::STEAM_ID2,
+        ]);
+    }
+
+    public function test_update_points_returns_404_for_unknown_player(): void
+    {
+        $this->actingAs(User::factory()->owner()->create())
+            ->patchJson('/api/ranks/76561197960512641/points', ['value' => 500])
+            ->assertStatus(404);
+    }
+
+    public function test_update_points_validates_value(): void
+    {
+        $this->insertPlayer();
+
+        $this->actingAs(User::factory()->owner()->create())
+            ->patchJson('/api/ranks/76561197960512640/points', ['value' => -5])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'validation_failed');
+    }
+}

@@ -1,0 +1,150 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Brand is a single owner-customizable token (Settings > Appearance,
+       injected per-request as an inline :root override — see app.blade.php)
+       — everything else derives from it with color-mix() so "strong"/"soft"
+       stay in sync with whatever accent color is chosen, instead of being
+       three colors an owner would have to keep coordinated by hand.
+       #00ffe3 here is only the factory default (sampled from the Swiftly
+       logo mark), not a fixed brand identity. */
+    --color-brand: #00ffe3;
+    --color-brand-strong: color-mix(in oklab, var(--color-brand) 82%, black);
+    --color-brand-soft: color-mix(in oklab, var(--color-brand) 14%, var(--color-canvas));
+
+    /* Dark palette (default — no data-theme attribute, or data-theme="dark").
+       Surface sampled directly from the reference navbar mockup (#18181B),
+       which happens to equal Tailwind's own zinc-900, so the rest of the
+       neutral scale stays on the zinc ramp for a coherent palette. */
+    --color-surface: #18181b;
+    --color-surface-raised: #1f1f23;
+    --color-canvas: #0c0c0e;
+    --color-line: #2b2b30;
+    --color-line-soft: #232327;
+
+    --color-ink: #f4f4f5;
+    --color-ink-muted: #a1a1aa;
+    --color-ink-faint: #71717a;
+}
+
+/* Light palette — activated by the theme toggle (persisted in
+   localStorage, applied as document.documentElement.dataset.theme before
+   first paint; see the inline script in every top-level layout). Same
+   token set, just re-pointed, so every component that already reads
+   --color-* automatically adapts without any per-component light variant. */
+:root[data-theme='light'] {
+    --color-surface: #ffffff;
+    --color-surface-raised: #f4f4f5;
+    --color-canvas: #f9fafb;
+    --color-line: #e4e4e7;
+    --color-line-soft: #ececef;
+
+    --color-ink: #18181b;
+    --color-ink-muted: #52525b;
+    --color-ink-faint: #a1a1aa;
+
+    --color-brand-strong: color-mix(in oklab, var(--color-brand) 78%, black);
+    --color-brand-soft: color-mix(in oklab, var(--color-brand) 16%, white);
+}
+
+@layer base {
+    body {
+        background-color: var(--color-canvas);
+        color: var(--color-ink);
+        scrollbar-gutter: stable;
+    }
+
+    [x-cloak] {
+        display: none !important;
+    }
+
+    /* Themed scrollbar - the default OS scrollbar (light grey track/thumb
+       in the screenshot that prompted this) ignores dark mode and the
+       owner's palette entirely. Applies everywhere, not just the page
+       body: the sidebar nav, any modal, and every internally-scrolling
+       list (bans table, paint picker grid, ...) all use `overflow-y-auto`
+       and would otherwise show that same mismatched bar. Track is left
+       transparent rather than tied to one surface color, since scroll
+       containers here sit on canvas, surface, and surface-raised
+       backgrounds interchangeably - transparent lets each container's own
+       background show through instead of hardcoding one that would clash
+       against the others. */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-line) transparent;
+    }
+
+    ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background-color: var(--color-line);
+        border-radius: 9999px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background-color: var(--color-ink-faint);
+    }
+
+    ::-webkit-scrollbar-corner {
+        background: transparent;
+    }
+
+    /* Themed range slider - the browser default renders a stark white
+       track/thumb (macOS/Windows both do this for input[type=range] with no
+       explicit styling) that reads as broken against a dark theme, same
+       complaint as the scrollbar above. `accent-color` alone reaches Chrome/
+       Edge/Firefox's thumb and filled-track color but leaves the *unfilled*
+       track and the thumb's own size at browser defaults and does nothing at
+       all in Safari, which needs the -webkit-slider-* pseudo-elements
+       instead - so both are set together rather than relying on one. */
+    input[type='range'] {
+        accent-color: var(--color-brand-strong);
+        block-size: 0.375rem;
+        cursor: pointer;
+    }
+
+    input[type='range']::-webkit-slider-runnable-track {
+        background: var(--color-surface-raised);
+        border-radius: 9999px;
+        block-size: 0.375rem;
+    }
+
+    input[type='range']::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        background: var(--color-brand-strong);
+        border-radius: 9999px;
+        block-size: 1rem;
+        inline-size: 1rem;
+        margin-block-start: -0.3125rem;
+        box-shadow: 0 0 0 3px var(--color-canvas);
+    }
+
+    input[type='range']::-moz-range-track {
+        background: var(--color-surface-raised);
+        border-radius: 9999px;
+        block-size: 0.375rem;
+    }
+
+    input[type='range']::-moz-range-thumb {
+        background: var(--color-brand-strong);
+        border: none;
+        border-radius: 9999px;
+        block-size: 1rem;
+        inline-size: 1rem;
+        box-shadow: 0 0 0 3px var(--color-canvas);
+    }
+}

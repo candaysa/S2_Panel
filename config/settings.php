@@ -1,0 +1,91 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Settings module configuration
+    |--------------------------------------------------------------------------
+    |
+    | The panel keeps its own settings in the `settings` table (not .env).
+    | `defaults` seeds values until an owner overwrites them.
+    | `whitelist` is the only set of keys an owner may update via the API.
+    | `upload_path` receives logo/favicon uploads (public web root).
+    |
+    */
+
+    'defaults' => [
+        'site_name' => 'S2 Panel',
+        'site_description' => 'CS2 server management panel',
+        'default_locale' => 'en',
+        'timezone' => 'UTC',
+        'logo' => '',
+        'favicon' => '',
+        // Sampled from the Swiftly logo mark - the factory accent color,
+        // not a fixed brand identity. --color-brand-strong/-soft in
+        // app.css derive from this via color-mix(), so overriding just
+        // this one hex re-tints every accent surface in the panel.
+        'brand_color' => '#00ffe3',
+        // Full palette override, on top of brand_color above. Shape:
+        // {"dark": {"surface": "#...", ...}, "light": {...}}, one entry per
+        // App\Modules\Settings\App\Http\Controllers\SettingsController::THEME_TOKENS
+        // per mode - both optional, missing keys simply keep app.css's
+        // factory value. Not in `whitelist`/validated by the generic
+        // update() below (a hex-per-token shape doesn't fit those simple
+        // rules) - see updateTheme()/resetTheme().
+        'theme_colors' => [],
+        // Which admin GROUP sees every ticket in a category (reports, admin
+        // applications, ban appeals) instead of only their own - one group
+        // per category, not one shared flag list, so e.g. a generic
+        // moderation group can triage reports while only a root-level group
+        // sees admin applications. Empty means "owner only" until
+        // configured. See App\Support\TicketAccess. Deciding a ticket
+        // (close/approve/reject) still requires admin.root regardless of
+        // this setting - see TicketAccess::canDecide().
+        'ticket_staff_group_report' => '',
+        'ticket_staff_group_admin_application' => '',
+        'ticket_staff_group_ban_appeal' => '',
+        // Which admin plugin owns the permission/admin/group data on the
+        // 'swiftly' connection: 'cs2_admin' (admin_admins/admin_groups,
+        // CSV columns) or 'swiftly_admins' (admins/groups, JSON-array
+        // columns - github.com/swiftlys2-plugins/admins). Chosen once at
+        // install time (InstallController), not auto-detected and not in
+        // `whitelist` below on purpose - flipping it post-install without a
+        // data migration would silently point every admin/ban query at the
+        // wrong schema. See App\Support\AdminPlugin\AdminManagerInterface.
+        'admin_plugin' => 'cs2_admin',
+        // Outgoing mail. The panel does send real email - an approved ban
+        // appeal notifies the player (see Appeal\App\Mail\AppealApproved) -
+        // but config/mail.php reads .env, which an owner running a packaged
+        // install has no comfortable way to edit. Configured here instead
+        // and applied at boot; empty mail_host means "leave config/mail.php
+        // alone", so an .env-configured install keeps working untouched.
+        // See App\Support\MailConfig.
+        'mail_host' => '',
+        'mail_port' => 587,
+        'mail_encryption' => 'tls',
+        'mail_username' => '',
+        // Encrypted at rest and never returned by the API - see
+        // SettingsController::index()/updateSmtp().
+        'mail_password' => '',
+        'mail_from_address' => '',
+        'mail_from_name' => '',
+    ],
+
+    'whitelist' => [
+        'site_name',
+        'site_description',
+        'default_locale',
+        'timezone',
+        'brand_color',
+        'ticket_staff_group_report',
+        'ticket_staff_group_admin_application',
+        'ticket_staff_group_ban_appeal',
+        // mail_* is deliberately absent: the generic update() echoes the
+        // keys it accepts back through the client, and one of them is a
+        // password. SettingsController::updateSmtp() owns that set.
+    ],
+
+    'upload_path' => public_path('uploads'),
+
+];
