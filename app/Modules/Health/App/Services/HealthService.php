@@ -151,6 +151,17 @@ class HealthService
                 'message' => $message,
                 'checked_at' => now(),
             ]);
+        } else {
+            // Same status as last time: no new row (one row per state
+            // change keeps this table bounded and the owner un-spammed),
+            // but checked_at still has to move. It is read as "when was
+            // this last verified" - by the Health page, and load-bearingly
+            // by RconVerificationService, which refuses to trust an ok
+            // older than its freshness window. Left untouched, the column
+            // meant "when this state began", so a component that went ok
+            // once and was never probed again looked freshly checked
+            // forever, including after the scheduler stopped running.
+            $last->forceFill(['message' => $message, 'checked_at' => now()])->save();
         }
 
         if ($changed && ! $ok) {

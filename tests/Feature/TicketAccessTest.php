@@ -151,6 +151,19 @@ class TicketAccessTest extends TestCase
         $this->assertFalse(TicketAccess::isStaff($this->player(555), 'ban_appeal'));
     }
 
+    /**
+     * The sentinel lives in the same setting column as real group names,
+     * so a group actually called "__any_admin__" would be read back as
+     * "every admin". The panel refuses to create one.
+     */
+    public function test_a_group_cannot_be_created_with_the_sentinel_name(): void
+    {
+        $this->expectExceptionMessage('group_name_reserved');
+
+        app(\App\Modules\Admin\App\Services\AdminService::class)
+            ->createGroup(['name' => TicketAccess::ANY_ADMIN, 'flags' => [], 'immunity' => 0]);
+    }
+
     // --- decide permission stays independent of the category setting ---
 
     public function test_any_admin_does_not_grant_decide_permission(): void

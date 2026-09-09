@@ -104,9 +104,15 @@ final class SafeZip
             // the entry's own file content). Unchecked, that is another
             // route to writing outside $destination alongside plain
             // path traversal above.
-            $externalAttr = (int) ($stat['external attr'] ?? 0);
-
-            if ((($externalAttr >> 16) & self::S_IFMT) === self::S_IFLNK) {
+            //
+            // The file-type bits live in the entry's *external attributes*,
+            // which statIndex() does not return - its keys are only name,
+            // index, crc, size, mtime, comp_size, comp_method and
+            // encryption_method. Reading $stat['external attr'] therefore
+            // silently evaluated to 0 for every entry and this check never
+            // rejected anything; getExternalAttributesIndex() is the only
+            // API that actually exposes them.
+            if (self::isSymlink($zip, $i)) {
                 $zip->close();
 
                 throw new InvalidArgumentException('unsafe_zip_entry');
@@ -135,6 +141,31 @@ final class SafeZip
                 throw new InvalidArgumentException('zip_bomb_suspected');
             }
         }
+    }
+
+    /**
+     * Whether entry $index carries Unix symlink file-type bits.
+     *
+     * Only meaningful when the entry was written by a Unix-like producer -
+     * a DOS/Windows-created entry stores DOS attribute bits in the same
+     * field, where the value that happens to look like S_IFLNK means
+     * nothing of the sort. Checking the OS byte first keeps a legitimate
+     * Windows-made archive from being rejected at random.
+     */
+    private static function isSymlink(ZipArchive $zip, int $index): bool
+    {
+        $opsys = null;
+        $attributes = null;
+
+        if ($zip->getExternalAttributesIndex($index, $opsys, $attributes) !== true) {
+            return false;
+        }
+
+        if ((int) $opsys !== ZipArchive::OPSYS_UNIX) {
+            return false;
+        }
+
+        return ((((int) $attributes) >> 16) & self::S_IFMT) === self::S_IFLNK;
     }
 
     /**

@@ -262,8 +262,16 @@ class RconService
 
     /**
      * Ban a player. Duration is passed through verbatim, e.g. "1440"
-     * (minutes) or "-1" (permanent) - the plugin parses it. 0 is a real,
-     * near-instant duration under both plugins, not permanent.
+     * (minutes) or "-1" (permanent) - the plugin parses it.
+     *
+     * -1 rather than 0 for permanent because 0 was observed on this
+     * install NOT to produce a permanent punishment. Reading CS2_Admin's
+     * source, a duration that is not > 0 stores a null expiry, which makes
+     * -1 permanent there whichever way the 0 case actually behaves - so -1
+     * is the safe value under both readings, and that is why it is the one
+     * the panel sends. What 0 means exactly has not been pinned to a
+     * plugin revision; treat it as unspecified rather than as a second way
+     * to say permanent.
      */
     public function ban(int $serverId, string $target, string $duration, ?string $reason, User $actor): array
     {

@@ -29,15 +29,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve version from tag
+      # A tag name is attacker-influenced input, and `${{ }}` is substituted
+      # into the script text *before* bash parses it - so interpolating a
+      # tag straight into a `run:` block on a contents:write job lets a tag
+      # like "v1.0.$(...)" execute on the release runner. Every step below
+      # therefore reads the tag from the environment (where it is data, not
+      # program text), and this step refuses anything that is not a plain
+      # semver tag before it is used at all. The `v*.*.*` trigger glob is a
+      # filter, not validation: it happily matches "v1.0.$(id)".
+      - name: Validate the tag and resolve the version
         id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::tag '$TAG' is not a plain vMAJOR.MINOR.PATCH tag - refusing to build a release from it."
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Confirm config/panel.php was bumped to this version
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           configured=$(grep -oP "'version'\s*=>\s*'\K[^']+" config/panel.php | head -n1)
-          if [ "$configured" != "${{ steps.version.outputs.version }}" ]; then
-            echo "::error::config/panel.php version '$configured' does not match tag version '${{ steps.version.outputs.version }}' - bump it in the same commit you tag."
+          if [ "$configured" != "$VERSION" ]; then
+            echo "::error::config/panel.php version '$configured' does not match tag version '$VERSION' - bump it in the same commit you tag."
             exit 1
           fi
 
@@ -101,14 +118,22 @@ jobs:
 
       - name: Package the tarball
         id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          name="s2panel-${{ steps.version.outputs.version }}.tar.gz"
+          name="s2panel-${VERSION}.tar.gz"
           tar -czf "$name" -C /tmp/bundle .
           echo "name=$name" >> "$GITHUB_OUTPUT"
 
+      # Deliberately the preinstalled GitHub CLI rather than a third-party
+      # release action: this job holds contents:write, and gh is already on
+      # the runner, so there is no mutable third-party tag in the release
+      # path to trust. (setup-php above stays third-party; if you want that
+      # pinned to a commit SHA too, look the SHA up on GitHub - never guess
+      # one, a wrong SHA fails the whole workflow.)
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: 'v${{ steps.version.outputs.version }}'
-          generate_release_notes: true
-          files: ${{ steps.package.outputs.name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          ASSET: ${{ steps.package.outputs.name }}
+        run: gh release create "$TAG" "$ASSET" --title "$TAG" --generate-notes

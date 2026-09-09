@@ -57,14 +57,47 @@ class RconVerificationTest extends TestCase
         Cache::put("server.live.127.0.0.1:{$port}", ['v' => ['players' => 1, 'max_players' => 10, 'map' => 'de_dust2']], 60);
     }
 
-    private function markRconVerified(int $serverId): void
+    private function markRconVerified(int $serverId, ?string $checkedAt = null): void
     {
         DB::table('health_checks')->insert([
             'component' => 'rcon:'.$serverId,
             'status' => 'ok',
             'message' => null,
-            'checked_at' => now(),
+            'checked_at' => $checkedAt ?? now(),
         ]);
+    }
+
+    /**
+     * A recorded ok older than health.rcon.trust_minutes must not stand in
+     * for a live probe: health_checks only gets a row (or a checked_at
+     * bump) while health:check is actually running, so trusting an
+     * unbounded-age ok meant a panel whose scheduler had died - or a
+     * server whose RCON password had since changed - sailed straight
+     * through the gate on a fossil row.
+     */
+    public function test_a_stale_ok_is_not_trusted_and_falls_back_to_probing(): void
+    {
+        config(['health.rcon.trust_minutes' => 15, 'rcon.timeout' => 0.5, 'health.rcon.timeout' => 0.5]);
+
+        $id = $this->addServer(['server_port' => 27030]);
+        $this->markOnline(27030);
+        // Verified once, long ago, and never re-probed since.
+        $this->markRconVerified($id, now()->subHours(6)->toDateTimeString());
+
+        // No rcon_settings row exists, so the on-demand re-probe the stale
+        // row now forces reports the server as unconfigured and blocks.
+        $this->actingAs($this->owner())->getJson('/api/bans')->assertStatus(503);
+    }
+
+    public function test_a_fresh_ok_is_still_trusted_without_probing(): void
+    {
+        config(['health.rcon.trust_minutes' => 15]);
+
+        $id = $this->addServer(['server_port' => 27031]);
+        $this->markOnline(27031);
+        $this->markRconVerified($id, now()->subMinutes(4)->toDateTimeString());
+
+        $this->actingAs($this->owner())->getJson('/api/bans')->assertOk();
     }
 
     public function test_no_servers_at_all_does_not_block_anything(): void

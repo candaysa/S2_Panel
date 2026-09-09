@@ -81,6 +81,53 @@ class SafeZipTest extends TestCase
         }
     }
 
+    /**
+     * The symlink guard used to read $stat['external attr'], a key
+     * statIndex() does not return - so it evaluated to 0 for every entry
+     * and rejected nothing. This asserts the guard actually fires, which
+     * only getExternalAttributesIndex() makes possible.
+     */
+    public function test_rejects_a_unix_symlink_entry(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $zip->addFromString('innocent.txt', 'hello');
+            // Content of a symlink entry is its target path.
+            $zip->addFromString('link', '../../../../etc/passwd');
+            $zip->setExternalAttributesName('link', ZipArchive::OPSYS_UNIX, 0120777 << 16);
+        });
+        $this->extractTo = storage_path('framework/testing/safezip-'.uniqid());
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('unsafe_zip_entry');
+
+        try {
+            SafeZip::extract($path, $this->extractTo);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    /**
+     * The counterpart to the test above: a plain file written by a Unix
+     * producer carries Unix attributes too, and must still extract - the
+     * guard keys on the file-type bits, not on the OS byte alone.
+     */
+    public function test_allows_a_plain_unix_file_entry(): void
+    {
+        $path = $this->buildZip(function (ZipArchive $zip): void {
+            $zip->addFromString('plain.txt', 'hello');
+            $zip->setExternalAttributesName('plain.txt', ZipArchive::OPSYS_UNIX, 0100644 << 16);
+        });
+        $this->extractTo = storage_path('framework/testing/safezip-'.uniqid());
+
+        try {
+            $this->assertSame(1, SafeZip::extract($path, $this->extractTo));
+            $this->assertFileExists($this->extractTo.'/plain.txt');
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function test_rejects_too_many_entries(): void
     {
         $path = $this->buildZip(function (ZipArchive $zip): void {

@@ -32,9 +32,9 @@
             servers: [],
             onlinePlayers: [],
             playersLoading: false,
-            // -1 is the permanent convention both plugins use (see
-            // RconService - the duration is passed through verbatim). 0 is
-            // a real, near-instant duration, not permanent.
+            // -1 is what the panel sends for permanent (see RconService -
+            // the duration is passed through verbatim); 0 is not treated as
+            // a synonym for it.
             // NOTE: no double quotes anywhere inside this x-data attribute,
             // not even in a comment - the attribute itself is delimited by
             // one, so a stray quote ends it early and the rest of this

@@ -161,8 +161,10 @@ class RconController extends Controller
     {
         $validated = $request->validate([
             'target' => ['required', 'string', 'max:64', self::NO_COMMAND_SEPARATORS],
-            // -1 is the plugins' own "permanent" convention (0 is a real,
-            // near-instant duration, not permanent - see RconService).
+            // -1 is the value the panel sends for permanent; 0 is not a
+            // documented synonym for it (see RconService::ban()), so the
+            // validator has to accept the one negative value that means
+            // something here without accepting negatives generally.
             'duration' => ['required', 'regex:/^-1$|^\d+$/', 'max:16'],
             'reason' => ['nullable', 'string', 'max:255', self::NO_COMMAND_SEPARATORS],
         ]);
@@ -180,8 +182,10 @@ class RconController extends Controller
     {
         $validated = $request->validate([
             'target' => ['required', 'string', 'max:64', self::NO_COMMAND_SEPARATORS],
-            // -1 is the plugins' own "permanent" convention (0 is a real,
-            // near-instant duration, not permanent - see RconService).
+            // -1 is the value the panel sends for permanent; 0 is not a
+            // documented synonym for it (see RconService::ban()), so the
+            // validator has to accept the one negative value that means
+            // something here without accepting negatives generally.
             'duration' => ['required', 'regex:/^-1$|^\d+$/', 'max:16'],
             'reason' => ['nullable', 'string', 'max:255', self::NO_COMMAND_SEPARATORS],
         ]);
@@ -199,8 +203,10 @@ class RconController extends Controller
     {
         $validated = $request->validate([
             'target' => ['required', 'string', 'max:64', self::NO_COMMAND_SEPARATORS],
-            // -1 is the plugins' own "permanent" convention (0 is a real,
-            // near-instant duration, not permanent - see RconService).
+            // -1 is the value the panel sends for permanent; 0 is not a
+            // documented synonym for it (see RconService::ban()), so the
+            // validator has to accept the one negative value that means
+            // something here without accepting negatives generally.
             'duration' => ['required', 'regex:/^-1$|^\d+$/', 'max:16'],
             'reason' => ['nullable', 'string', 'max:255', self::NO_COMMAND_SEPARATORS],
         ]);

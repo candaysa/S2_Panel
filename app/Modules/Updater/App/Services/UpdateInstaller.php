@@ -192,8 +192,19 @@ class UpdateInstaller
             // code running against the old schema - the one state the panel
             // cannot serve out of. Previously that was simply reported and
             // left in place; the backup directory existed but nothing ever
-            // used it. Put the old release back instead, so a failed update
-            // ends where it started rather than half-applied.
+            // used it. Put the old release back instead.
+            //
+            // This restores CODE ONLY. Migrations that already committed
+            // before the failing one stay applied - Laravel has recorded
+            // them and rollBack() only renames directories - so the real
+            // post-condition is "previous release running against a schema
+            // that may be partly migrated forward", not "exactly where it
+            // started". That is serviceable precisely as long as each
+            // release's migrations stay backward-compatible with the
+            // release before it (expand/contract), which is a policy this
+            // class cannot enforce; a release that renames or drops
+            // something the old code still reads will not survive this
+            // path, and needs the pre-update backup directory instead.
             $this->rollBack();
 
             throw $e;

@@ -12,6 +12,7 @@ use App\Modules\Audit\App\Services\AuditService;
 use App\Support\AdminPlugin\AdminManagerInterface;
 use App\Support\Flags;
 use App\Support\SteamId;
+use App\Support\TicketAccess;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
@@ -184,6 +185,15 @@ class AdminService implements AdminManagerInterface
 
         if ($name === '') {
             throw new InvalidArgumentException('group_name_required');
+        }
+
+        // Settings > Tickets stores either a group name or the ANY_ADMIN
+        // sentinel in one column, so a group actually called that would be
+        // read back as "every admin" and silently widen who sees a ticket
+        // category. Neither plugin reserves the name itself, so the panel
+        // does it here - see TicketAccess::ANY_ADMIN.
+        if ($name === TicketAccess::ANY_ADMIN) {
+            throw new InvalidArgumentException('group_name_reserved');
         }
 
         if (AdminGroup::query()->where('name', $name)->exists()) {

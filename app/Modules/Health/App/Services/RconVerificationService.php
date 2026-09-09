@@ -57,8 +57,8 @@ class RconVerificationService
             $component = 'rcon:'.$serverId;
             $cached = HealthCheck::query()->where('component', $component)->latest('checked_at')->first();
 
-            if ($cached !== null && $cached->status === 'ok') {
-                // Trust a recent "ok" - no need to re-probe on the happy path.
+            if ($cached !== null && $cached->status === 'ok' && $this->isFresh($cached)) {
+                // Trust a *recent* ok - no need to re-probe on the happy path.
                 continue;
             }
 
@@ -80,5 +80,33 @@ class RconVerificationService
         }
 
         return ['ok' => $problems === [], 'problems' => $problems];
+    }
+
+    /**
+     * Whether a recorded ok is recent enough to stand in for a live probe.
+     *
+     * Without this the gate was only fail-closed while health:check kept
+     * running: one recorded ok was trusted forever, so a panel whose
+     * scheduler had stopped (or whose server had since had its RCON
+     * password changed) kept letting every request straight through on the
+     * strength of a months-old row. Past the window the server falls back
+     * to the on-demand probe below, which is the same path an
+     * as-yet-unchecked server takes - a dead scheduler now degrades to
+     * "verify on demand", never to "assume fine".
+     *
+     * Default is three times the five-minute schedule, so an ordinary
+     * missed tick does not cost a probe.
+     */
+    private function isFresh(HealthCheck $check): bool
+    {
+        $checkedAt = $check->checked_at;
+
+        if ($checkedAt === null) {
+            return false;
+        }
+
+        $maxAge = (int) config('health.rcon.trust_minutes', 15);
+
+        return $checkedAt->greaterThan(now()->subMinutes($maxAge));
     }
 }

@@ -35,9 +35,15 @@ final class TicketAccess
     /**
      * Sentinel stored in the ticket_staff_group_* setting instead of a real
      * group name - "any admin, in either supported plugin, no matter which
-     * group" rather than membership in one specific group. Not a valid
-     * group name in either plugin's own schema (both key groups by their
-     * own plain display name), so it can never collide with a real one.
+     * group" rather than membership in one specific group.
+     *
+     * This shares a namespace with real group names, which neither plugin
+     * reserves: a group genuinely called "__any_admin__" would be read back
+     * here as "every admin" and quietly widen the category. AdminService::
+     * createGroup() refuses the name so the panel cannot produce that
+     * collision itself; a group created directly in the plugin (console or
+     * SQL) still could, which is the residual reason to keep the name
+     * something nobody types by accident.
      */
     public const ANY_ADMIN = '__any_admin__';
 
