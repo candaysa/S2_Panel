@@ -116,11 +116,34 @@ Route::middleware('steam.auth')->group(function (): void {
         'canDecide' => \App\Support\TicketAccess::canDecide(auth()->user()),
     ]))->middleware('module:report,appeal')->name('tickets.page');
 
-    // Bans is read-only here (nothing is created or lifted from this page)
-    // and every player is already named on it, so there is no extra
-    // exposure in letting any logged-in player look their own record up -
-    // same "auth" tier as vip/skins/tickets above, not staff-gated.
-    Route::view('/bans', 'bans.index')->name('bans.page');
+    // Reading is open to any logged-in player (every player on the list is
+    // already named on it, so letting someone look their own record up adds
+    // no exposure) - same "auth" tier as vip/skins/tickets above, not
+    // staff-gated. Issuing a punishment from this page is a different
+    // matter and is gated separately: the Add button only appears for, and
+    // only works with, admin.rcon (see the RCON API it posts to).
+    //
+    // One page, four URLs: the type used to be Alpine-only state, so a
+    // mute list could not be linked, bookmarked or opened in a new tab -
+    // every share of "look at this" landed the other person on Bans.
+    // 'bans.page' stays the name of the ban list itself - the sidebar and
+    // anything else linking "Bans" keeps working unchanged.
+    //
+    // rcon.verified gates this alongside RCON/Admins/Groups below: every
+    // punishment issued from any of the four goes out as a console
+    // command, so an online server with no verified RCON password is a
+    // moderation action that silently does nothing, not a degraded
+    // feature - see RconVerificationService's docblock for why this is
+    // fail-closed and blocks all four rather than just the server in
+    // question. Not applied to Settings > Servers, which is where that
+    // password is actually fixed - gating the fix path would deadlock.
+    Route::get('/bans', fn () => view('bans.index', ['type' => 'ban']))->middleware('rcon.verified')->name('bans.page');
+
+    foreach (['mute' => '/bans/mutes', 'gag' => '/bans/gags', 'warn' => '/bans/warns'] as $type => $uri) {
+        Route::get($uri, fn () => view('bans.index', ['type' => $type]))
+            ->middleware('rcon.verified')
+            ->name('bans.'.$type);
+    }
 
     // Staff pages. The page itself now carries the same flag its API
     // requires, so a signed-in player cannot open an RCON console or an
@@ -131,9 +154,9 @@ Route::middleware('steam.auth')->group(function (): void {
     // same set.
     Route::get('/admins', fn () => view('admin.index', [
         'adminPlugin' => app(\App\Modules\Settings\App\Services\SettingService::class)->get('admin_plugin', 'cs2_admin'),
-    ]))->middleware('flag:admin.root')->name('admins.page');
-    Route::view('/groups', 'admin.groups')->middleware('flag:admin.root')->name('groups.page');
-    Route::view('/rcon', 'rcon.index')->middleware(['module:rcon', 'flag:admin.rcon'])->name('rcon.page');
+    ]))->middleware(['flag:admin.root', 'rcon.verified'])->name('admins.page');
+    Route::view('/groups', 'admin.groups')->middleware(['flag:admin.root', 'rcon.verified'])->name('groups.page');
+    Route::view('/rcon', 'rcon.index')->middleware(['module:rcon', 'flag:admin.rcon', 'rcon.verified'])->name('rcon.page');
     Route::view('/audit', 'audit.index')->middleware(['module:audit', 'flag:admin.root'])->name('audit.page');
     Route::view('/cheat-check', 'cheatcheck.index')->middleware(['module:cheat_check', 'flag:admin.generic'])->name('cheatcheck.page');
 

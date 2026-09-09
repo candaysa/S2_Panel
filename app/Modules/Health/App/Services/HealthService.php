@@ -8,14 +8,18 @@ use App\Modules\Health\App\Models\HealthCheck;
 use App\Modules\Health\App\Models\PanelNotification;
 use App\Modules\Rcon\App\Models\RconSetting;
 use App\Modules\Server\App\Models\AdminServer;
+use App\Modules\Server\App\Services\ServerService;
 use App\Support\Connection;
 use App\Support\Rcon;
 
 /**
  * Health monitoring (C16).
  *
- * Probes every configured database connection with "SELECT 1" and attempts
- * an RCON authentication against every server that has stored credentials.
+ * Probes every configured database connection with "SELECT 1", attempts an
+ * RCON authentication against every server that has stored credentials, and
+ * reports an online server that has none at all - the panel moderates
+ * entirely through console commands, so "no password saved" and "the saved
+ * password is wrong" are the same outage from an admin's point of view.
  * State changes are recorded into health_checks; a component flipping to
  * "down" creates a notification for the panel owner and dispatches the
  * HealthAlert event (listened to by the C17 webhook module).
@@ -54,36 +58,72 @@ class HealthService
     private function checkRcon(): array
     {
         $results = [];
+        $servers = AdminServer::visible()->orderBy('id')->get();
+        $live = app(ServerService::class)->liveFor($servers);
 
-        foreach (RconSetting::query()->orderBy('server_id')->get() as $setting) {
-            $server = AdminServer::query()->find($setting->server_id);
+        // Every visible server, not just the ones with a password: a server
+        // nobody ever configured is exactly the case that silently cannot
+        // be moderated from the panel, and it used to be invisible here
+        // because this loop only walked rcon_settings rows. A hidden server
+        // is excluded outright - the owner marked it as not in use, so an
+        // unconfigured RCON password on it is not an outage.
+        foreach ($servers as $server) {
+            $result = $this->verifyRcon($server, (int) $server->getKey(), $live);
 
-            if ($server === null) {
-                continue;
+            if ($result !== null) {
+                $results[] = $result;
             }
-
-            $host = trim((string) $server->server_ip);
-            $port = (int) $server->server_port;
-
-            if ($host === '' || $port < 1 || $port > 65535) {
-                continue;
-            }
-
-            $ok = Rcon::authenticate(
-                $host,
-                $port,
-                $setting->password,
-                (float) config('health.rcon.timeout', 2.0),
-            );
-
-            $results[] = $this->record(
-                'rcon:'.$setting->server_id,
-                $ok,
-                $ok ? null : 'rcon authentication failed',
-            );
         }
 
         return $results;
+    }
+
+    /**
+     * Probe (and record) one server's RCON reachability - shared by the
+     * scheduled sweep above and RconVerificationService's on-demand
+     * recheck (a fix just saved to rcon_settings should not have to wait
+     * for the next 5-minute tick to unblock the Bans/RCON/Admins/Groups
+     * gate it feeds).
+     *
+     * @param  array<int, array<string, mixed>|null>  $live  ServerService::liveFor() result, reused rather than
+     *                                                        re-probed A2S per server when the caller already has it
+     * @return array{component: string, status: string, message: ?string, changed: bool}|null null for an offline
+     *                                                                                          server - it cannot answer
+     *                                                                                          an auth probe, and "your
+     *                                                                                          game server is down" is
+     *                                                                                          not what this check is for
+     */
+    public function verifyRcon(AdminServer $server, int $serverId, array $live): ?array
+    {
+        $host = trim((string) $server->server_ip);
+        $port = (int) $server->server_port;
+
+        if ($host === '' || $port < 1 || $port > 65535) {
+            return null;
+        }
+
+        $setting = RconSetting::query()->where('server_id', $serverId)->first();
+
+        if ($setting === null) {
+            // "Online" is whatever ServerService already says it is - the
+            // panel's single source of truth for liveness (A2S, cached),
+            // rather than a second probe here that could disagree with
+            // what the Servers page shows.
+            if (($live[$serverId] ?? null) === null) {
+                return null;
+            }
+
+            return $this->record('rcon:'.$serverId, false, 'no rcon password configured');
+        }
+
+        $ok = Rcon::authenticate(
+            $host,
+            $port,
+            $setting->password,
+            (float) config('health.rcon.timeout', 2.0),
+        );
+
+        return $this->record('rcon:'.$serverId, $ok, $ok ? null : 'rcon authentication failed');
     }
 
     /**

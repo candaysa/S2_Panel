@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('api/admin')->middleware(['steam.auth', 'flag:admin.root'])->group(function (): void {
+Route::prefix('api/admin')->middleware(['steam.auth', 'flag:admin.root', 'rcon.verified'])->group(function (): void {
     Route::get('/', [AdminController::class, 'index'])->name('admin.index');
     Route::post('/', [AdminController::class, 'store'])->name('admin.store');
     Route::put('{id}', [AdminController::class, 'update'])->name('admin.update')->whereNumber('id');

@@ -28,7 +28,7 @@ class ServerController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $perPage = min((int) $request->query('per_page', 25), 100);
+        $perPage = Api::perPage($request->query('per_page'));
 
         // Only an owner may ask to see hidden servers, and only by asking -
         // the default stays the public view even for them, so the management

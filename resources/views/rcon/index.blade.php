@@ -2,7 +2,7 @@
     <div x-data="rconPage()" x-init="init()">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.rcon') }}</h1>
-            <select x-model="serverId" class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
+            <select x-model="serverId" @change="loadHistory()" class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
                 <option value="" disabled>{{ __('i18n::messages.rcon.select_server') }}</option>
                 <template x-for="server in servers" :key="server.id">
                     <option :value="server.id" x-text="server.server_ip + ':' + server.server_port"></option>
@@ -16,13 +16,22 @@
                 <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.rcon.console') }}</h2>
 
                 <div x-ref="log" class="mt-3 h-64 space-y-2 overflow-y-auto rounded-lg bg-canvas p-3 font-mono text-xs">
+                    <p x-show="historyLoading" class="text-ink-faint">{{ __('i18n::messages.common.loading') }}</p>
                     <template x-for="(entry, i) in log" :key="i">
                         <div>
-                            <p class="text-brand-strong">&gt; <span x-text="entry.command"></span></p>
-                            <p class="whitespace-pre-wrap text-ink-muted" x-text="entry.response"></p>
+                            <p class="flex items-center gap-1.5 text-brand-strong">
+                                &gt; <span x-text="entry.command"></span>
+                                <span x-show="entry.actor_name" x-cloak class="font-sans text-[10px] text-ink-faint" x-text="'— ' + entry.actor_name"></span>
+                            </p>
+                            {{-- A history row (loaded from the audit trail) never has
+                                 the actual RCON reply - only whether it succeeded, see
+                                 RconController::history(). A live row from this session
+                                 always has the real response text. --}}
+                            <p x-show="entry.response !== undefined" class="whitespace-pre-wrap text-ink-muted" x-text="entry.response"></p>
+                            <p x-show="entry.response === undefined" :class="entry.ok ? 'text-ink-faint' : 'text-red-400'" x-text="entry.ok ? t.history_ok : t.history_failed"></p>
                         </div>
                     </template>
-                    <p x-show="log.length === 0" class="text-ink-faint">—</p>
+                    <p x-show="!historyLoading && log.length === 0" class="text-ink-faint">—</p>
                 </div>
 
                 <div class="mt-3 flex gap-2">
@@ -88,10 +97,12 @@
                 command: '',
                 log: [],
                 running: false,
+                historyLoading: false,
                 error: '',
+                t: @js(__('i18n::messages.rcon')),
 
                 kick: { target: '', reason: '' },
-                ban: { target: '', duration: '0', reason: '' },
+                ban: { target: '', duration: '-1', reason: '' },
                 slay: { target: '' },
 
                 async loadServers() {
@@ -102,6 +113,29 @@
                         this.servers = body.data;
                         if (this.servers.length) this.serverId = this.servers[0].id;
                     } catch (e) {}
+
+                    this.loadHistory();
+                },
+
+                // Loads what this server's console already did, so a page
+                // refresh (or switching servers and back) does not read as
+                // "nothing has ever run here" - see RconController::history().
+                async loadHistory() {
+                    this.log = [];
+                    if (!this.serverId) return;
+
+                    this.historyLoading = true;
+
+                    try {
+                        const res = await fetch(`/api/rcon/${this.serverId}/history`, { headers: { Accept: 'application/json' } });
+                        if (res.ok) {
+                            const body = await res.json();
+                            this.log = body.data;
+                        }
+                    } catch (e) {
+                    } finally {
+                        this.historyLoading = false;
+                    }
                 },
 
                 csrf() {
@@ -169,7 +203,7 @@
                     try {
                         const body = await this.post('/ban', this.ban);
                         this.append({ command: `ban ${this.ban.target}`, response: body.data.response ?? '' });
-                        this.ban = { target: '', duration: '0', reason: '' };
+                        this.ban = { target: '', duration: '-1', reason: '' };
                     } catch (e) {
                         this.error = e.message;
                     } finally {

@@ -15,6 +15,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('api/bans')->middleware(['steam.auth'])->group(function (): void {
+Route::prefix('api/bans')->middleware(['steam.auth', 'rcon.verified'])->group(function (): void {
     Route::get('/', [BanController::class, 'index'])->name('ban.index');
 });

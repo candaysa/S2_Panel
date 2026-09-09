@@ -47,11 +47,28 @@ class RconTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_page_renders_for_an_authenticated_user(): void
+    public function test_page_renders_for_a_user_with_the_rcon_flag(): void
+    {
+        $staff = $this->createStaff(76561197960287930);
+
+        $this->actingAs($staff)
+            ->get('/rcon')
+            ->assertOk();
+    }
+
+    /**
+     * The route carries flag:admin.rcon (routes/web.php); a plain
+     * authenticated user with no Swiftly admin row at all must be denied,
+     * not shown the page. This used to assert assertOk() for exactly this
+     * user - passing only because nothing had actually exercised the
+     * flag check - which would have masked a real authorization regression
+     * here reading as green.
+     */
+    public function test_page_is_forbidden_without_the_rcon_flag(): void
     {
         $this->actingAs(User::factory()->create())
             ->get('/rcon')
-            ->assertOk();
+            ->assertForbidden();
     }
 
     private function addServer(array $overrides = []): int
@@ -324,6 +341,182 @@ class RconTest extends TestCase
         ]);
     }
 
+    public function test_history_returns_past_commands_newest_last(): void
+    {
+        [, $port, $logFile] = $this->startFakeServer('secret');
+
+        $staff = $this->createStaff(76561197960512640);
+        $id = $this->addServer(['server_ip' => '127.0.0.1', 'server_port' => $port]);
+        DB::table('rcon_settings')->insert([
+            'server_id' => $id,
+            'password' => Crypt::encryptString('secret'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // An earlier entry, inserted directly rather than through a second
+        // live round trip - the fake server this suite spins up handles one
+        // connection per test, matching every other test in this file.
+        // command()'s own audit write is exercised for real below; this
+        // only needs to seed something for it to sort after.
+        DB::table('panel_logs')->insert([
+            'action' => 'rcon.command.executed',
+            'target_type' => 'server',
+            'target_id' => (string) $id,
+            'actor_name' => 'Staff',
+            'details' => json_encode(['server_id' => $id, 'command' => 'say first', 'ok' => true]),
+            'created_at' => now()->subMinute(),
+        ]);
+
+        $this->actingAs($staff)->postJson("/api/rcon/{$id}/command", ['command' => 'say second'])->assertOk();
+
+        $response = $this->actingAs($staff)
+            ->getJson("/api/rcon/{$id}/history")
+            ->assertOk();
+
+        $commands = collect($response->json('data'))->pluck('command')->all();
+        $this->assertSame(['say first', 'say second'], $commands);
+        $this->assertTrue($response->json('data.1.ok'));
+        $this->assertSame('Staff', $response->json('data.1.actor_name'));
+    }
+
+    public function test_history_requires_the_rcon_flag(): void
+    {
+        $id = $this->addServer();
+
+        $this->actingAs(User::factory()->create())
+            ->getJson("/api/rcon/{$id}/history")
+            ->assertStatus(403);
+    }
+
+    public function test_history_unknown_server_returns_404(): void
+    {
+        $this->actingAs($this->createStaff(76561197960512640))
+            ->getJson('/api/rcon/999999/history')
+            ->assertStatus(404);
+    }
+
+    /**
+     * @return array{0: User, 1: int, 2: string} [staff, serverId, logFile]
+     */
+    private function liveServerWithStaff(): array
+    {
+        [, $port, $logFile] = $this->startFakeServer('secret');
+
+        $staff = $this->createStaff(76561197960512640);
+        $id = $this->addServer(['server_ip' => '127.0.0.1', 'server_port' => $port]);
+        DB::table('rcon_settings')->insert([
+            'server_id' => $id,
+            'password' => Crypt::encryptString('secret'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return [$staff, $id, $logFile];
+    }
+
+    public function test_mute_sends_sw_mute_with_quoted_arguments(): void
+    {
+        [$staff, $id, $logFile] = $this->liveServerWithStaff();
+
+        $this->actingAs($staff)
+            ->postJson("/api/rcon/{$id}/mute", ['target' => 'SKINS UzayLegit', 'duration' => '60', 'reason' => 'mic spam'])
+            ->assertOk();
+
+        // Quoted, so a name with a space stays one argument instead of the
+        // plugin reading "UzayLegit" as the duration.
+        $this->assertSame(['sw_mute "SKINS UzayLegit" 60 "mic spam"'], $this->loggedCommands($logFile));
+    }
+
+    public function test_gag_sends_sw_gag_command(): void
+    {
+        [$staff, $id, $logFile] = $this->liveServerWithStaff();
+
+        $this->actingAs($staff)
+            ->postJson("/api/rcon/{$id}/gag", ['target' => 'Player', 'duration' => '0'])
+            ->assertOk();
+
+        $this->assertSame(['sw_gag "Player" 0'], $this->loggedCommands($logFile));
+    }
+
+    public function test_warn_sends_sw_warn_without_a_duration(): void
+    {
+        [$staff, $id, $logFile] = $this->liveServerWithStaff();
+
+        $this->actingAs($staff)
+            ->postJson("/api/rcon/{$id}/warn", ['target' => 'Player', 'reason' => 'first warning'])
+            ->assertOk();
+
+        $this->assertSame(['sw_warn "Player" "first warning"'], $this->loggedCommands($logFile));
+    }
+
+    public function test_unban_sends_sw_unban_command(): void
+    {
+        [$staff, $id, $logFile] = $this->liveServerWithStaff();
+
+        $this->actingAs($staff)
+            ->postJson("/api/rcon/{$id}/unban", ['target' => '76561197960287930'])
+            ->assertOk();
+
+        $this->assertSame(['sw_unban "76561197960287930"'], $this->loggedCommands($logFile));
+    }
+
+    public function test_unmute_and_ungag_send_their_own_commands(): void
+    {
+        [$staff, $id, $logFile] = $this->liveServerWithStaff();
+
+        $this->actingAs($staff)
+            ->postJson("/api/rcon/{$id}/unmute", ['target' => 'Player'])
+            ->assertOk();
+
+        $this->assertSame(['sw_unmute "Player"'], $this->loggedCommands($logFile));
+    }
+
+    public function test_lift_rejects_an_action_outside_the_whitelist(): void
+    {
+        $id = $this->addServer();
+
+        $this->actingAs($this->createStaff(76561197960512640))
+            ->postJson("/api/rcon/{$id}/unsomething", ['target' => 'Player'])
+            ->assertStatus(404);
+    }
+
+    /**
+     * The official swiftlys2-plugins/admins plugin uses unprefixed command
+     * names, and has no warn concept at all - see RconService::COMMANDS.
+     */
+    /**
+     * Acts as the owner rather than createStaff(): switching admin_plugin
+     * also switches which table Flags reads (admin_admins vs the official
+     * plugin's own admins/Permissions schema), and this is testing command
+     * naming, not the flag source. RequireFlag always lets the owner
+     * through, which keeps the two concerns apart.
+     */
+    public function test_official_plugin_uses_unprefixed_names(): void
+    {
+        app(\App\Modules\Settings\App\Services\SettingService::class)->set('admin_plugin', 'swiftly_admins');
+
+        [, $id, $logFile] = $this->liveServerWithStaff();
+
+        $this->actingAs(User::factory()->owner()->create())
+            ->postJson("/api/rcon/{$id}/mute", ['target' => 'Player', 'duration' => '30'])
+            ->assertOk();
+
+        $this->assertSame(['mute "Player" 30'], $this->loggedCommands($logFile));
+    }
+
+    public function test_official_plugin_refuses_warn_with_a_clear_error(): void
+    {
+        app(\App\Modules\Settings\App\Services\SettingService::class)->set('admin_plugin', 'swiftly_admins');
+
+        [, $id] = $this->liveServerWithStaff();
+
+        $this->actingAs(User::factory()->owner()->create())
+            ->postJson("/api/rcon/{$id}/warn", ['target' => 'Player'])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.rcon.0', 'warn_unsupported_for_plugin');
+    }
+
     public function test_kick_sends_sw_kick_command(): void
     {
         [, $port, $logFile] = $this->startFakeServer('secret');
@@ -341,7 +534,7 @@ class RconTest extends TestCase
             ->postJson("/api/rcon/{$id}/kick", ['target' => 'STEAM_1:0:123', 'reason' => 'rule break'])
             ->assertOk();
 
-        $this->assertSame(['sw_kick STEAM_1:0:123 rule break'], $this->loggedCommands($logFile));
+        $this->assertSame(['sw_kick "STEAM_1:0:123" "rule break"'], $this->loggedCommands($logFile));
     }
 
     public function test_kick_requires_target(): void
@@ -375,7 +568,7 @@ class RconTest extends TestCase
             ])
             ->assertOk();
 
-        $this->assertSame(['sw_ban STEAM_1:0:123 1440 wallhack'], $this->loggedCommands($logFile));
+        $this->assertSame(['sw_ban "STEAM_1:0:123" 1440 "wallhack"'], $this->loggedCommands($logFile));
     }
 
     public function test_ban_requires_duration(): void
@@ -405,7 +598,7 @@ class RconTest extends TestCase
             ->postJson("/api/rcon/{$id}/slay", ['target' => 'STEAM_1:0:123'])
             ->assertOk();
 
-        $this->assertSame(['sw_slay STEAM_1:0:123'], $this->loggedCommands($logFile));
+        $this->assertSame(['sw_slay "STEAM_1:0:123"'], $this->loggedCommands($logFile));
     }
 
     public function test_slay_requires_target(): void
@@ -472,6 +665,32 @@ class RconTest extends TestCase
 
         $this->actingAs($staff)
             ->postJson("/api/rcon/{$id}/ban", ['target' => 'STEAM_1:0:123', 'duration' => '0', 'reason' => "x\nsw_exec evil"])
+            ->assertStatus(422);
+    }
+
+    /**
+     * -1 is the plugins' own "permanent" convention - 0 is a real,
+     * near-instant duration, not permanent, so the validator has to accept
+     * the one negative value that actually means something here.
+     */
+    public function test_ban_accepts_a_duration_of_negative_one_as_permanent(): void
+    {
+        [$staff, $id, $logFile] = $this->liveServerWithStaff();
+
+        $this->actingAs($staff)
+            ->postJson("/api/rcon/{$id}/ban", ['target' => 'Player', 'duration' => '-1', 'reason' => 'cheating'])
+            ->assertOk();
+
+        $this->assertSame(['sw_ban "Player" -1 "cheating"'], $this->loggedCommands($logFile));
+    }
+
+    public function test_ban_rejects_a_negative_duration_other_than_negative_one(): void
+    {
+        $staff = $this->createStaff(76561197960512640);
+        $id = $this->addServer();
+
+        $this->actingAs($staff)
+            ->postJson("/api/rcon/{$id}/ban", ['target' => 'Player', 'duration' => '-2'])
             ->assertStatus(422);
     }
 
