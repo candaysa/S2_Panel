@@ -155,7 +155,10 @@
                             <div><dt>{{ __('i18n::messages.cheat_check.created') }}</dt><dd class="mt-0.5 text-sm text-ink-muted" x-text="formatDate(selected.created_at)"></dd></div>
                         </dl>
 
-                        <p x-show="selected.status === 'suspicious'" x-cloak class="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
+                        <p x-show="selected.status !== 'pending' && selected.status !== 'error'" x-cloak class="mt-4 rounded-lg border border-line bg-surface-raised px-3 py-2 text-xs text-ink-faint">
+                            {{ __('i18n::messages.cheat_check.client_reported_note') }}
+                        </p>
+                        <p x-show="selected.status === 'suspicious'" x-cloak class="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400">
                             {{ __('i18n::messages.cheat_check.suspicious_note') }}
                         </p>
                         <p x-show="selected.is_partial" x-cloak class="mt-2 rounded-lg border border-line bg-surface-raised px-3 py-2 text-xs text-ink-muted">

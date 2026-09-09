@@ -24,7 +24,7 @@ class BanController
         $type = (string) $request->query('type', 'ban');
         $search = $request->query('search');
         $status = (string) $request->query('status', 'active');
-        $perPage = min((int) $request->query('per_page', 25), 100);
+        $perPage = Api::perPage($request->query('per_page'));
         $sort = (string) $request->query('sort', 'id');
         $dir = (string) $request->query('dir', 'desc');
 
