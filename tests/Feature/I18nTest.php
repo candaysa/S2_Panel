@@ -11,7 +11,7 @@ class I18nTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const LOCALES = ['en', 'tr', 'de', 'ru', 'fr', 'it'];
+    private const LOCALES = ['en', 'tr', 'de', 'ru', 'fr', 'it', 'hu', 'pl'];
 
     public function test_locales_endpoint_is_public(): void
     {
@@ -113,7 +113,7 @@ class I18nTest extends TestCase
         $base = $this->flatten($langPath.'/en/messages.php');
         $baseKeys = array_keys($base);
 
-        foreach (['tr', 'de', 'ru', 'fr', 'it'] as $locale) {
+        foreach (['tr', 'de', 'ru', 'fr', 'it', 'hu', 'pl'] as $locale) {
             $compare = $this->flatten($langPath.'/'.$locale.'/messages.php');
 
             $this->assertSame(
