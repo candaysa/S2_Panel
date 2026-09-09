@@ -1,0 +1,114 @@
+name: Release
+
+# Builds the installable panel bundle that App\Modules\Updater\App\Services\
+# UpdateChecker/UpdateInstaller look for on GitHub Releases, and publishes it
+# as a release asset.
+#
+# Triggered by pushing a tag "vX.Y.Z" - the config/panel.php comment says to
+# bump `'version'` in the same commit you tag, and the "version matches tag"
+# step below fails the build if that was forgotten, rather than publishing a
+# release the panel's own UpdateChecker would then never consider new.
+#
+# The asset MUST contain vendor/ and a built public/build/ - UpdateInstaller
+# refuses to install a bundle missing either, because a host with neither
+# Composer nor Node (the common case for an already-installed panel) could
+# never boot the result. That's also why this does not just attach GitHub's
+# auto-generated source archive.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Confirm config/panel.php was bumped to this version
+        run: |
+          configured=$(grep -oP "'version'\s*=>\s*'\K[^']+" config/panel.php | head -n1)
+          if [ "$configured" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::config/panel.php version '$configured' does not match tag version '${{ steps.version.outputs.version }}' - bump it in the same commit you tag."
+            exit 1
+          fi
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install PHP dependencies (production)
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Stage the release bundle
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/bundle
+          mkdir -p /tmp/bundle
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='node_modules/' \
+            --exclude='tests/' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='storage/' \
+            --exclude='database/database.sqlite' \
+            --exclude='.phpunit.cache/' \
+            --exclude='.phpunit.result.cache' \
+            ./ /tmp/bundle/
+
+      - name: Reject a bundle containing symlinks
+        # UpdateInstaller's own archive check (assertSafeArchive) refuses any
+        # symlink entry when the release is installed - failing here instead
+        # catches a bad bundle at build time rather than on every panel that
+        # tries to update with it.
+        run: |
+          hits=$(find /tmp/bundle -type l)
+          if [ -n "$hits" ]; then
+            echo "::error::bundle contains symlinks, which UpdateInstaller refuses to install:"
+            echo "$hits"
+            exit 1
+          fi
+
+      - name: Verify vendor/ and public/build were actually staged
+        run: |
+          test -d /tmp/bundle/vendor
+          test -f /tmp/bundle/public/build/manifest.json
+
+      - name: Package the tarball
+        id: package
+        run: |
+          name="s2panel-${{ steps.version.outputs.version }}.tar.gz"
+          tar -czf "$name" -C /tmp/bundle .
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: 'v${{ steps.version.outputs.version }}'
+          generate_release_notes: true
+          files: ${{ steps.package.outputs.name }}

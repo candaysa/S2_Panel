@@ -56,7 +56,7 @@ connection per plugin database) · Vite.
 | PHP | 8.3 | with `pdo_mysql`, `mbstring`, `openssl`, `zip`, `fileinfo`, `curl` |
 | Composer | 2.x | |
 | Node.js | 20+ | build-time only — not needed on the production server if you upload `public/build` |
-| MySQL / MariaDB | 8.0 / 10.6 | the panel's own database, plus read/write access to each Swiftly plugin database |
+| MySQL / MariaDB | 8.0 / 10.6 | a database for the panel's own tables (a new one, or one you already have), plus read/write access to each Swiftly plugin database |
 | Web server | Apache or nginx | document root must point at `public/` |
 
 You also need **Steam Web API credentials** (a key from
@@ -70,9 +70,11 @@ the **SteamID64 of the panel owner** — the wizard asks for both.
 One script takes a bare Ubuntu server the rest of the way to "open the
 panel in a browser": it checks for PHP 8.3 (+ every required extension),
 Composer, Node 20+, MySQL and nginx and installs whichever are missing,
-pulls this repo, runs `composer`/`npm`, **creates the panel's own database**
-(the one manual SQL step below), writes just enough of `.env` to boot, runs
-the migrations, points nginx at `public/`, and requests a Let's Encrypt
+pulls this repo, runs `composer`/`npm`, **makes sure the panel has a
+database to migrate into** (`CREATE DATABASE IF NOT EXISTS` — pass
+`--db-name` to reuse a database you already have, including the one your
+plugins write to), writes just enough of `.env` to boot, runs the
+migrations, points nginx at `public/`, and requests a Let's Encrypt
 certificate. Safe to re-run — every step checks what's already there before
 changing anything.
 
@@ -106,15 +108,29 @@ npm run build
 For a development checkout use `composer install` (keep dev dependencies)
 and `npm run dev` instead of `npm run build`.
 
-### 2. Create the panel database
+### 2. Pick a database for the panel
+
+The panel needs one MySQL/MariaDB database to keep its own tables in. It
+does **not** have to be a new, panel-only one — any database you can
+already reach works, including the very same database the CS2 plugins
+write to. The panel's tables (`users`, `sessions`, `cache`, `jobs`,
+`settings`, `panel_logs`, `reports`, `appeals`, `cheat_scans`, …) share no
+name with the plugin tables (`admin_admins`, `admin_groups`, `admin_log`,
+`lvl_base*`, `vip_users`, `vip_servers`, `wp_player_*`), so they sit next
+to them without touching them.
+
+If you'd rather give the panel a database of its own, create one:
 
 ```sql
 CREATE DATABASE s2_panel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-Only the panel's own database has to be created by hand. The plugin
-databases (Swiftly admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore) already exist —
-the panel only reads and writes their tables.
+Either way, nothing needs creating for the plugins: their databases
+(Swiftly admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore) already
+exist — the panel only reads and writes their tables. Laravel keeps the
+panel connection and the four plugin connections as separate config
+entries, so several of them pointing at the same physical database is
+perfectly fine.
 
 ### 3. Create the environment file
 
@@ -152,8 +168,8 @@ php artisan migrate --force
 ```
 
 This creates the panel's own tables (users, sessions, cache, jobs, settings,
-audit log, reports, appeals, cheat scans, …). It does not touch the plugin
-databases.
+audit log, reports, appeals, cheat scans, …) and nothing else — any table
+already in that database, a plugin's included, is left untouched.
 
 ### 5. Point the web server at `public/`
 
@@ -222,8 +238,9 @@ finishes. The wizard walks through:
 
 1. **Language** — the panel's default locale.
 2. **Database** — the panel's own database, plus a connection per plugin
-   database (Swiftly admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore). Each one is
-   connection-tested before it is accepted.
+   database (Swiftly admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore).
+   They may all name the same database if that's how your server is set
+   up. Each one is connection-tested before it is accepted.
 3. **Steam & owner** — Steam Web API key, OpenID credentials, and the
    owner's SteamID64. The owner always has full access, independent of the
    plugin's flags.

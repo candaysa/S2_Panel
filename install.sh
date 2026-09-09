@@ -5,17 +5,39 @@
 # Takes a bare Ubuntu server to "open https://<domain>/install and finish
 # the wizard": checks/installs every OS-level dependency (PHP 8.3 + required
 # extensions, Composer, Node 20+, MySQL, nginx, certbot), pulls the panel's
-# own code, builds it, opens the panel's own database (a step the in-app
-# installer deliberately does NOT do - see app/Modules/Install - it only
-# tests a connection someone already typed in), points nginx at public/, and
-# requests a Let's Encrypt certificate. Everything else - Steam API key,
-# each Swiftly plugin's database connection, the owner's SteamID, which
-# modules are on - stays the in-app wizard's job; this script only gets far
-# enough for that wizard to be reachable at all.
+# own code, builds it, makes sure the panel has a database to migrate into
+# (a step the in-app installer deliberately does NOT do - see
+# app/Modules/Install - it only tests a connection someone already typed
+# in), points nginx at public/, and requests a Let's Encrypt certificate.
+# Everything else - Steam API key, each Swiftly plugin's database
+# connection, the owner's SteamID, which modules are on - stays the in-app
+# wizard's job; this script only gets far enough for that wizard to be
+# reachable at all.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh | sudo bash -s -- --domain panel.example.com --email you@example.com
 #   sudo ./install.sh --domain panel.example.com --email you@example.com
+#
+# Options:
+#   --domain NAME    hostname the panel is served from (required)
+#   --email  ADDR    address for Let's Encrypt renewal notices
+#   --dir    PATH    install directory (default: /var/www/s2panel)
+#   --repo   URL     git remote to clone from
+#   --branch NAME    branch to check out (default: main)
+#   --db-name NAME   database the panel keeps its own tables in (default:
+#                    s2_panel). It does not have to be a new one - name a
+#                    database you already have, the same one your CS2
+#                    plugins use included, and it is reused as it is: the
+#                    script only ever runs CREATE DATABASE IF NOT EXISTS,
+#                    and the migrations add the panel's own tables next to
+#                    whatever is already in there.
+#   --db-user NAME   MySQL account the panel connects as (default:
+#                    s2panel). Created if missing, and its password is
+#                    always (re)set to a freshly generated one - so point
+#                    this at a panel-only account, never at a login your
+#                    plugins already use.
+#   --skip-ssl       leave the vhost on plain HTTP (no certbot run)
+#   --yes, -y        non-interactive: never prompt, accept the defaults
 #
 # Safe to re-run: every step checks what's already there before changing
 # anything (installed packages, an existing .env, an existing database) -
@@ -30,6 +52,9 @@ BRANCH="main"
 INSTALL_DIR="/var/www/s2panel"
 DOMAIN=""
 EMAIL=""
+# Only a default: --db-name may name a database that already exists (even
+# the one the CS2 plugins use) - it is created if missing and otherwise
+# reused untouched. See the Options block above.
 DB_NAME="s2_panel"
 DB_USER="s2panel"
 SKIP_SSL=0
@@ -64,7 +89,7 @@ while [ $# -gt 0 ]; do
         --skip-ssl) SKIP_SSL=1; shift ;;
         --yes|-y) ASSUME_YES=1; shift ;;
         --help|-h)
-            sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) die "unknown option: $1 (see --help)" ;;
@@ -96,7 +121,8 @@ cat <<SUMMARY
   domain       : $DOMAIN
   install dir  : $INSTALL_DIR
   repo/branch  : $REPO_URL @ $BRANCH
-  panel DB     : $DB_NAME (user: $DB_USER, password generated)
+  panel DB     : $DB_NAME (created if missing, reused as-is if it already
+                 exists; user: $DB_USER, password generated)
   SSL          : $([ "$SKIP_SSL" -eq 1 ] && echo "skipped" || echo "Let's Encrypt via certbot ($EMAIL)")
 SUMMARY
 
@@ -194,13 +220,20 @@ ok "nginx present ($(nginx -v 2>&1))"
 # ------------------------------------------------------------ 2. panel database
 #
 # The in-app wizard (app/Modules/Install/App/Http/Controllers/InstallController.php)
-# only tests a database connection already typed into it - creating the
-# panel's own schema and a dedicated user is deliberately left out of that
-# controller (it never runs raw DDL against credentials a browser submitted).
-# That's this script's job instead, once, with root MySQL access it already
-# has on the box it just provisioned.
+# only tests a database connection already typed into it - making sure that
+# database exists, and that a dedicated user can reach it, is deliberately
+# left out of that controller (it never runs raw DDL against credentials a
+# browser submitted). That's this script's job instead, once, with root
+# MySQL access it already has on the box it just provisioned.
+#
+# The database does not have to be a new, panel-only one: CREATE DATABASE
+# IF NOT EXISTS leaves an existing schema - the CS2 plugins' own included -
+# exactly as it is, and `php artisan migrate` further down only adds the
+# panel's tables (users, sessions, cache, settings, panel_logs, ...), whose
+# names don't collide with any plugin table (admin_*, lvl_base*, vip_*,
+# wp_player_*). Nothing here drops or rewrites anything.
 
-step "Creating the panel's own database"
+step "Preparing the panel's database"
 run_mysql() {
     if [ "$MYSQL_LOCAL" -eq 1 ] && mysql -u root -e 'SELECT 1' >/dev/null 2>&1; then
         mysql -u root "$@"
