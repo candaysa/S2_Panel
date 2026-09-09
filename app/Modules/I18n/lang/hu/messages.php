@@ -86,7 +86,7 @@ return [
         'rcon_applies_to' => 'Érvényes ezekre:',
         'step_steam' => 'Steam és tulajdonos',
         'locale_prompt' => 'Válaszd ki a panel nyelvét a folytatáshoz. Ezt később a Beállításokban is módosíthatod.',
-        'db_hint' => 'Add meg a Swiftly bővítmények által használt adatbázist: CS2_Admin, K4-LevelRanks-SwiftlyS2, weapon skins és VIPCore. A panel közvetlenül olvassa és írja a tábláikat, és a saját tábláit is ugyanabban az adatbázisban tárolja.',
+        'db_hint' => 'Add meg a Swiftly bővítmények adatbázisát: CS2_Admin, K4-LevelRanks-SwiftlyS2, fegyverskinek és VIPCore. A panel közvetlenül olvassa és írja ezeket a táblákat. A panel saját adatbázisát ez nem változtatja meg, azt a telepítés már beállította - lehet ugyanaz is.',
         'deps_missing_title' => 'Néhány bővítménytábla nem található',
         'deps_missing_body' => 'Az adatbázis kapcsolódott, de az alábbi táblák hiányoznak. Hagyd kikapcsolva a megfelelő modulokat, vagy telepítsd a bővítményt és csatlakozz újra.',
         'deps_admin' => 'Adminok és csoportok',

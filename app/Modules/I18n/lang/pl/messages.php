@@ -86,7 +86,7 @@ return [
         'rcon_applies_to' => 'Dotyczy:',
         'step_steam' => 'Steam i właściciel',
         'locale_prompt' => 'Wybierz język panelu, aby kontynuować. Możesz go później zmienić w Ustawieniach.',
-        'db_hint' => 'Podaj bazę danych używaną przez wtyczki Swiftly: CS2_Admin, K4-LevelRanks-SwiftlyS2, skiny broni i VIPCore. Panel odczytuje i zapisuje bezpośrednio ich tabele oraz przechowuje własne tabele w tej samej bazie danych.',
+        'db_hint' => 'Podaj bazę danych używaną przez wtyczki Swiftly: CS2_Admin, K4-LevelRanks-SwiftlyS2, skiny broni i VIPCore. Panel czyta i zapisuje ich tabele bezpośrednio. Nie zmienia to własnej bazy panelu, ustawionej już podczas instalacji - może to być ta sama baza.',
         'deps_missing_title' => 'Nie znaleziono niektórych tabel wtyczek',
         'deps_missing_body' => 'Połączenie z bazą danych powiodło się, ale poniższe tabele nie istnieją. Pozostaw odpowiednie moduły wyłączone albo zainstaluj wtyczkę i połącz się ponownie.',
         'deps_admin' => 'Administratorzy i grupy',

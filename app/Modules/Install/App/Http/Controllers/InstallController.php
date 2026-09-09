@@ -34,7 +34,26 @@ use Throwable;
  */
 class InstallController
 {
-    private const CONNECTIONS = ['panel', 'swiftly', 'ranks', 'weaponskins', 'vip'];
+    /**
+     * The plugin connections this step configures.
+     *
+     * "panel" is deliberately NOT here. The panel's own connection has to
+     * work before this wizard can render at all - session, cache and queue
+     * all use it - so it is already set by whoever got the panel this far
+     * (install.sh, or step 3 of the manual walkthrough). Writing it here
+     * again meant that typing the plugin database - which is exactly what
+     * this screen asks for - silently repointed the panel's own tables at
+     * it too. When that database happens to contain an older install's
+     * users/sessions, as a long-lived CS2 database well might, the panel
+     * does not even fail loudly: it comes up on a stale, half-migrated
+     * schema and strands the one the installer just migrated.
+     *
+     * Pointing both at one database is still perfectly supported - that is
+     * a choice made once, when the panel's own DB_* is set (install.sh
+     * --db-name, or by hand). It is just not something this screen should
+     * decide on the operator's behalf.
+     */
+    private const CONNECTIONS = ['swiftly', 'ranks', 'weaponskins', 'vip'];
 
     /**
      * Scratch connection name used only to validate submitted credentials.
@@ -194,17 +213,16 @@ class InstallController
 
         app(SettingService::class)->set('admin_plugin', $adminPlugin);
 
-        // Only .env is written. The live connections are deliberately left
-        // alone: "panel" is what the session and cache drivers use, so
-        // repointing it mid-request sent the rest of this request - including
-        // the session write that closes it - at a database whose panel tables
-        // do not exist yet, turning a successful save into a 500 immediately
-        // after it. The new values are picked up on the next request, which is
-        // when they are first needed.
+        // Only .env is written, and only the plugin connections (see
+        // CONNECTIONS). The live connections are deliberately left alone
+        // too: repointing one mid-request would send the rest of this
+        // request - including the session write that closes it - somewhere
+        // it has not been proven to work. The new values are picked up on
+        // the next request, which is when they are first needed.
         $values = [];
 
         foreach (self::CONNECTIONS as $connection) {
-            $prefix = $connection === 'panel' ? 'DB_' : strtoupper($connection).'_DB_';
+            $prefix = strtoupper($connection).'_DB_';
 
             $values[$prefix.'HOST'] = $data['host'];
             $values[$prefix.'PORT'] = $data['port'];
@@ -213,7 +231,6 @@ class InstallController
             $values[$prefix.'PASSWORD'] = $data['password'] ?? '';
         }
 
-        $values['DB_CONNECTION'] = 'panel';
         $values[self::STEP_KEY] = self::STEP_DATABASE;
         (new EnvWriter($this->envPath()))->set($values);
 

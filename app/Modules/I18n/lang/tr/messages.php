@@ -86,7 +86,7 @@ return [
         'rcon_applies_to' => 'Uygulanacağı sunucular:',
         'step_steam' => 'Steam ve Sahip',
         'locale_prompt' => 'Devam etmek için panel dilini seçin. Bunu daha sonra Ayarlar\'dan değiştirebilirsiniz.',
-        'db_hint' => 'Swiftly eklentilerinin kullandığı veritabanını girin: CS2_Admin, K4-LevelRanks-SwiftlyS2, silah skinleri ve VIPCore. Panel bu tabloları doğrudan okuyup yazar ve kendi tablolarını da aynı veritabanında tutar.',
+        'db_hint' => 'Swiftly eklentilerinin kullandığı veritabanını girin: CS2_Admin, K4-LevelRanks-SwiftlyS2, silah skinleri ve VIPCore. Panel bu tabloları doğrudan okuyup yazar. Panelin kendi veritabanı bundan etkilenmez; o zaten kurulumda ayarlandı - aynı veritabanı da olabilir.',
         'deps_missing_title' => 'Bazı eklenti tabloları bulunamadı',
         'deps_missing_body' => 'Veritabanına bağlanıldı ancak aşağıdaki tablolar yok. İlgili modülleri kapalı bırakın veya eklentiyi kurup yeniden bağlanın.',
         'deps_admin' => 'Yetkililer ve gruplar',

@@ -104,13 +104,13 @@ class InstallTest extends TestCase
     }
 
     /**
-     * The wizard now asks for one set of credentials and writes it to
-     * every plugin connection (see InstallController::database() -
-     * "the panel treats all Swiftly plugin data as living in one shared
-     * database"), not five separate connection blocks. This used to submit
-     * one payload per connection under that connection's own name
-     * (`panel`, `swiftly`, ...), which the current single `connection.*`
-     * validation rule set rejects outright as missing required fields.
+     * The wizard asks for one set of credentials and writes it to every
+     * PLUGIN connection (see InstallController::database() - "the panel
+     * treats all Swiftly plugin data as living in one shared database"),
+     * not five separate connection blocks. This used to submit one payload
+     * per connection under that connection's own name (`panel`, `swiftly`,
+     * ...), which the current single `connection.*` validation rule set
+     * rejects outright as missing required fields.
      */
     public function test_database_writes_credentials_when_connections_are_reachable(): void
     {
@@ -132,16 +132,65 @@ class InstallTest extends TestCase
 
         $this->postJson('/api/install/database', $payload)
             ->assertOk()
-            ->assertJsonPath('meta.connections', ['panel', 'swiftly', 'ranks', 'weaponskins', 'vip']);
+            ->assertJsonPath('meta.connections', ['swiftly', 'ranks', 'weaponskins', 'vip']);
 
         $contents = $this->envContents();
 
-        $this->assertStringContainsString('DB_CONNECTION=panel', $contents);
-        $this->assertStringContainsString('DB_DATABASE=db_shared', $contents);
         $this->assertStringContainsString('SWIFTLY_DB_DATABASE=db_shared', $contents);
         $this->assertStringContainsString('RANKS_DB_DATABASE=db_shared', $contents);
         $this->assertStringContainsString('WEAPONSKINS_DB_DATABASE=db_shared', $contents);
         $this->assertStringContainsString('VIP_DB_DATABASE=db_shared', $contents);
+    }
+
+    /**
+     * The panel's own connection is NOT the wizard's to rewrite.
+     *
+     * It has to work before this wizard can render at all (session, cache
+     * and queue all ride on it), so it is set by whoever got the panel this
+     * far - install.sh, or step 3 of the manual walkthrough. Writing it here
+     * meant that typing the plugin database on this screen, which is exactly
+     * what it asks for, silently repointed the panel's own tables at it too.
+     * On a long-lived CS2 database that already holds an older install's
+     * `users`/`sessions` that does not even fail loudly: the panel comes up
+     * on a stale, half-migrated schema and the freshly migrated one is
+     * orphaned.
+     */
+    public function test_database_step_leaves_the_panels_own_connection_alone(): void
+    {
+        $this->mock(ConnectionProbe::class)
+            ->shouldReceive('isHealthy')
+            ->andReturn(true);
+
+        file_put_contents(
+            $this->envFile,
+            "DB_CONNECTION=panel\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_DATABASE=panel_own\nDB_USERNAME=panel_user\nDB_PASSWORD=panel_pass\n",
+        );
+
+        $this->postJson('/api/install/database', [
+            'connection' => [
+                'host' => '10.0.0.9',
+                'port' => 3307,
+                'database' => 'cs2_plugins',
+                'username' => 'plugin_user',
+                'password' => 'plugin_pass',
+            ],
+        ])->assertOk();
+
+        $contents = $this->envContents();
+
+        // The plugin connections moved...
+        $this->assertStringContainsString('SWIFTLY_DB_DATABASE=cs2_plugins', $contents);
+        $this->assertStringContainsString('SWIFTLY_DB_HOST=10.0.0.9', $contents);
+
+        // ...and the panel's own did not.
+        $this->assertStringContainsString('DB_DATABASE=panel_own', $contents);
+        $this->assertStringContainsString('DB_HOST=127.0.0.1', $contents);
+        $this->assertStringContainsString('DB_PORT=3306', $contents);
+        $this->assertStringContainsString('DB_USERNAME=panel_user', $contents);
+        $this->assertStringContainsString('DB_PASSWORD=panel_pass', $contents);
+        // Anchored to the line start: SWIFTLY_DB_DATABASE=cs2_plugins ends
+        // with this same text, so a plain substring check could never pass.
+        $this->assertDoesNotMatchRegularExpression('/^DB_DATABASE=cs2_plugins/m', $contents);
     }
 
     public function test_steam_requires_valid_owner_steam_id(): void

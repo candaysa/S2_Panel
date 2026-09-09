@@ -86,7 +86,7 @@ return [
         'rcon_applies_to' => 'Gilt für:',
         'step_steam' => 'Steam & Besitzer',
         'locale_prompt' => 'Wähle die Panel-Sprache, um fortzufahren. Du kannst dies später in den Einstellungen ändern.',
-        'db_hint' => 'Geben Sie die Datenbank der Swiftly-Plugins an: CS2_Admin, K4-LevelRanks-SwiftlyS2, Waffen-Skins und VIPCore. Das Panel liest und schreibt deren Tabellen direkt und legt seine eigenen Tabellen in derselben Datenbank ab.',
+        'db_hint' => 'Gib die Datenbank an, die die Swiftly-Plugins nutzen: CS2_Admin, K4-LevelRanks-SwiftlyS2, Waffen-Skins und VIPCore. Das Panel liest und schreibt deren Tabellen direkt. Die eigene Datenbank des Panels bleibt davon unberührt - sie wurde bereits bei der Installation gesetzt und darf dieselbe sein.',
         'deps_missing_title' => 'Einige Plugin-Tabellen wurden nicht gefunden',
         'deps_missing_body' => 'Die Datenbankverbindung steht, die folgenden Tabellen fehlen jedoch. Lassen Sie die zugehörigen Module deaktiviert oder installieren Sie das Plugin und verbinden Sie sich erneut.',
         'deps_admin' => 'Administratoren und Gruppen',
