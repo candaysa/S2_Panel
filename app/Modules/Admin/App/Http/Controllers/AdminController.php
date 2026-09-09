@@ -47,7 +47,7 @@ class AdminController
     {
         $search = $request->query('search');
         $active = $request->has('active') ? filter_var($request->query('active'), FILTER_VALIDATE_BOOL) : null;
-        $perPage = min((int) $request->query('per_page', 25), 100);
+        $perPage = Api::perPage($request->query('per_page'));
         $sort = (string) $request->query('sort', 'id');
         $dir = strtolower((string) $request->query('dir', 'desc')) === 'asc' ? 'asc' : 'desc';
 

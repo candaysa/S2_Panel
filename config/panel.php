@@ -61,4 +61,20 @@ return [
         'max_asset_mb' => 150,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin flag cache
+    |--------------------------------------------------------------------------
+    |
+    | How long App\Support\Flags caches one SteamID's flag/group/immunity
+    | profile before re-reading the plugin's admin tables. Revoking access
+    | from the panel itself (Admin module) busts this immediately; a change
+    | made directly against the plugin database (or by the plugin itself)
+    | is not seen until the cached entry expires - that admin keeps their
+    | old permissions for up to this long.
+    |
+    */
+
+    'flags_cache_ttl_seconds' => env('PANEL_FLAGS_CACHE_TTL', 60),
+
 ];

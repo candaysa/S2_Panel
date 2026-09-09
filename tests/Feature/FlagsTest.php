@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Modules\Settings\App\Services\SettingService;
 use App\Support\Flags;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -121,8 +122,35 @@ class FlagsTest extends TestCase
 
     public function test_cache_store_is_used(): void
     {
-        Cache::shouldReceive('remember')->once()->andReturn(['flags' => [], 'groups' => [], 'immunity' => 0]);
+        Cache::shouldReceive('remember')->andReturn(['flags' => [], 'groups' => [], 'immunity' => 0]);
 
         Flags::for(12345);
+
+        Cache::shouldHaveReceived('remember')
+            ->with('flags:cs2_admin:12345', \Mockery::any(), \Mockery::any());
+    }
+
+    public function test_profile_is_cached_per_admin_backend(): void
+    {
+        DB::connection('swiftly')->table('admin_admins')->insert([
+            'steamid' => self::STEAM64,
+            'name' => 'Owner',
+            'flags' => 'admin.root',
+            'groups' => '',
+            'immunity' => 100,
+            'created_at' => now(),
+        ]);
+
+        $this->assertSame(['admin.root'], Flags::for(self::STEAM64)['flags']);
+
+        // Switching the panel to the other admin plugin must not keep
+        // answering out of the profile cached from the previous one: the
+        // swiftly_admins tables have no row for this SteamID, so the right
+        // answer after the switch is "not an admin", not the cached
+        // admin.root from CS2_Admin.
+        $this->createSwiftlyAdminsTables();
+        app(SettingService::class)->set('admin_plugin', 'swiftly_admins');
+
+        $this->assertNull(Flags::for(self::STEAM64));
     }
 }

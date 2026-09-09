@@ -97,7 +97,16 @@ class UpdateInstaller
         $name = basename($base);
         $stamp = date('Ymd-His');
 
-        $work = storage_path('app/updates');
+        // Sibling of the install being replaced, not inside it. storage/
+        // (which lives under $base) is one of the PRESERVE paths carried
+        // over into the incoming tree below - staging a copy of the new
+        // release under storage/app/updates would make that copy target a
+        // path inside its own source directory, and when the swap then
+        // moved the staging root into place, this work directory's old
+        // path would vanish with it mid-install. $parent is guaranteed to
+        // be on the same filesystem as $base already, since the backup
+        // rename below depends on that too.
+        $work = "{$parent}/.{$name}-update-work";
         File::ensureDirectoryExists($work);
 
         $archive = "{$work}/bundle-{$version}.tar.gz";
@@ -141,6 +150,18 @@ class UpdateInstaller
         File::deleteDirectory($staging);
         @unlink($archive);
 
+        // Where finalise() has to put things back if the migrations that run
+        // against the new code fail. It lives in storage/, which is carried
+        // across the swap (see PRESERVE), so the newly installed code reads
+        // the same file this - the old code - just wrote.
+        $this->writePendingState([
+            'backup' => $backup,
+            'installed' => $base,
+            'from' => (string) config('panel.version'),
+            'to' => $version,
+            'at' => now()->toIso8601String(),
+        ]);
+
         $this->audit->log('panel.updated', 'panel', $version, [
             'from' => config('panel.version'),
             'to' => $version,
@@ -163,8 +184,102 @@ class UpdateInstaller
      */
     public function finalise(): void
     {
-        Artisan::call('migrate', ['--force' => true]);
-        Artisan::call('optimize:clear');
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            Artisan::call('optimize:clear');
+        } catch (Throwable $e) {
+            // The swap already happened, so a failed migration leaves new
+            // code running against the old schema - the one state the panel
+            // cannot serve out of. Previously that was simply reported and
+            // left in place; the backup directory existed but nothing ever
+            // used it. Put the old release back instead, so a failed update
+            // ends where it started rather than half-applied.
+            $this->rollBack();
+
+            throw $e;
+        }
+
+        $this->clearPendingState();
+    }
+
+    /**
+     * Swap the pre-update directory back in.
+     *
+     * Best-effort by design: if the rename fails there is nothing further
+     * this process can do, and the original exception (which says what
+     * actually went wrong) has to reach the owner rather than being masked
+     * by a second one from the recovery path.
+     */
+    private function rollBack(): void
+    {
+        $state = $this->pendingState();
+
+        if ($state === null) {
+            return;
+        }
+
+        $backup = (string) ($state['backup'] ?? '');
+        $installed = (string) ($state['installed'] ?? '');
+
+        if ($backup === '' || $installed === '' || ! is_dir($backup)) {
+            return;
+        }
+
+        $failed = $installed.'_failed_'.now()->format('Ymd_His');
+
+        if (! @rename($installed, $failed)) {
+            return;
+        }
+
+        if (! @rename($backup, $installed)) {
+            // Nothing is serving from $installed at this point, so put the
+            // new code back rather than leaving the path missing entirely.
+            @rename($failed, $installed);
+
+            return;
+        }
+
+        $this->clearPendingState();
+
+        $this->audit->log('panel.update_rolled_back', 'panel', (string) ($state['from'] ?? ''), [
+            'attempted' => $state['to'] ?? null,
+            'failed_copy' => $failed,
+        ]);
+    }
+
+    private function pendingStatePath(): string
+    {
+        return storage_path('app/update-pending.json');
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private function writePendingState(array $state): void
+    {
+        File::ensureDirectoryExists(dirname($this->pendingStatePath()));
+        File::put($this->pendingStatePath(), (string) json_encode($state, JSON_PRETTY_PRINT));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function pendingState(): ?array
+    {
+        $path = $this->pendingStatePath();
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $state = json_decode((string) File::get($path), true);
+
+        return is_array($state) ? $state : null;
+    }
+
+    private function clearPendingState(): void
+    {
+        File::delete($this->pendingStatePath());
     }
 
     private function download(string $url, string $target): void
@@ -210,11 +325,74 @@ class UpdateInstaller
             throw new RuntimeException('tar_missing');
         }
 
+        $this->assertSafeArchive($tar, $archive);
+
         $command = escapeshellcmd($tar).' -xzf '.escapeshellarg($archive).' -C '.escapeshellarg($into).' 2>&1';
         exec($command, $output, $code);
 
         if ($code !== 0) {
             throw new RuntimeException('extract_failed');
+        }
+    }
+
+    /**
+     * Read the member list before unpacking anything.
+     *
+     * The download is size-capped compressed, which says nothing about what
+     * it expands to, and tar's own handling of absolute paths, "..' and
+     * symlinks differs between the GNU and bsdtar builds this might find on
+     * the host - so the archive is inspected here rather than trusted to
+     * whichever binary findTar() picked. SafeZip does the same for the .zip
+     * paths (plugins, backup restore); this is the tar equivalent.
+     */
+    private function assertSafeArchive(string $tar, string $archive): void
+    {
+        $command = escapeshellcmd($tar).' -tvzf '.escapeshellarg($archive).' 2>&1';
+        exec($command, $listing, $code);
+
+        if ($code !== 0) {
+            throw new RuntimeException('archive_unreadable');
+        }
+
+        $maxEntries = (int) config('panel.update.max_entries', 20000);
+        $maxExpandedBytes = (int) config('panel.update.max_expanded_mb', 600) * 1024 * 1024;
+
+        if (count($listing) > $maxEntries) {
+            throw new RuntimeException('archive_rejected_entry_count');
+        }
+
+        $total = 0;
+
+        foreach ($listing as $line) {
+            // "-rw-r--r-- user/group  1234 2026-01-01 00:00 path/to/file"
+            // and, for a link, "... path/to/link -> target".
+            if (preg_match('/^(\S+)\s+\S+\s+(\d+)\s+\S+\s+\S+\s+(.*)$/', $line, $m) !== 1) {
+                continue;
+            }
+
+            [, $mode, $size, $name] = $m;
+
+            if (str_starts_with($mode, 'l') || str_contains($name, ' -> ')) {
+                throw new RuntimeException('archive_rejected_link');
+            }
+
+            $path = str_replace('\\', '/', trim($name));
+
+            if (
+                str_starts_with($path, '/')
+                || preg_match('#^[A-Za-z]:#', $path) === 1
+                || str_contains($path, '../')
+                || str_ends_with($path, '/..')
+                || $path === '..'
+            ) {
+                throw new RuntimeException('archive_rejected_path');
+            }
+
+            $total += (int) $size;
+
+            if ($maxExpandedBytes > 0 && $total > $maxExpandedBytes) {
+                throw new RuntimeException('archive_rejected_size');
+            }
         }
     }
 

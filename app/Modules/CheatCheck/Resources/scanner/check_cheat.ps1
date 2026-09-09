@@ -150,7 +150,7 @@ $script:kwStrongLoose = @(
     'crimson cheats','venom cheats','matrix softworks','redline cheats','valkyrie cheats',
     'rebellion cheats','ownage pro','gowin cheats','exort cheats','kinetic cheats',
     'covenant cheats','reversal cheats','byfron bypass','nightfall dma','clutch solution',
-    'fantasy cat','phantom overlay','extreme injector','fluidaim'
+    'fantasy cat','phantom overlay','extreme injector','fluidaim','oxware'
 )
 
 # Strong (exact): brand names that are short or can appear inside other words.

@@ -102,7 +102,11 @@ class AdminTest extends TestCase
             ->getJson('/api/admin?search=76561197962734863')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.steamid', self::STEAM64);
+            // steamid is string-cast on the model (AdminAdmin::casts()) so
+            // SteamID64 never loses precision through JS's float-backed
+            // JSON numbers - the response value is a string, not the int
+            // constant this compares against.
+            ->assertJsonPath('data.0.steamid', (string) self::STEAM64);
     }
 
     public function test_index_filters_active_admins(): void
@@ -147,21 +151,49 @@ class AdminTest extends TestCase
             ->assertJsonPath('data.0.name', 'Mod');
     }
 
+    /**
+     * groups is a CSV column - one admin can belong to several groups at
+     * once - so this also covers that a member counted toward one group is
+     * not lost when tallying the rest in the same pass.
+     */
+    public function test_groups_reports_correct_member_count_per_group(): void
+    {
+        AdminGroup::query()->create(['name' => 'Root', 'flags' => 'admin.root', 'immunity' => 100]);
+        AdminGroup::query()->create(['name' => 'Mod', 'flags' => 'kick,mute', 'immunity' => 10]);
+        AdminGroup::query()->create(['name' => 'Empty', 'flags' => '', 'immunity' => 0]);
+
+        AdminAdmin::query()->create(['steamid' => 1, 'name' => 'A', 'groups' => 'Root,Mod', 'flags' => '', 'immunity' => 0, 'expires_at' => null]);
+        AdminAdmin::query()->create(['steamid' => 2, 'name' => 'B', 'groups' => 'Mod', 'flags' => '', 'immunity' => 0, 'expires_at' => null]);
+        AdminAdmin::query()->create(['steamid' => 3, 'name' => 'C', 'groups' => null, 'flags' => '', 'immunity' => 0, 'expires_at' => null]);
+
+        $response = $this->actingAs(User::factory()->owner()->create())
+            ->getJson('/api/admin/groups')
+            ->assertOk();
+
+        $byName = collect($response->json('data'))->keyBy('name');
+        $this->assertSame(1, $byName['Root']['member_count']);
+        $this->assertSame(2, $byName['Mod']['member_count']);
+        $this->assertSame(0, $byName['Empty']['member_count']);
+    }
+
     public function test_store_creates_admin_and_normalizes_csv(): void
     {
         Event::fake([AdminCreated::class]);
 
+        // flags/groups are arrays on the wire (each flag validated against
+        // AdminController::FLAGS) - a plain CSV string used to be accepted
+        // here, before that whitelist validation existed.
         $this->actingAs(User::factory()->owner()->create())
             ->postJson('/api/admin', [
                 'steamid' => 'STEAM_0:0:123456',
                 'name' => 'New Admin',
-                'flags' => 'ban, unban',
-                'groups' => 'mod',
+                'flags' => ['admin.ban', 'admin.mute'],
+                'groups' => ['mod'],
                 'immunity' => 50,
             ])
             ->assertOk()
-            ->assertJsonPath('data.steamid', 76561197960512640)
-            ->assertJsonPath('data.flags', 'ban,unban')
+            ->assertJsonPath('data.steamid', '76561197960512640')
+            ->assertJsonPath('data.flags', 'admin.ban,admin.mute')
             ->assertJsonPath('data.groups', 'mod');
 
         Event::assertDispatched(AdminCreated::class);
@@ -178,7 +210,7 @@ class AdminTest extends TestCase
                 'name' => 'Steam3 Admin',
             ])
             ->assertOk()
-            ->assertJsonPath('data.steamid', 76561197960389184);
+            ->assertJsonPath('data.steamid', '76561197960389184');
     }
 
     public function test_store_rejects_invalid_steamid(): void
@@ -216,10 +248,10 @@ class AdminTest extends TestCase
         ]);
 
         $this->actingAs(User::factory()->owner()->create())
-            ->putJson('/api/admin/'.$admin->id, ['name' => 'New Name', 'flags' => 'ban,unban', 'immunity' => 90])
+            ->putJson('/api/admin/'.$admin->id, ['name' => 'New Name', 'flags' => ['admin.ban', 'admin.mute'], 'immunity' => 90])
             ->assertOk()
             ->assertJsonPath('data.name', 'New Name')
-            ->assertJsonPath('data.flags', 'ban,unban')
+            ->assertJsonPath('data.flags', 'admin.ban,admin.mute')
             ->assertJsonPath('data.immunity', 90);
 
         Event::assertDispatched(AdminUpdated::class);
@@ -277,7 +309,7 @@ class AdminTest extends TestCase
     public function test_create_invalidates_flags_cache(): void
     {
         $this->actingAs(User::factory()->owner()->create())
-            ->postJson('/api/admin', ['steamid' => (string) self::STEAM64, 'name' => 'Cached', 'flags' => 'admin.root'])
+            ->postJson('/api/admin', ['steamid' => (string) self::STEAM64, 'name' => 'Cached', 'flags' => ['admin.root']])
             ->assertOk();
 
         $this->assertTrue(\App\Support\Flags::hasFlag(self::STEAM64, 'admin.root'));

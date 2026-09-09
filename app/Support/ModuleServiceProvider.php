@@ -56,7 +56,17 @@ abstract class ModuleServiceProvider extends ServiceProvider
             return;
         }
 
-        $this->checkDependencies();
+        // Fail closed: a module whose dependency is off does not get its
+        // routes or its boot hook. Reporting and carrying on regardless
+        // meant a module ran against a dependency that was not there -
+        // Health, for instance, is declared as depending on Rcon and calls
+        // into it, so booting it with Rcon disabled turns a configuration
+        // mistake into runtime errors on a background schedule where nobody
+        // sees them. Missing endpoints are the same failure the operator
+        // already asked for by disabling the dependency.
+        if (! $this->dependenciesSatisfied()) {
+            return;
+        }
 
         // Module routes always run inside the "api" middleware group so the
         // global security layer (SecurityHeaders, StripHtmlComments,
@@ -78,16 +88,26 @@ abstract class ModuleServiceProvider extends ServiceProvider
         return app_path('Modules/'.Str::studly($this->moduleKey()));
     }
 
-    protected function checkDependencies(): void
+    /**
+     * Whether every module this one declares a dependency on is enabled.
+     * Still reports each miss, so the reason a module went quiet is in the
+     * log rather than left for someone to infer from a 404.
+     */
+    protected function dependenciesSatisfied(): bool
     {
         $module = config("modules.modules.{$this->moduleKey()}", []);
+        $satisfied = true;
 
         foreach ($module['depends'] ?? [] as $dependency) {
             if (! app(ModuleRegistry::class)->isEnabled($dependency)) {
                 report(new \RuntimeException(
-                    "Module [{$this->moduleKey()}] requires module [{$dependency}] to be enabled."
+                    "Module [{$this->moduleKey()}] requires module [{$dependency}] to be enabled; it stays disabled."
                 ));
+
+                $satisfied = false;
             }
         }
+
+        return $satisfied;
     }
 }

@@ -140,17 +140,39 @@ class AdminService implements AdminManagerInterface
     {
         $groups = AdminGroup::query()->orderBy('name')->get();
 
-        // One count query for every group's membership rather than N+1 - a
-        // FIND_IN_SET per group against the (typically small) admin table.
-        $counts = $groups->mapWithKeys(function (AdminGroup $g): array {
-            return [$g->name => AdminAdmin::query()->whereRaw('FIND_IN_SET(?, groups)', [$g->name])->count()];
-        });
+        // One query for every admin's own `groups` column, tallied here in
+        // PHP - not one FIND_IN_SET count query per group. The comment this
+        // replaced already claimed "not N+1", but mapWithKeys() still ran
+        // its callback (and so the query inside it) once per group; with
+        // enough groups configured this was the exact N+1 it described
+        // avoiding. groups is a CSV column an admin can hold several of at
+        // once, so a single GROUP BY cannot tally it - exploding each row
+        // once here is the actual one-query equivalent.
+        $counts = [];
+
+        foreach (AdminAdmin::query()->pluck('groups') as $csv) {
+            foreach (self::explodeGroups($csv) as $name) {
+                $counts[$name] = ($counts[$name] ?? 0) + 1;
+            }
+        }
 
         return $groups->map(function (AdminGroup $g) use ($counts): array {
             $g->setAttribute('member_count', $counts[$g->name] ?? 0);
 
             return $g->toArray();
         });
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private static function explodeGroups(?string $value): array
+    {
+        if ($value === null || trim($value) === '') {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('trim', explode(',', $value)), fn (string $v): bool => $v !== ''));
     }
 
     /**

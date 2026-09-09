@@ -85,6 +85,23 @@ class AuthTest extends TestCase
         $this->assertDatabaseHas('users', ['steam_id' => self::STEAM64, 'is_owner' => true]);
     }
 
+    public function test_callback_revokes_ownership_when_owner_steam_id_no_longer_matches(): void
+    {
+        // Simulates an ownership transfer: this user was the owner under a
+        // previous OWNER_STEAM_ID, which has since been repointed elsewhere.
+        // Their next login must lose the flag, not keep it forever.
+        $formerOwner = User::factory()->create(['steam_id' => self::STEAM64, 'is_owner' => true]);
+        config()->set('app.owner_steam_id', '76561197960287930');
+
+        $this->fakeProvider();
+
+        $this->getJson('/api/auth/callback')
+            ->assertOk()
+            ->assertJsonPath('data.is_owner', false);
+
+        $this->assertFalse($formerOwner->fresh()->is_owner);
+    }
+
     public function test_callback_updates_existing_user(): void
     {
         $existing = User::factory()->create(['steam_id' => self::STEAM64, 'name' => 'Old Name']);

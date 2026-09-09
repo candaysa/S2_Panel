@@ -33,8 +33,14 @@ class BanService
         'warn' => AdminWarn::class,
     ];
 
-    /** Columns a caller may sort by. Anything else falls back to 'id'. */
-    private const SORTABLE = ['id', 'target_name', 'admin_name', 'created_at', 'expires_at'];
+    /**
+     * Columns a caller may sort by. Anything else falls back to 'id'.
+     *
+     * target_name is ban-only (see the search block below for why), so it
+     * is added per-type rather than listed here - sorting mutes/gags/warns
+     * by it would otherwise be a hard SQL error, not an empty result.
+     */
+    private const SORTABLE = ['id', 'admin_name', 'created_at', 'expires_at'];
 
     public static function types(): array
     {
@@ -92,7 +98,8 @@ class BanService
             $query->active();
         }
 
-        $column = in_array($sort, self::SORTABLE, true) ? $sort : 'id';
+        $sortable = $type === 'ban' ? [...self::SORTABLE, 'target_name'] : self::SORTABLE;
+        $column = in_array($sort, $sortable, true) ? $sort : 'id';
         $dir = $dir === 'asc' ? 'asc' : 'desc';
 
         $paginator = $query->orderBy($column, $dir)->paginate($perPage);

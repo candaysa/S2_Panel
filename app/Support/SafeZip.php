@@ -14,6 +14,27 @@ use ZipArchive;
  */
 final class SafeZip
 {
+    /** Entries beyond this make the archive suspicious on volume alone. */
+    private const MAX_ENTRIES = 2000;
+
+    /** Total uncompressed size the whole archive may expand to. */
+    private const MAX_TOTAL_UNCOMPRESSED = 100 * 1024 * 1024;
+
+    /** Uncompressed size any single entry may claim. */
+    private const MAX_ENTRY_UNCOMPRESSED = 20 * 1024 * 1024;
+
+    /**
+     * Ratio of uncompressed to compressed size beyond which an entry is
+     * treated as a bomb rather than a legitimately compressible file (a
+     * plain-text or already-compressed asset does not get anywhere near
+     * this; a crafted all-zeros payload easily exceeds 1000:1).
+     */
+    private const MAX_COMPRESSION_RATIO = 100;
+
+    private const S_IFMT = 0170000;
+
+    private const S_IFLNK = 0120000;
+
     /**
      * Opens $path, rejects any unsafe entry, and extracts everything into
      * $destination (created if missing). Returns the ZipArchive entry count
@@ -40,15 +61,27 @@ final class SafeZip
 
     /**
      * Rejects zip-slip attempts (entries that would extract outside the
-     * target directory via ".." traversal or an absolute path) before a
-     * single byte is written to disk.
+     * target directory via ".." traversal or an absolute path), symlinks,
+     * and zip bombs (an archive whose declared uncompressed size - total or
+     * per-entry - or compression ratio is wildly out of proportion to what
+     * a genuine plugin/backup archive needs) before a single byte is
+     * written to disk.
      */
     public static function assertSafeEntries(ZipArchive $zip): void
     {
+        if ($zip->numFiles > self::MAX_ENTRIES) {
+            $zip->close();
+
+            throw new InvalidArgumentException('unsafe_zip_entry');
+        }
+
+        $totalUncompressed = 0;
+
         for ($i = 0; $i < $zip->numFiles; $i++) {
             $entry = $zip->getNameIndex($i);
+            $stat = $zip->statIndex($i);
 
-            if ($entry === false) {
+            if ($entry === false || $stat === false) {
                 continue;
             }
 
@@ -64,6 +97,42 @@ final class SafeZip
                 $zip->close();
 
                 throw new InvalidArgumentException('unsafe_zip_entry');
+            }
+
+            // PHP's ZipArchive recreates a symlink entry as an actual
+            // symlink on extract on Unix hosts (the target path lives in
+            // the entry's own file content). Unchecked, that is another
+            // route to writing outside $destination alongside plain
+            // path traversal above.
+            $externalAttr = (int) ($stat['external attr'] ?? 0);
+
+            if ((($externalAttr >> 16) & self::S_IFMT) === self::S_IFLNK) {
+                $zip->close();
+
+                throw new InvalidArgumentException('unsafe_zip_entry');
+            }
+
+            $size = (int) ($stat['size'] ?? 0);
+            $compSize = (int) ($stat['comp_size'] ?? 0);
+
+            if ($size > self::MAX_ENTRY_UNCOMPRESSED) {
+                $zip->close();
+
+                throw new InvalidArgumentException('zip_bomb_suspected');
+            }
+
+            if ($compSize > 0 && ($size / $compSize) > self::MAX_COMPRESSION_RATIO) {
+                $zip->close();
+
+                throw new InvalidArgumentException('zip_bomb_suspected');
+            }
+
+            $totalUncompressed += $size;
+
+            if ($totalUncompressed > self::MAX_TOTAL_UNCOMPRESSED) {
+                $zip->close();
+
+                throw new InvalidArgumentException('zip_bomb_suspected');
             }
         }
     }

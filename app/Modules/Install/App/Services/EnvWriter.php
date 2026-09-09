@@ -35,7 +35,13 @@ class EnvWriter
         $pattern = '/^'.preg_quote($key, '/').'=.*$/m';
 
         if (preg_match($pattern, $content)) {
-            return (string) preg_replace($pattern, $line, $content, 1);
+            // Callback, not a replacement string: preg_replace() reads $1
+            // and \1 in its replacement as backreferences, so a value that
+            // happens to contain them (a generated DB password like
+            // "a$1b" is enough) would be silently rewritten into something
+            // else on its way into .env. The callback form takes the line
+            // verbatim.
+            return (string) preg_replace_callback($pattern, fn (): string => $line, $content, 1);
         }
 
         return rtrim($content).PHP_EOL.$line.PHP_EOL;
@@ -57,8 +63,15 @@ class EnvWriter
             return '';
         }
 
-        if (preg_match('/[\s#]/', $value)) {
-            return '"'.$value.'"';
+        // A value that needs quoting has to survive being quoted: a
+        // password like  ab" cd  would otherwise close the quote early and
+        // leave the rest of the line as stray dotenv syntax, so the value
+        // read back at boot is not the one that was set. Backslash first,
+        // or it would escape the escapes added right after it.
+        if (preg_match('/["\\\\\s#]/', $value)) {
+            $escaped = str_replace(['\\', '"'], ['\\\\', '\\"'], $value);
+
+            return '"'.$escaped.'"';
         }
 
         return $value;

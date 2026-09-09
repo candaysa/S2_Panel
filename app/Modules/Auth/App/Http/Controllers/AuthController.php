@@ -94,7 +94,15 @@ class AuthController
             $user->update([
                 'name' => $socialUser->getNickname() ?: ($socialUser->getName() ?: $user->name),
                 'avatar' => $socialUser->getAvatar() ?? $user->avatar,
-                'is_owner' => $user->is_owner || $isOwner,
+                // OWNER_STEAM_ID is the single source of truth for
+                // ownership (nothing else in the app ever sets is_owner -
+                // see User::isOwner()), so this has to track it exactly on
+                // every login, not just OR it in. Previously a past owner
+                // kept the flag forever once set, even after the config was
+                // repointed at a new SteamID: the old owner's next login
+                // recomputed $isOwner as false but OR'd it against the
+                // still-true DB value and re-saved true.
+                'is_owner' => $isOwner,
             ]);
         }
 

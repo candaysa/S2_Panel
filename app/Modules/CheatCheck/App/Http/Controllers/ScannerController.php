@@ -25,6 +25,8 @@ class ScannerController extends Controller
         'invalid_token' => 404,
         'token_expired' => 410,
         'token_used' => 410,
+        'token_not_started' => 409,
+        'result_window_expired' => 410,
         'already_resolved' => 409,
         'scanner_missing' => 500,
     ];

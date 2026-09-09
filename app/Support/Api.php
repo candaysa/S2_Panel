@@ -65,6 +65,22 @@ final class Api
         return self::error($message, [], 403);
     }
 
+    /**
+     * Clamp a client-supplied ?per_page= into a usable page size.
+     *
+     * Every index endpoint capped the upper end and left the lower end
+     * open, so per_page=0 and per_page=-5 reached the paginator, which
+     * treats them as "no limit" or throws depending on the driver - a
+     * client-controlled way to ask for the whole table. Both ends are
+     * clamped here so the ten callers cannot drift apart again.
+     */
+    public static function perPage(mixed $value, int $default = 25, int $max = 100): int
+    {
+        $perPage = is_numeric($value) ? (int) $value : $default;
+
+        return max(1, min($perPage, $max));
+    }
+
     public static function unauthenticated(string $message = self::MSG_UNAUTHENTICATED): JsonResponse
     {
         return self::error($message, [], 401);

@@ -56,6 +56,30 @@ class BanTest extends TestCase
             ->assertOk();
     }
 
+    /**
+     * Each punishment type has its own URL so a mute list can be linked and
+     * bookmarked - the type used to be Alpine-only state, which meant every
+     * share of one landed the other person on Bans.
+     */
+    public function test_each_punishment_type_has_its_own_url(): void
+    {
+        $user = User::factory()->owner()->create();
+
+        foreach (['/bans' => 'ban', '/bans/mutes' => 'mute', '/bans/gags' => 'gag', '/bans/warns' => 'warn'] as $uri => $type) {
+            $this->actingAs($user)
+                ->get($uri)
+                ->assertOk()
+                ->assertSee("type: '{$type}'", false);
+        }
+    }
+
+    public function test_punishment_type_urls_require_a_session(): void
+    {
+        foreach (['/bans/mutes', '/bans/gags', '/bans/warns'] as $uri) {
+            $this->get($uri)->assertRedirect();
+        }
+    }
+
     public function test_index_is_visible_to_any_authenticated_player(): void
     {
         // Read-only community tier, same as VIP/Skins/Tickets - no
@@ -203,7 +227,11 @@ class BanTest extends TestCase
             ->getJson('/api/bans?search=76561197962734863')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.steamid', self::STEAM64);
+            // steamid is string-cast on the model (Punishment::casts()) so
+            // SteamID64 never loses precision through JS's float-backed
+            // JSON numbers - the response value is a string, not the int
+            // constant this compares against.
+            ->assertJsonPath('data.0.steamid', (string) self::STEAM64);
     }
 
     public function test_index_searches_by_steamid2_and_steamid3(): void

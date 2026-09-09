@@ -27,7 +27,7 @@ class CheatCheckController extends Controller
         $scans = $this->scans->paginate(
             $request->query('status'),
             $request->query('search'),
-            min((int) $request->query('per_page', 25), 100),
+            Api::perPage($request->query('per_page')),
         );
 
         return Api::success($scans->items(), [

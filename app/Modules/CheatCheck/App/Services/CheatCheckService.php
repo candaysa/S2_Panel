@@ -143,6 +143,28 @@ class CheatCheckService
             throw new RuntimeException('invalid_token');
         }
 
+        // The API key on this endpoint is the same shared secret baked into
+        // every scan's script, so on its own it authenticates "some scanner
+        // this panel handed out" rather than "this scan". consumed_at is set
+        // only once serveScript() has actually handed the script to
+        // whoever fetched the link - a token that was never downloaded has
+        // no business posting a result at all.
+        if ($token->consumed_at === null) {
+            throw new RuntimeException('token_not_started');
+        }
+
+        // A scanner runs in seconds to low minutes; a result arriving long
+        // after the token was consumed is far more likely to be a stale or
+        // replayed request than an honest slow run. This does not stop a
+        // player from editing the script's own request before it leaves
+        // their machine - nothing server-side can - it only closes the
+        // window for reusing a captured request later.
+        $maxAge = (int) config('cheat_check.result_window_minutes', 120);
+
+        if ($maxAge > 0 && $token->consumed_at->addMinutes($maxAge)->isPast()) {
+            throw new RuntimeException('result_window_expired');
+        }
+
         // A scan that already has a verdict must not be overwritten by the
         // scanner's own retry, so the status check runs under the same lock.
         $result = DB::transaction(function () use ($token, $payload): ?CheatScan {

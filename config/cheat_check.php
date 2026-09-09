@@ -46,6 +46,15 @@ return [
     'rate_limit_per_hour' => env('CHEAT_CHECK_RATE_LIMIT', 10),
 
     /*
+    | How long a result may arrive after its token was consumed (the script
+    | was actually fetched). A real scan reports back in seconds to low
+    | minutes; this exists to close the window on a captured/replayed
+    | result request rather than to accommodate a legitimately slow run.
+    | 0 disables the check.
+    */
+    'result_window_minutes' => env('CHEAT_CHECK_RESULT_WINDOW', 120),
+
+    /*
     | Scheme used when building the link handed to the player. Behind a
     | reverse proxy that terminates TLS, Laravel may see plain http.
     */

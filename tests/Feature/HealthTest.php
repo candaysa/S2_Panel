@@ -242,6 +242,55 @@ class HealthTest extends TestCase
         $this->assertDatabaseCount('notifications', 0);
     }
 
+    /**
+     * A server nobody ever gave the panel an RCON password for is exactly
+     * the case that silently cannot be moderated (every action from the
+     * panel goes out as a console command), and it used to be invisible
+     * here because this check only walked rcon_settings rows.
+     */
+    public function test_health_check_flags_an_online_server_with_no_rcon_password(): void
+    {
+        Event::fake([HealthAlert::class]);
+        $owner = $this->createOwner();
+
+        $id = $this->addServer(['server_ip' => '127.0.0.1', 'server_port' => 27015]);
+
+        // Seed the liveness cache ServerService reads, rather than standing
+        // up a UDP A2S responder: the fake server this suite spawns speaks
+        // RCON over TCP and would read as offline here.
+        Cache::put('server.live.127.0.0.1:27015', ['v' => ['players' => 4, 'max_players' => 10, 'map' => 'de_dust2']], 60);
+
+        $this->artisan('health:check')->assertExitCode(1);
+
+        $this->assertDatabaseHas('health_checks', [
+            'component' => 'rcon:'.$id,
+            'status' => 'down',
+            'message' => 'no rcon password configured',
+        ]);
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $owner->id,
+            'type' => 'health.alert',
+        ]);
+    }
+
+    /**
+     * An offline server without a password is not reported: it cannot
+     * answer an auth probe either way, and "your game server is down" is
+     * a different alert than "the panel cannot moderate it".
+     */
+    public function test_health_check_ignores_an_offline_server_with_no_rcon_password(): void
+    {
+        $this->createOwner();
+
+        // Nothing is listening on this port.
+        $id = $this->addServer(['server_ip' => '127.0.0.1', 'server_port' => 1]);
+
+        $this->artisan('health:check')->assertExitCode(0);
+
+        $this->assertDatabaseMissing('health_checks', ['component' => 'rcon:'.$id]);
+    }
+
     public function test_health_check_rcon_probe_wrong_password_alerts_owner(): void
     {
         Event::fake([HealthAlert::class]);

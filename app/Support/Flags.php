@@ -13,14 +13,12 @@ use Illuminate\Support\Facades\DB;
  * See App\Support\AdminPlugin\AdminManagerInterface for the equivalent
  * split on the CRUD side.
  *
- * The panel treats the plugin database as read-mostly: flags are cached for
- * 5 minutes and invalidated explicitly when the Admin module mutates an
- * admin (create/update/delete).
+ * The panel treats the plugin database as read-mostly: flags are cached
+ * (config('panel.flags_cache_ttl_seconds'), 60s by default) and invalidated
+ * explicitly when the Admin module mutates an admin (create/update/delete).
  */
 final class Flags
 {
-    private const TTL_SECONDS = 300;
-
     /**
      * Resolve the flag profile for a SteamID64.
      *
@@ -28,11 +26,34 @@ final class Flags
      */
     public static function for(int $steamId64): ?array
     {
-        return Cache::remember("flags:{$steamId64}", self::TTL_SECONDS, function () use ($steamId64): ?array {
+        $ttl = (int) config('panel.flags_cache_ttl_seconds', 60);
+
+        return Cache::remember(self::cacheKey($steamId64), $ttl, function () use ($steamId64): ?array {
             return self::usesSwiftlyAdmins()
                 ? self::forSwiftlyAdmins($steamId64)
                 : self::forCs2Admin($steamId64);
         });
+    }
+
+    /**
+     * The active admin plugin is part of the key, not just the SteamID.
+     *
+     * The two backends answer "what flags does this SteamID have" from
+     * completely different tables, so a profile cached under one is not a
+     * valid answer for the other. Keying on the SteamID alone meant that
+     * switching `admin_plugin` (Modules tab) left every already-cached
+     * profile serving the previous backend's answer until its TTL ran out -
+     * someone who was admin.root in CS2_Admin kept root for that window
+     * even though the panel was now reading the swiftly_admins tables where
+     * they have no admin row at all. Namespacing makes the switch take
+     * effect on the next request instead: the old entries are simply never
+     * read again (and expire on their own).
+     */
+    private static function cacheKey(int $steamId64): string
+    {
+        $backend = self::usesSwiftlyAdmins() ? 'swiftly_admins' : 'cs2_admin';
+
+        return "flags:{$backend}:{$steamId64}";
     }
 
     private static function usesSwiftlyAdmins(): bool
@@ -164,10 +185,15 @@ final class Flags
 
     /**
      * Drop the cached profile after Admin module mutations.
+     *
+     * Both backends' entries go, not just the active one: an admin edited
+     * while CS2_Admin is selected must not leave a stale swiftly_admins
+     * profile behind for whenever the panel is switched over.
      */
     public static function forget(int $steamId64): void
     {
-        Cache::forget("flags:{$steamId64}");
+        Cache::forget("flags:cs2_admin:{$steamId64}");
+        Cache::forget("flags:swiftly_admins:{$steamId64}");
     }
 
     /**
