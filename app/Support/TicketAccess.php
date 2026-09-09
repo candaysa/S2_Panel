@@ -17,18 +17,35 @@ use Throwable;
  * just their own. Reports and admin applications typically want different
  * groups (a generic-moderation group can triage reports; only a root-level
  * group should see admin applications) - one shared setting for every
- * category made that impossible to express. Deciding a ticket - closing a
- * report, approving or rejecting an appeal - stays fixed at admin.root
- * regardless of this setting: that action unbans a player or closes a
- * dispute, a narrower, higher-stakes capability than reading the queue.
+ * category made that impossible to express. A category can also be handed
+ * to ANY_ADMIN instead of a specific group, for a server that just wants
+ * "every admin sees this", regardless of which group they're in - Flags::
+ * for() already abstracts over both supported admin plugins (CS2_Admin's
+ * admin_admins vs the official swiftlys2-plugins/admins' own table), so
+ * this reads correctly under either without knowing which is active.
+ * Deciding a ticket - closing a report, approving or rejecting an appeal -
+ * stays fixed at admin.root regardless of this setting: that action unbans
+ * a player or closes a dispute, a narrower, higher-stakes capability than
+ * reading the queue.
  */
 final class TicketAccess
 {
     public const CATEGORIES = ['report', 'admin_application', 'ban_appeal'];
 
     /**
-     * True for the owner, or anyone belonging to the admin group configured
-     * for this ticket category. Fails closed on any error or unconfigured
+     * Sentinel stored in the ticket_staff_group_* setting instead of a real
+     * group name - "any admin, in either supported plugin, no matter which
+     * group" rather than membership in one specific group. Not a valid
+     * group name in either plugin's own schema (both key groups by their
+     * own plain display name), so it can never collide with a real one.
+     */
+    public const ANY_ADMIN = '__any_admin__';
+
+    /**
+     * True for the owner, for anyone belonging to the admin group
+     * configured for this ticket category, or - when the category is set
+     * to ANY_ADMIN - anyone who is an admin at all under whichever plugin
+     * is currently active. Fails closed on any error or unconfigured
      * category - a broken setting or an unreachable flag source must narrow
      * access, never widen it.
      */
@@ -47,7 +64,11 @@ final class TicketAccess
 
             $profile = Flags::for((int) $user->steam_id);
 
-            return $profile !== null && in_array($group, $profile['groups'], true);
+            if ($profile === null) {
+                return false;
+            }
+
+            return $group === self::ANY_ADMIN || in_array($group, $profile['groups'], true);
         } catch (Throwable) {
             return false;
         }
@@ -71,9 +92,10 @@ final class TicketAccess
     }
 
     /**
-     * The admin group name configured to staff one ticket category, or null
-     * if the category is unknown or nothing has been configured for it yet
-     * (Settings > Tickets defaults every category to "owner only").
+     * The admin group name configured to staff one ticket category - or
+     * ANY_ADMIN, or null if the category is unknown or nothing has been
+     * configured for it yet (Settings > Tickets defaults every category to
+     * "owner only").
      */
     public static function staffGroupFor(string $ticketType): ?string
     {

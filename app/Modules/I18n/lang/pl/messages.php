@@ -639,9 +639,10 @@ return [
         'design_token_ink_muted' => 'Przygaszony tekst',
         'design_token_ink_faint' => 'Blady tekst',
         'ticket_staff_title' => 'Personel obsługujący zgłoszenia',
-        'ticket_staff_subtitle' => 'Wybierz jedną grupę administratorów dla każdej kategorii - jej członkowie widzą każde zgłoszenie w tej kategorii, nie tylko własne. Zgłoszenia i podania o administratora często wymagają różnych grup (grupa moderacyjna może obsługiwać zgłoszenia; podania o administratora powinna widzieć tylko grupa najwyższego poziomu). Podjęcie decyzji w sprawie zgłoszenia (zatwierdzenie/odrzucenie) zawsze wymaga uprawnienia admin.root, niezależnie od tego ustawienia.',
+        'ticket_staff_subtitle' => 'Wybierz jedną grupę administratorów dla każdej kategorii albo przydziel ją każdemu administratorowi, niezależnie od grupy. Wybrana osoba (lub każdy admin, dla tej opcji) widzi każde zgłoszenie w tej kategorii, nie tylko własne. Zgłoszenia i podania o administratora często wymagają różnych grup (grupa moderacyjna może obsługiwać zgłoszenia; podania o administratora powinna widzieć tylko grupa najwyższego poziomu). Podjęcie decyzji w sprawie zgłoszenia (zatwierdzenie/odrzucenie) zawsze wymaga uprawnienia admin.root, niezależnie od tego ustawienia.',
         'ticket_staff_empty' => 'Nie wybrano żadnych uprawnień - tylko właściciel widzi wszystkie zgłoszenia.',
         'ticket_staff_owner_only' => 'Tylko właściciel',
+        'ticket_staff_any_admin' => 'Dowolny admin CS2',
         'ticket_staff_no_groups' => 'Nie ma jeszcze żadnych grup administratorów - utwórz jedną na stronie Grup.',
     ],
 

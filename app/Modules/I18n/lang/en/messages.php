@@ -639,9 +639,10 @@ return [
         'design_token_ink_muted' => 'Muted text',
         'design_token_ink_faint' => 'Faint text',
         'ticket_staff_title' => 'Ticket staff',
-        'ticket_staff_subtitle' => 'Pick one admin group per category - its members see every ticket in that category, not just their own. Reports and admin applications often want different groups (a moderation group can triage reports; only a root-level group should see admin applications). Deciding a ticket (approve/reject) always requires admin.root, regardless of this setting.',
+        'ticket_staff_subtitle' => 'Pick one admin group per category, or hand it to every admin regardless of group. Whoever you pick sees every ticket in that category, not just their own. Reports and admin applications often want different groups (a moderation group can triage reports; only a root-level group should see admin applications). Deciding a ticket (approve/reject) always requires admin.root, regardless of this setting.',
         'ticket_staff_empty' => 'No flags selected — only the owner sees every ticket.',
         'ticket_staff_owner_only' => 'Owner only',
+        'ticket_staff_any_admin' => 'Any CS2 admin',
         'ticket_staff_no_groups' => 'No admin groups exist yet - create one from the Groups page first.',
     ],
 

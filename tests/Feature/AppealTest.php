@@ -92,6 +92,7 @@ class AppealTest extends TestCase
 
     public function test_staff_sees_all_appeals(): void
     {
+        $this->markCategoryStaffedByAnyAdmin('ban_appeal');
         $staff = $this->createStaff(76561197960512610);
         $this->openAppeal(76561197960512640);
         $this->openAppeal(76561197960512641);
@@ -101,6 +102,18 @@ class AppealTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data')
             ->assertJsonPath('meta.visible', 'all');
+    }
+
+    /**
+     * A specific admin group is one way to staff a category - "any admin,
+     * any group" is the other, and it's what most of the tests in this
+     * file exercise by default via createStaff(), which never assigns a
+     * group.
+     */
+    private function markCategoryStaffedByAnyAdmin(string $category): void
+    {
+        app(\App\Modules\Settings\App\Services\SettingService::class)
+            ->set(\App\Support\TicketAccess::settingKey($category), \App\Support\TicketAccess::ANY_ADMIN);
     }
 
     public function test_store_requires_authentication(): void
@@ -214,6 +227,7 @@ class AppealTest extends TestCase
 
     public function test_staff_can_view_any_appeal(): void
     {
+        $this->markCategoryStaffedByAnyAdmin('ban_appeal');
         $staff = $this->createStaff(76561197960512610);
         $this->openAppeal(76561197960512640);
 

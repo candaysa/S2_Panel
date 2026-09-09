@@ -639,9 +639,10 @@ return [
         'design_token_ink_muted' => 'Texte atténué',
         'design_token_ink_faint' => 'Texte discret',
         'ticket_staff_title' => 'Équipe des tickets',
-        'ticket_staff_subtitle' => 'Choisissez un groupe admin par catégorie - ses membres voient tous les tickets de cette catégorie, pas seulement les leurs. Les signalements et les candidatures admin veulent souvent des groupes différents (un groupe de modération peut trier les signalements ; seul un groupe de niveau root devrait voir les candidatures admin). Décider d\'un ticket (approuver/rejeter) exige toujours admin.root, indépendamment de ce réglage.',
+        'ticket_staff_subtitle' => 'Choisissez un groupe admin par catégorie, ou confiez-la à tout admin sans distinction de groupe. Les personnes choisies voient tous les tickets de cette catégorie, pas seulement les leurs. Les signalements et les candidatures admin veulent souvent des groupes différents (un groupe de modération peut trier les signalements ; seul un groupe de niveau root devrait voir les candidatures admin). Décider d\'un ticket (approuver/rejeter) exige toujours admin.root, indépendamment de ce réglage.',
         'ticket_staff_empty' => 'Aucun drapeau sélectionné - seul le propriétaire voit tous les tickets.',
         'ticket_staff_owner_only' => 'Propriétaire uniquement',
+        'ticket_staff_any_admin' => 'Tout admin CS2',
         'ticket_staff_no_groups' => 'Aucun groupe admin n\'existe encore - créez-en un depuis la page Groupes d\'abord.',
     ],
 

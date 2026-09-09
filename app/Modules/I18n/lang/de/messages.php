@@ -639,9 +639,10 @@ return [
         'design_token_ink_muted' => 'Gedämpfter Text',
         'design_token_ink_faint' => 'Schwacher Text',
         'ticket_staff_title' => 'Ticket-Personal',
-        'ticket_staff_subtitle' => 'Wähle pro Kategorie eine Admin-Gruppe - ihre Mitglieder sehen jedes Ticket in dieser Kategorie, nicht nur ihre eigenen. Meldungen und Admin-Bewerbungen brauchen oft unterschiedliche Gruppen (eine Moderations-Gruppe kann Meldungen sichten; nur eine Gruppe auf Root-Ebene sollte Admin-Bewerbungen sehen). Eine Entscheidung (annehmen/ablehnen) erfordert unabhängig von dieser Einstellung immer admin.root.',
+        'ticket_staff_subtitle' => 'Wähle pro Kategorie eine Admin-Gruppe, oder gib sie an jeden Admin unabhängig von der Gruppe. Wer auch gewählt ist, sieht jedes Ticket in dieser Kategorie, nicht nur die eigenen. Meldungen und Admin-Bewerbungen brauchen oft unterschiedliche Gruppen (eine Moderations-Gruppe kann Meldungen sichten; nur eine Gruppe auf Root-Ebene sollte Admin-Bewerbungen sehen). Eine Entscheidung (annehmen/ablehnen) erfordert unabhängig von dieser Einstellung immer admin.root.',
         'ticket_staff_empty' => 'Kein Flag ausgewählt - nur der Inhaber sieht alle Tickets.',
         'ticket_staff_owner_only' => 'Nur Inhaber',
+        'ticket_staff_any_admin' => 'Jeder CS2-Admin',
         'ticket_staff_no_groups' => 'Es gibt noch keine Admin-Gruppen - erstelle zuerst eine auf der Gruppen-Seite.',
     ],
 

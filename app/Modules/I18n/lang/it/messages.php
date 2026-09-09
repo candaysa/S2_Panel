@@ -639,9 +639,10 @@ return [
         'design_token_ink_muted' => 'Testo attenuato',
         'design_token_ink_faint' => 'Testo tenue',
         'ticket_staff_title' => 'Staff ticket',
-        'ticket_staff_subtitle' => 'Scegli un gruppo admin per categoria - i suoi membri vedono tutti i ticket di quella categoria, non solo i propri. Segnalazioni e candidature admin spesso richiedono gruppi diversi (un gruppo di moderazione può gestire le segnalazioni; solo un gruppo di livello root dovrebbe vedere le candidature admin). Decidere un ticket (approvare/rifiutare) richiede sempre admin.root, indipendentemente da questa impostazione.',
+        'ticket_staff_subtitle' => 'Scegli un gruppo admin per categoria, oppure assegnala a qualsiasi admin indipendentemente dal gruppo. Chi scegli vede tutti i ticket di quella categoria, non solo i propri. Segnalazioni e candidature admin spesso richiedono gruppi diversi (un gruppo di moderazione può gestire le segnalazioni; solo un gruppo di livello root dovrebbe vedere le candidature admin). Decidere un ticket (approvare/rifiutare) richiede sempre admin.root, indipendentemente da questa impostazione.',
         'ticket_staff_empty' => 'Nessun flag selezionato — solo il proprietario vede tutti i ticket.',
         'ticket_staff_owner_only' => 'Solo proprietario',
+        'ticket_staff_any_admin' => 'Qualsiasi admin CS2',
         'ticket_staff_no_groups' => 'Non esiste ancora nessun gruppo admin - creane uno dalla pagina Gruppi prima.',
     ],
 

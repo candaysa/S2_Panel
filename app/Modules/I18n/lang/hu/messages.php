@@ -639,9 +639,10 @@ return [
         'design_token_ink_muted' => 'Tompított szöveg',
         'design_token_ink_faint' => 'Halvány szöveg',
         'ticket_staff_title' => 'Jegykezelő személyzet',
-        'ticket_staff_subtitle' => 'Válassz egy admincsoportot kategóriánként - tagjai látják az adott kategória minden jegyét, nem csak a sajátjukat. A bejelentéseknél és az adminjelentkezéseknél gyakran más csoportokat érdemes választani (egy moderációs csoport szűrheti a bejelentéseket; adminjelentkezéseket csak egy legfelső szintű csoport láthasson). Egy jegyről dönteni (jóváhagyás/elutasítás) mindig admin.root jogosultságot igényel, függetlenül ettől a beállítástól.',
+        'ticket_staff_subtitle' => 'Válassz egy admincsoportot kategóriánként, vagy add bármelyik adminnak, csoporttól függetlenül. Akit kiválasztasz, az látja az adott kategória minden jegyét, nem csak a sajátját. A bejelentéseknél és az adminjelentkezéseknél gyakran más csoportokat érdemes választani (egy moderációs csoport szűrheti a bejelentéseket; adminjelentkezéseket csak egy legfelső szintű csoport láthasson). Egy jegyről dönteni (jóváhagyás/elutasítás) mindig admin.root jogosultságot igényel, függetlenül ettől a beállítástól.',
         'ticket_staff_empty' => 'Nincs kiválasztott jogosultság - csak a tulajdonos látja az összes jegyet.',
         'ticket_staff_owner_only' => 'Csak a tulajdonos',
+        'ticket_staff_any_admin' => 'Bármelyik CS2-admin',
         'ticket_staff_no_groups' => 'Még nincs admincsoport - hozz létre egyet a Csoportok oldalon.',
     ],
 

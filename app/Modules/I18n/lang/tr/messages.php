@@ -639,9 +639,10 @@ return [
         'design_token_ink_muted' => 'Soluk metin',
         'design_token_ink_faint' => 'Çok soluk metin',
         'ticket_staff_title' => 'Talep yetkilileri',
-        'ticket_staff_subtitle' => 'Her kategori için bir admin grubu seçin - o grubun üyeleri, sadece kendi taleplerini değil o kategorideki tüm talepleri görür. Raporlar ile yönetici başvuruları genelde farklı gruplar ister (bir moderasyon grubu raporları elleyebilir; yönetici başvurularını sadece root seviyesindeki bir grup görmeli). Bir talebe karar vermek (onay/red) bu ayardan bağımsız olarak her zaman admin.root gerektirir.',
+        'ticket_staff_subtitle' => 'Her kategori için bir admin grubu seçin, ya da grup farketmeksizin her admine verin. Seçtiğiniz (bu seçenekte tüm adminler), sadece kendi taleplerini değil o kategorideki tüm talepleri görür. Raporlar ile yönetici başvuruları genelde farklı gruplar ister (bir moderasyon grubu raporları elleyebilir; yönetici başvurularını sadece root seviyesindeki bir grup görmeli). Bir talebe karar vermek (onay/red) bu ayardan bağımsız olarak her zaman admin.root gerektirir.',
         'ticket_staff_empty' => 'Hiçbir bayrak seçilmedi — tüm talepleri yalnızca sahip görür.',
         'ticket_staff_owner_only' => 'Sadece sahip',
+        'ticket_staff_any_admin' => 'Herhangi bir CS2 admini',
         'ticket_staff_no_groups' => 'Henüz admin grubu yok - önce Gruplar sayfasından bir tane oluşturun.',
     ],
 

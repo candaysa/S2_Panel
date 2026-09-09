@@ -22,6 +22,7 @@
                                 class="w-full appearance-none rounded-lg border border-line bg-surface py-2 pl-3 pr-9 text-sm text-ink focus:border-brand-strong focus:outline-none"
                             >
                                 <option value="">{{ __('i18n::messages.settings.ticket_staff_owner_only') }}</option>
+                                <option value="{{ \App\Support\TicketAccess::ANY_ADMIN }}">{{ __('i18n::messages.settings.ticket_staff_any_admin') }}</option>
                                 <template x-for="group in groups" :key="group.name">
                                     <option :value="group.name" x-text="group.name"></option>
                                 </template>
