@@ -13,6 +13,7 @@ use App\Modules\Server\App\Services\ServerService;
 use App\Support\Api;
 use App\Support\Flags;
 use App\Support\ModuleRegistry;
+use App\Support\SteamId;
 use App\Support\SteamProfiles;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -120,6 +121,11 @@ class DashboardController extends Controller
             ->map(fn (RankPlayer $p): array => array_merge($p->toArray(), [
                 'rank_tier' => $this->rankCatalog->tierFor((int) $p->value),
                 'avatar' => $profiles[$p->steam]['avatar'] ?? null,
+                // Same reasoning as RankService::steam64() - the profile
+                // link needs a percent-encoding-proof id. This widget builds
+                // its own row shape rather than reusing RankService, so it
+                // needs its own copy of this rather than getting it for free.
+                'steam64' => SteamId::isValid($p->steam) ? SteamId::parse($p->steam)->steamId64() : null,
             ]))
             ->all();
     }

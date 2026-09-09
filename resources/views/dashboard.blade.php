@@ -107,8 +107,11 @@
                         <tr class="border-b border-line-soft text-xs uppercase tracking-wider text-ink-faint">
                             <th class="w-12 py-2.5 pl-5 pr-2 font-medium">#</th>
                             <th class="px-3 py-2.5 font-medium">{{ __('i18n::messages.dashboard.player') }}</th>
-                            <th class="hidden px-3 py-2.5 font-medium sm:table-cell">{{ __('i18n::messages.ranks.rank') }}</th>
-                            <th class="px-3 py-2.5 text-right font-medium">{{ __('i18n::messages.dashboard.points') }}</th>
+                            {{-- Fixed rank width for the same reason as the
+                                 Ranks table: left to stretch it pushed Points
+                                 far off to the right. --}}
+                            <th class="hidden px-3 py-2.5 font-medium sm:table-cell" style="width:110px">{{ __('i18n::messages.ranks.rank') }}</th>
+                            <th class="px-3 py-2.5 text-left font-medium">{{ __('i18n::messages.dashboard.points') }}</th>
                             <th class="hidden px-3 py-2.5 text-right font-medium md:table-cell">{{ __('i18n::messages.dashboard.kills') }}</th>
                             <th class="hidden px-3 py-2.5 text-right font-medium md:table-cell">{{ __('i18n::messages.ranks.time_on_server') }}</th>
                             <th class="py-2.5 pl-3 pr-5 text-right font-medium">{{ __('i18n::messages.dashboard.kd') }}</th>
@@ -127,7 +130,7 @@
                                     ></span>
                                 </td>
                                 <td class="px-3 py-2.5">
-                                    <a :href="'/players/' + encodeURIComponent(player.steam)" class="flex items-center gap-2.5">
+                                    <a :href="'/players/' + (player.steam64 ?? encodeURIComponent(player.steam))" class="flex items-center gap-2.5">
                                         <img
                                             x-show="player.avatar"
                                             :src="player.avatar"
@@ -145,7 +148,7 @@
                                 <td class="hidden px-3 py-2.5 sm:table-cell">
                                     <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" />
                                 </td>
-                                <td class="px-3 py-2.5 text-right"><x-premier-badge points="player.value" size="sm" /></td>
+                                <td class="px-3 py-2.5 text-left"><x-premier-badge points="player.value" size="sm" /></td>
                                 <td class="hidden px-3 py-2.5 text-right tabular-nums md:table-cell" x-text="stat(player.kills)"></td>
                                 <td class="hidden px-3 py-2.5 text-right tabular-nums md:table-cell" x-text="playtime(player.playtime)"></td>
                                 <td class="py-2.5 pl-3 pr-5 text-right">

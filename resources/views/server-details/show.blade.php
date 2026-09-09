@@ -89,7 +89,7 @@
                                              link, same as the rest of the row. --}}
                                         <a
                                             x-show="player.steam"
-                                            :href="'/players/' + encodeURIComponent(player.steam)"
+                                            :href="'/players/' + (player.steam64 ?? encodeURIComponent(player.steam))"
                                             class="text-ink transition-colors hover:text-brand-strong"
                                             x-text="player.name || t.unnamed"
                                         ></a>

@@ -42,7 +42,13 @@
                     <tr>
                         <th class="px-4 py-3">{{ __('i18n::messages.ranks.position') }}</th>
                         <th class="px-4 py-3"><x-sort-th key="name" :label="__('i18n::messages.ranks.player')" /></th>
-                        <th class="px-4 py-3">{{ __('i18n::messages.ranks.rank') }}</th>
+                        {{-- Fixed width (inline, not an arbitrary Tailwind
+                             class - the deploy path runs no frontend build,
+                             so a class Tailwind has not already emitted does
+                             nothing). Without it this column stretched to
+                             whatever the table had spare and left a ~200px
+                             gap before Points. --}}
+                        <th class="px-4 py-3" style="width:110px">{{ __('i18n::messages.ranks.rank') }}</th>
                         <th class="px-4 py-3"><x-sort-th key="value" :label="__('i18n::messages.ranks.points')" /></th>
                         <th class="px-4 py-3"><x-sort-th key="kills" :label="__('i18n::messages.ranks.kills')" /></th>
                         <th class="px-4 py-3"><x-sort-th key="playtime" :label="__('i18n::messages.ranks.time_on_server')" /></th>
@@ -61,7 +67,7 @@
                                 ></span>
                             </td>
                             <td class="px-4 py-3">
-                                <a :href="'/players/' + encodeURIComponent(player.steam)" class="flex items-center gap-2.5">
+                                <a :href="'/players/' + (player.steam64 ?? encodeURIComponent(player.steam))" class="flex items-center gap-2.5">
                                     <img x-show="player.avatar" :src="player.avatar" alt="" loading="lazy" class="size-9 shrink-0 rounded-full object-cover ring-1 ring-line">
                                     <span x-show="!player.avatar" class="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold text-ink-faint" x-text="(player.name ?? '?').charAt(0).toUpperCase()"></span>
                                     <span class="min-w-0">
@@ -71,7 +77,7 @@
                                 </a>
                             </td>
                             <td class="px-4 py-3">
-                                <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" show-label />
+                                <x-rank-badge rank="player.rank_tier" label="rankLabel(player)" />
                             </td>
                             <td class="px-4 py-3">
                                 <template x-if="editing !== player.steam">
@@ -109,7 +115,7 @@
         {{-- Mobile cards --}}
         <div class="mt-4 space-y-2 md:hidden">
             <template x-for="player in players" :key="player.steam">
-                <a :href="'/players/' + encodeURIComponent(player.steam)" class="block rounded-xl border border-line bg-surface p-4">
+                <a :href="'/players/' + (player.steam64 ?? encodeURIComponent(player.steam))" class="block rounded-xl border border-line bg-surface p-4">
                     <div class="flex items-center gap-3">
                         <span
                             class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ring-1 ring-inset"
