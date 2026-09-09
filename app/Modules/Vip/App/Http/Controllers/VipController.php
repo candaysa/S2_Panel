@@ -28,7 +28,7 @@ class VipController
     {
         $search = $request->query('search');
         $serverId = $request->query('server_id');
-        $perPage = min((int) $request->query('per_page', 25), 100);
+        $perPage = Api::perPage($request->query('per_page'));
 
         $users = $this->vip->listUsers(
             $serverId !== null ? (int) $serverId : null,

@@ -84,6 +84,7 @@ class RankService
             $p->setAttribute('rank_tier', $this->tier($p));
             $p->setAttribute('avatar', $profiles[$p->steam]['avatar'] ?? null);
             $p->setAttribute('profile_url', $profiles[$p->steam]['profile_url'] ?? null);
+            $p->setAttribute('steam64', $this->steam64($p->steam));
         });
 
         return $players;
@@ -125,13 +126,37 @@ class RankService
         $profile = SteamProfiles::many([$steam])[$steam] ?? null;
         $player->setAttribute('avatar', $profile['avatar'] ?? null);
         $player->setAttribute('profile_url', $profile['profile_url'] ?? null);
+        $player->setAttribute('steam64', $this->steam64($player->steam));
 
         return [
             'player' => $player,
             'hits' => RankHit::query()->where('SteamID', $steam)->first(),
             'weapons' => $this->weaponsFor($steam),
             'ranks_ladder' => $this->catalog->thresholds(),
+            // VAC/game-ban status and account age - public Steam data (the
+            // same thing Steam's own profile page shows anyone), not
+            // moderation data, so it belongs on this public endpoint rather
+            // than behind PlayerActivityService's staff-only gate.
+            'steam' => SteamProfiles::enrichmentFor($steam),
         ];
+    }
+
+    /**
+     * SteamID64 for a plugin row's STEAM_0:x:y key.
+     *
+     * Every profile link is built from this rather than the raw plugin key:
+     * a STEAM_0:1:123 in a URL has to be percent-encoded (the colons), and
+     * anything that re-encodes or trims it - a chat client, a redirect, a
+     * copy-paste - breaks the link. A SteamID64 is digits only and survives
+     * all of that. The route still accepts either form.
+     */
+    private function steam64(?string $steam): ?string
+    {
+        if ($steam === null || ! SteamId::isValid($steam)) {
+            return null;
+        }
+
+        return SteamId::parse($steam)->steamId64();
     }
 
     /**

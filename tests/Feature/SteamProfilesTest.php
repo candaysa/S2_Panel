@@ -82,4 +82,76 @@ class SteamProfilesTest extends TestCase
 
         Http::assertSentCount(1);
     }
+
+    public function test_enrichment_reports_vac_and_game_bans(): void
+    {
+        Http::fake([
+            '*GetPlayerSummaries*' => Http::response([
+                'response' => ['players' => [
+                    ['steamid' => self::KNOWN64, 'timecreated' => 1000000000],
+                ]],
+            ], 200),
+            '*GetPlayerBans*' => Http::response([
+                'players' => [
+                    [
+                        'SteamId' => self::KNOWN64,
+                        'VACBanned' => true,
+                        'NumberOfGameBans' => 2,
+                        'CommunityBanned' => false,
+                        'DaysSinceLastBan' => 30,
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $enrichment = SteamProfiles::enrichmentFor(self::KNOWN64);
+
+        $this->assertSame(1000000000, $enrichment['account_created_at']);
+        $this->assertTrue($enrichment['vac_banned']);
+        $this->assertSame(2, $enrichment['game_bans']);
+        $this->assertFalse($enrichment['community_banned']);
+        $this->assertSame(30, $enrichment['days_since_last_ban']);
+    }
+
+    public function test_enrichment_has_no_days_since_last_ban_when_never_banned(): void
+    {
+        Http::fake([
+            '*GetPlayerSummaries*' => Http::response(['response' => ['players' => []]], 200),
+            '*GetPlayerBans*' => Http::response([
+                'players' => [
+                    ['SteamId' => self::KNOWN64, 'VACBanned' => false, 'NumberOfGameBans' => 0, 'CommunityBanned' => false, 'DaysSinceLastBan' => 0],
+                ],
+            ], 200),
+        ]);
+
+        $enrichment = SteamProfiles::enrichmentFor(self::KNOWN64);
+
+        $this->assertFalse($enrichment['vac_banned']);
+        $this->assertNull($enrichment['days_since_last_ban']);
+    }
+
+    public function test_enrichment_degrades_when_steam_is_unreachable(): void
+    {
+        Http::fake(fn () => throw new \Illuminate\Http\Client\ConnectionException('down'));
+
+        $enrichment = SteamProfiles::enrichmentFor(self::KNOWN64);
+
+        $this->assertFalse($enrichment['vac_banned']);
+        $this->assertNull($enrichment['account_created_at']);
+    }
+
+    public function test_enrichment_is_cached(): void
+    {
+        Http::fake([
+            '*GetPlayerSummaries*' => Http::response(['response' => ['players' => []]], 200),
+            '*GetPlayerBans*' => Http::response(['players' => [
+                ['SteamId' => self::KNOWN64, 'VACBanned' => false, 'NumberOfGameBans' => 0],
+            ]], 200),
+        ]);
+
+        SteamProfiles::enrichmentFor(self::KNOWN64);
+        SteamProfiles::enrichmentFor(self::KNOWN64);
+
+        Http::assertSentCount(2); // one summaries + one bans call, not four
+    }
 }

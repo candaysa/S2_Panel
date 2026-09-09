@@ -49,6 +49,30 @@ trait CreatesPluginTables
     }
 
     /**
+     * The other admin backend the panel can be pointed at: the official
+     * swiftlys2-plugins/admins schema (PascalCase columns, JSON arrays
+     * instead of CSV, no expires_at). See Flags::forSwiftlyAdmins().
+     */
+    protected function createSwiftlyAdminsTables(): void
+    {
+        Schema::connection('swiftly')->create('admins', function ($table): void {
+            $table->increments('id');
+            $table->bigInteger('SteamId64');
+            $table->string('Name', 64)->nullable();
+            $table->text('Permissions')->nullable();
+            $table->text('Groups')->nullable();
+            $table->integer('Immunity')->default(0);
+        });
+
+        Schema::connection('swiftly')->create('groups', function ($table): void {
+            $table->increments('id');
+            $table->string('Name', 64);
+            $table->text('Permissions')->nullable();
+            $table->integer('Immunity')->default(0);
+        });
+    }
+
+    /**
      * Swiftly ban/mute/gag/warn tables (subset used by the Ban module).
      */
     protected function createSwiftlyPunishmentTables(): void

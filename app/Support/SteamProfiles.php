@@ -142,6 +142,96 @@ final class SteamProfiles
         return $out;
     }
 
+    private const BANS_ENDPOINT = 'https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/';
+
+    private const EMPTY_ENRICHMENT = [
+        'account_created_at' => null,
+        'vac_banned' => false,
+        'game_bans' => 0,
+        'community_banned' => false,
+        'days_since_last_ban' => null,
+    ];
+
+    /**
+     * Richer, single-player detail for a profile page - not part of many()
+     * above, which stays a pure avatar/name bulk-fetch (a leaderboard row
+     * has no use for this, and GetPlayerBans is a second API call per
+     * lookup that a list of 50 players should never pay for). VAC/game-ban
+     * status and account age are public Steam data - the same thing
+     * Steam's own profile page shows anyone - not moderation data, so this
+     * is meant to sit on the public player profile response, not a
+     * staff-gated one.
+     *
+     * @return array{account_created_at: ?int, vac_banned: bool, game_bans: int, community_banned: bool, days_since_last_ban: ?int}
+     */
+    public static function enrichmentFor(string $steamId): array
+    {
+        if (! SteamId::isValid($steamId) || ! self::configured()) {
+            return self::EMPTY_ENRICHMENT;
+        }
+
+        $id64 = SteamId::parse($steamId)->steamId64();
+        $cacheKey = 'steam.enrichment.'.$id64;
+        $cached = Cache::get($cacheKey);
+
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $enrichment = self::fetchEnrichment($id64);
+        Cache::put($cacheKey, $enrichment, now()->addHours(self::CACHE_HOURS));
+
+        return $enrichment;
+    }
+
+    /**
+     * @return array{account_created_at: ?int, vac_banned: bool, game_bans: int, community_banned: bool, days_since_last_ban: ?int}
+     */
+    private static function fetchEnrichment(string $id64): array
+    {
+        $created = null;
+
+        try {
+            $summary = Http::timeout(5)->retry(1, 200)->get(self::ENDPOINT, [
+                'key' => config('services.steam.api_key'),
+                'steamids' => $id64,
+            ]);
+
+            if ($summary->successful()) {
+                $created = $summary->json('response.players.0.timecreated');
+            }
+        } catch (Throwable) {
+            // Falls through with $created = null - the ban lookup below is
+            // independent and still worth attempting.
+        }
+
+        try {
+            $bans = Http::timeout(5)->retry(1, 200)->get(self::BANS_ENDPOINT, [
+                'key' => config('services.steam.api_key'),
+                'steamids' => $id64,
+            ]);
+
+            if (! $bans->successful()) {
+                return [...self::EMPTY_ENRICHMENT, 'account_created_at' => $created];
+            }
+
+            $row = $bans->json('players.0') ?? [];
+        } catch (Throwable) {
+            return [...self::EMPTY_ENRICHMENT, 'account_created_at' => $created];
+        }
+
+        $daysSinceLastBan = (int) ($row['DaysSinceLastBan'] ?? 0);
+        $everBanned = ($row['VACBanned'] ?? false) || (int) ($row['NumberOfGameBans'] ?? 0) > 0;
+
+        return [
+            'account_created_at' => $created,
+            'vac_banned' => (bool) ($row['VACBanned'] ?? false),
+            'game_bans' => (int) ($row['NumberOfGameBans'] ?? 0),
+            'community_banned' => (bool) ($row['CommunityBanned'] ?? false),
+            'days_since_last_ban' => $everBanned ? $daysSinceLastBan : null,
+        ];
+    }
+
     private static function key(string $id64): string
     {
         return 'steam.profile.'.$id64;

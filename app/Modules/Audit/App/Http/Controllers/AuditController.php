@@ -46,7 +46,7 @@ class AuditController
             $query->where('created_at', '<=', (string) $to);
         }
 
-        $perPage = min((int) $request->query('per_page', 25), self::MAX_PER_PAGE);
+        $perPage = Api::perPage($request->query('per_page'), 25, self::MAX_PER_PAGE);
         $sort = in_array((string) $request->query('sort'), self::SORTABLE, true)
             ? (string) $request->query('sort')
             : 'created_at';

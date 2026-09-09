@@ -39,7 +39,7 @@ class AppealController extends Controller
             ->when(! $staff, fn ($q) => $q->where('steamid', (int) $user->steam_id))
             ->latest('id');
 
-        $perPage = min((int) $request->query('per_page', 25), 100);
+        $perPage = Api::perPage($request->query('per_page'));
 
         $appeals = $query->paginate($perPage);
 

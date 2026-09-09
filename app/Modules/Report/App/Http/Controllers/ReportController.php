@@ -33,7 +33,7 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        $perPage = min((int) $request->query('per_page', 25), 100);
+        $perPage = Api::perPage($request->query('per_page'));
         $ticketType = $request->query('ticket_type');
         $ticketType = in_array($ticketType, ['report', 'admin_application'], true) ? (string) $ticketType : null;
 

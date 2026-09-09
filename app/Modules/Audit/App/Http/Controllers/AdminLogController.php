@@ -32,7 +32,7 @@ class AdminLogController
 
     public function index(Request $request): JsonResponse
     {
-        $perPage = min((int) $request->query('per_page', 50), self::MAX_PER_PAGE);
+        $perPage = Api::perPage($request->query('per_page'), 50, self::MAX_PER_PAGE);
 
         $logs = $this->log->list(
             adminSteamId: $request->query('admin') !== null ? (string) $request->query('admin') : null,

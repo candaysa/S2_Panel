@@ -22,7 +22,11 @@
                         <div class="min-w-0 flex-1">
                             <div class="flex flex-wrap items-center gap-3">
                                 <h1 class="truncate text-2xl font-semibold text-ink" x-text="player.name || '—'"></h1>
-                                <x-rank-badge rank="player.rank_tier" label="rankLabel()" size="lg" show-label />
+                                {{-- Plate only: the tier name was printed next to
+                                     it as well, which just repeated what the
+                                     plate already says. It stays as the img's
+                                     title/alt for anyone who needs the words. --}}
+                                <x-rank-badge rank="player.rank_tier" label="rankLabel()" size="lg" />
                             </div>
                             <p class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-faint">
                                 <span class="font-mono" x-text="player.steam"></span>
@@ -32,6 +36,12 @@
                                     {{ __('i18n::messages.ranks.steam_profile') }}
                                 </a>
                                 <span x-show="player.lastconnect" x-text="lastSeen()"></span>
+                            </p>
+                            <p class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs" x-show="steam">
+                                <span x-show="steam?.account_created_at" class="text-ink-faint" x-text="accountAge()"></span>
+                                <span x-show="steam?.vac_banned" x-cloak class="rounded-full bg-red-500/15 px-2 py-0.5 font-medium text-red-400">{{ __('i18n::messages.ranks.vac_banned') }}</span>
+                                <span x-show="steam?.game_bans > 0" x-cloak class="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-400" x-text="gameBansLabel()"></span>
+                                <span x-show="steam?.community_banned" x-cloak class="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-400">{{ __('i18n::messages.ranks.community_banned') }}</span>
                             </p>
                         </div>
 
@@ -173,7 +183,7 @@
                         </template>
                     </dl>
                 </div>
-            </div>
+
         </template>
     </div>
 
@@ -186,6 +196,7 @@
                 player: null,
                 hits: null,
                 weapons: [],
+                steam: null,
                 steam64: '',
                 t: @js(__('i18n::messages.ranks')),
                 // Point thresholds ladder, now server-defined (ranks.json via
@@ -204,12 +215,23 @@
                         this.hits = body.data.hits ?? null;
                         this.weapons = body.data.weapons ?? [];
                         this.ladder = body.data.ranks_ladder ?? [];
+                        this.steam = body.data.steam ?? null;
                         this.steam64 = this.toSteam64(this.player.steam);
                     } catch (e) {
                         this.error = true;
                     } finally {
                         this.loading = false;
                     }
+
+                },
+
+                csrf() {
+                    return document.querySelector('meta[name=csrf-token]').content;
+                },
+
+                formatDate(iso) {
+                    if (!iso) return '';
+                    return new Date(iso).toLocaleString();
                 },
 
                 // STEAM_0:Y:Z -> 64-bit id, so the profile can link out.
@@ -261,6 +283,20 @@
                     const p = this.player;
                     const total = (p?.round_win ?? 0) + (p?.round_lose ?? 0);
                     return total ? (p.round_win / total) * 100 : 0;
+                },
+
+                accountAge() {
+                    const created = this.steam?.account_created_at;
+                    if (!created) return '';
+                    const years = (Date.now() / 1000 - created) / (365.25 * 86400);
+                    return years >= 1
+                        ? this.t.steam_age_years.replace(':years', years.toFixed(1))
+                        : this.t.steam_age_new;
+                },
+
+                gameBansLabel() {
+                    const n = this.steam?.game_bans ?? 0;
+                    return n === 1 ? this.t.game_ban_one : this.t.game_bans_many.replace(':count', n);
                 },
 
                 lastSeen() {
