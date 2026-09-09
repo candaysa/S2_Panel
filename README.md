@@ -79,15 +79,29 @@ certificate. Safe to re-run — every step checks what's already there before
 changing anything.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh \
-  | sudo bash -s -- --domain panel.example.com --email you@example.com
+curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh | sudo bash
 ```
+
+It asks for the domain and an email for Let's Encrypt as its first two
+steps, shows you what it is about to do, and waits for you to confirm — so
+there is nothing to look up before running it. (Leave the email blank to
+install without SSL.)
 
 That's steps 1–5 below, done. It ends by printing the URL to the install
 wizard (step 6) — the four Swiftly plugin database connections, your Steam
 API key, and the owner's SteamID64 are still asked there, never on the
-command line. See `./install.sh --help` for flags (custom install
-directory, branch, DB name, `--skip-ssl`, non-interactive `--yes`).
+command line.
+
+Every answer can also be passed up front, which an unattended run has to do
+because a machine with no terminal has nobody to ask:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh \
+  | sudo bash -s -- --domain panel.example.com --email you@example.com --yes
+```
+
+See `./install.sh --help` for the rest (custom install directory, branch, DB
+name/user, `--skip-ssl`).
 
 Not on Ubuntu, or want to see/control every step yourself? Expand the manual
 walkthrough below — it's exactly what the script automates.
