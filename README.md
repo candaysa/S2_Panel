@@ -31,15 +31,8 @@ no separate agent or bridge is required on the game server.
   panel. A plugin is just a module in a zip — same base class, same layout;
   see [docs/module-development.md](docs/module-development.md) for how to
   build either, or run `php artisan make:module Trophy` to scaffold one.
-- **Self-service install wizard**: language, database connections,
-  Steam/owner setup, and module selection — no manual SQL required. A
-  previously downloaded `backup.zip` can be uploaded on the very first
-  screen to skip the wizard entirely and restore straight into a working
-  panel (see **Backup & restore** below).
-- **Restore from backup**: the install wizard can skip straight to a
-  working panel from a `backup.zip` — database connections, Steam
-  credentials, the owner's SteamID, module toggles, every table the panel
-  owns, and the logo/favicon.
+- **Self-service install wizard**: language, database, RCON and
+  Steam/owner setup — no manual SQL, no hand-edited `.env`.
 - 8-language UI (English, Turkish, German, French, Italian, Russian,
   Hungarian, Polish), dark/light theme, and an owner-customizable accent
   color.
@@ -69,49 +62,56 @@ for both, and links to where each one comes from.
 
 ### Quick install (Ubuntu)
 
-One script takes a bare Ubuntu server the rest of the way to "open the
-panel in a browser": it checks for PHP 8.3 (+ every required extension),
-Composer, Node 20+ and nginx and installs whichever are missing, pulls this
-repo, runs `composer`/`npm`, writes just enough of `.env` to boot, points
-nginx at `public/`, and requests a Let's Encrypt certificate. Safe to re-run
-— every step checks what's already there before changing anything, and a
-re-run over an installed panel updates it.
-
-**It creates no database.** The panel keeps its tables in the database your
-CS2 plugins already use: you enter that one in the install wizard, and the
-wizard creates the panel's tables there. Until then the panel runs its
-sessions and cache on files, which is what lets the wizard load with no
-database at all.
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh | sudo bash
 ```
 
-It asks for the domain and an email for Let's Encrypt as its first two
-steps, shows you what it is about to do, and waits for you to confirm — so
-there is nothing to look up before running it. (Leave the email blank to
-install without SSL.)
+It asks for your domain and an email for Let's Encrypt, shows what it is
+about to do, and waits for you to confirm. Then it installs whatever is
+missing (PHP 8.3 and its extensions, Composer, Node 20+, nginx), pulls this
+repo and builds it, points nginx at `public/`, requests an HTTPS
+certificate, and schedules the panel's background tasks. Leave the email
+blank to install without SSL. Safe to re-run — on an installed panel a
+re-run updates it.
 
-That's steps 1–4 below, done. It ends by printing the URL to the install
-wizard (step 5) — your CS2 plugins' database, your Steam API key and the
-owner's Steam profile link are asked there, never on the command line.
+**It creates no database.** The panel keeps its tables in the database your
+CS2 plugins already use; the setup wizard asks for it and creates the
+panel's tables there.
 
-Every answer can also be passed up front, which an unattended run has to do
-because a machine with no terminal has nobody to ask:
+When it finishes, open `https://your-domain/install`.
+
+### Setup wizard
+
+Any URL redirects to `/install` until setup finishes. The wizard walks
+through:
+
+1. **Language** — the panel's default locale, and its name.
+2. **Database** — the database your CS2 plugins use. The connection is
+   tested, then the panel's own tables are created in it; all five
+   connections (the panel's and the four plugins') point there.
+3. **RCON** — optional: one password for the servers the admin plugin has
+   registered, or set them per server later.
+4. **Steam & owner** — Steam Web API key and the owner's Steam profile
+   link (a raw SteamID works too). A custom `/id/<name>` link is looked up
+   through Steam with that key, which also confirms the key works. The owner
+   always has full access, independent of the plugin's flags.
+5. **Done** — `INSTALLED=true` is written, sessions and cache move to the
+   database, and `/install` starts returning 404.
+
+Which modules are on is not part of setup — that is an ongoing decision,
+made from the Modules tab once you have logged in.
+
+### After installing
+
+The **Webhook** module dispatches Discord deliveries onto the queue, so it
+also needs a worker (or set `QUEUE_CONNECTION=sync` to send them inline):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh \
-  | sudo bash -s -- --domain panel.example.com --email you@example.com --yes
+php artisan queue:work --queue=default
 ```
 
-See `./install.sh --help` for the rest (custom install directory, branch,
-`--skip-ssl`).
-
-Not on Ubuntu, or want to see/control every step yourself? Expand the manual
-walkthrough below — it's exactly what the script automates.
-
 <details>
-<summary><strong>Manual installation</strong> (non-Ubuntu, or step-by-step by hand)</summary>
+<summary><strong>Manual installation</strong> (not on Ubuntu, or doing it by hand)</summary>
 
 ### 1. Get the code and its dependencies
 
@@ -152,14 +152,16 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Set `APP_URL` in `.env`:
+Set these in `.env`:
 
 ```
 APP_URL=https://panel.example.com
+APP_ENV=production
+APP_DEBUG=false
 ```
 
-It must match the address the panel is actually served from — Steam OpenID
-redirects back to it, so a wrong value breaks login.
+`APP_URL` must match the address the panel is actually served from — the
+Steam login returns to it, so a wrong value breaks login.
 
 Leave everything else alone. `DB_*` is written by the wizard's database
 step, and `STEAM_*` / `OWNER_STEAM_ID` by its Steam step. `.env.example`
@@ -226,60 +228,22 @@ directories:
 chown -R www-data:www-data storage bootstrap/cache
 ```
 
-</details>
+### 5. Schedule background tasks
 
-### 5. Run the install wizard
-
-Open the panel in a browser. Any URL redirects to `/install` until setup
-finishes. The wizard walks through:
-
-1. **Language** — the panel's default locale, and its name.
-2. **Database** — the database your CS2 plugins use. The connection is
-   tested, then the panel's own tables are created in it; all five
-   connections (the panel's and the four plugins') point there.
-3. **RCON** — optional: one password for the servers the admin plugin has
-   registered, or set them per server later.
-4. **Steam & owner** — Steam Web API key and the owner's Steam profile
-   link (a raw SteamID works too). A custom `/id/<name>` link is looked up
-   through Steam with that key, which also confirms the key works. The owner
-   always has full access, independent of the plugin's flags.
-5. **Done** — `INSTALLED=true` is written, sessions and cache move to the
-   database, and `/install` starts returning 404.
-
-Which modules are on is not part of setup — that is an ongoing decision,
-made from the Modules tab once you have logged in.
-
-> Already have a `backup.zip` from another install? Upload it on the very
-> first screen to skip the wizard entirely — see **Backup & restore**.
-
-### 6. Production hardening (recommended)
-
-```bash
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-```
-
-Set `APP_DEBUG=false` in `.env`. Re-run the three cache commands after any
-`.env` or config change — a cached config ignores later edits.
-
-Laravel's scheduler drives the health checks, RCON verification, the server
-activity chart and Steam profile warming. `install.sh` sets it up for you as
-`/etc/cron.d/s2panel`. On a manual install add it **as the web server's user,
+The scheduler drives the health checks, RCON verification, the server
+activity chart and Steam profile warming. Add it **as the web server's user,
 never root** — a root run creates `storage/` files (the log first) that
-php-fpm then cannot write, and every request that needs to log an error fails:
+php-fpm then cannot write, and every request that needs to log an error
+fails:
 
 ```bash
 # /etc/cron.d/s2panel
 * * * * * www-data cd /var/www/S2_Panel && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-The **Webhook** module dispatches Discord deliveries onto the queue, so it
-also needs a worker (or set `QUEUE_CONNECTION=sync` to send them inline):
+Then open the panel in a browser and follow the [setup wizard](#setup-wizard).
 
-```bash
-php artisan queue:work --queue=default
-```
+</details>
 
 ### Updating from the panel
 
@@ -329,12 +293,16 @@ Set `PANEL_UPDATE_ENABLED=false` to turn the whole thing off.
 
 ### Upgrading manually
 
+On Ubuntu, re-running the install command is the upgrade: on an installed
+panel it pulls, rebuilds and migrates without touching `.env` or the
+database's data. By hand:
+
 ```bash
 git pull
 composer install --no-dev --optimize-autoloader
 npm ci && npm run build
 php artisan migrate --force
-php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan optimize:clear
 ```
 
 ### Troubleshooting
@@ -349,7 +317,7 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 | Steam login returns to a wrong or broken URL | `APP_URL` does not match the address you are browsing, or `STEAM_CALLBACK_URL` is not `<APP_URL>/api/auth/callback`. |
 | Blank page / 500 after deploying | Stale caches. Run `php artisan optimize:clear`, fix the issue, then re-cache. |
 | Styles missing | `npm run build` was never run, or `public/build` was not uploaded. |
-| Config edits have no effect | A cached config is in use — re-run `php artisan config:cache`. |
+| `.env` edits have no effect | A cached config is in use — run `php artisan optimize:clear`. |
 
 ## Architecture
 

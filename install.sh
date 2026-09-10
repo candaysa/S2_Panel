@@ -463,8 +463,7 @@ cat <<DONE
   language, the database your CS2 plugins use (the panel creates its own
   tables in it), your Steam API key and the owner's Steam profile link.
 
-  Once the wizard is done, consider (see README.md):
-    - php artisan config:cache && php artisan route:cache && php artisan view:cache
-    - a queue worker (or QUEUE_CONNECTION=sync) if you enable Webhooks
+  If you turn on the Webhooks module later, it also needs a queue worker
+  (or QUEUE_CONNECTION=sync in .env) - see README.md.
 
 DONE
