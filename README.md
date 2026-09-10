@@ -40,6 +40,28 @@ no separate agent or bridge is required on the game server.
   Hungarian, Polish), dark/light theme, and an owner-customizable accent
   color.
 
+## Modules Support
+
+The panel works on the database tables of these SwiftlyS2 plugins — install
+the ones you want on your game servers, pointed at the same database.
+
+- **Admins & punishments** — either of the two admin plugins; the setup
+  wizard detects which one your database holds, and the Modules tab can
+  switch later:
+  - [CS2_Admin](https://github.com/candaysa/CS2_Admin) — download from the
+    release tab.
+  - [SwiftlyS2 Admins](https://github.com/SwiftlyS2-Plugins/Admins) —
+    download from the release tab.
+- **Ranks** ([K4-LevelRanks-SwiftlyS2](https://github.com/K4ryuu/K4-LevelRanks-SwiftlyS2))
+  (Multi Server Support) — ranking view and leaderboard listing. Download
+  from the release tab.
+- **VIP** ([VIPCore](https://github.com/SwiftlyS2-Plugins/VIPCore)) —
+  download from the release tab (follow the documentation guide).
+- **Skins** ([WeaponSkins](https://forum.swiftlys2.net/t/weaponskins-swiftlys2-skin-changer/66))
+  (Weapon Paints database) — use the latest version. If you previously
+  installed an older version, drop all of its weapon paints tables
+  (`wp_player_*`) and set it up again.
+
 ## Stack
 
 Laravel 13 (PHP 8.3+) · Blade + Alpine.js + Tailwind CSS v4 · MySQL (one
