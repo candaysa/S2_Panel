@@ -365,6 +365,32 @@ find storage bootstrap/cache -type d -exec chmod 775 {} \;
 find storage bootstrap/cache -type f -exec chmod 664 {} \;
 ok "www-data owns $INSTALL_DIR"
 
+step "Scheduling background tasks"
+# Health checks, RCON verification, the server activity chart and Steam
+# profile warming all hang off Laravel's scheduler, so it is set up here
+# rather than left as a README step - and as www-data, never root. A root
+# cron run creates storage/ files (the log first of all) that php-fpm then
+# cannot write, after which any request that needs to log an error fails
+# outright. Left to a README line, that is exactly how it tends to get added.
+if [ "$INSTALL_DIR" = "/var/www/s2panel" ]; then
+    CRON_FILE="/etc/cron.d/s2panel"
+else
+    # cron.d names may only hold [A-Za-z0-9_-]; one file per install dir so
+    # two panels on one box do not overwrite each other's schedule.
+    CRON_FILE="/etc/cron.d/s2panel-$(printf '%s' "$INSTALL_DIR" | tr -c 'A-Za-z0-9' '-' | sed 's/^-*//; s/-*$//')"
+fi
+cat > "$CRON_FILE" <<CRON
+# S2 Panel scheduler for $INSTALL_DIR - written by install.sh. Runs as the
+# web server user: a root run leaves storage/ files php-fpm cannot write.
+* * * * * www-data cd $INSTALL_DIR && php artisan schedule:run >> /dev/null 2>&1
+CRON
+chmod 644 "$CRON_FILE"
+ok "scheduler runs every minute as www-data ($CRON_FILE)"
+
+if crontab -l 2>/dev/null | grep -F "$INSTALL_DIR" | grep -q "schedule:run"; then
+    warn "root's own crontab also runs schedule:run for $INSTALL_DIR - remove that line (sudo crontab -e): it now runs twice, and the root copy is what leaves files php-fpm cannot write"
+fi
+
 # ------------------------------------------------------------ 5. nginx + SSL
 
 step "Configuring nginx"
@@ -435,11 +461,10 @@ cat <<DONE
 
   S2 Panel is up. Open ${C_BOLD}${FINAL_URL}/install${C_RESET} to finish setup:
   language, the database your CS2 plugins use (the panel creates its own
-  tables in it), your Steam API key and SteamID64.
+  tables in it), your Steam API key and the owner's Steam profile link.
 
   Once the wizard is done, consider (see README.md):
     - php artisan config:cache && php artisan route:cache && php artisan view:cache
-    - a cron entry for 'php artisan schedule:run' if you enable Stats/Health
     - a queue worker (or QUEUE_CONNECTION=sync) if you enable Webhooks
 
 DONE

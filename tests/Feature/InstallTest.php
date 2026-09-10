@@ -9,6 +9,7 @@ use App\Modules\Settings\App\Services\SettingService;
 use App\Support\SteamId;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
 use Tests\Support\AssertsAlpineIntegrity;
 use Tests\TestCase;
@@ -338,6 +339,49 @@ class InstallTest extends TestCase
 
         $this->assertStringContainsString("OWNER_STEAM_ID={$ownerId}", $contents);
         $this->assertStringContainsString('STEAM_API_KEY=ABC123', $contents);
+    }
+
+    /**
+     * The owner field takes what an owner can actually find - the link in
+     * their profile's address bar - and stores the SteamID64 it points at,
+     * so every ownership check downstream keeps seeing the same thing.
+     */
+    public function test_steam_step_accepts_the_owners_profile_link(): void
+    {
+        $this->postJson('/api/install/steam', [
+            'api_key' => 'ABC123',
+            'owner_steam_id' => 'https://steamcommunity.com/profiles/76561198000000042/',
+        ])->assertOk();
+
+        $this->assertMatchesRegularExpression('/^OWNER_STEAM_ID=76561198000000042\r?$/m', $this->envContents());
+    }
+
+    /**
+     * A custom /id/ link carries no ID, so it is looked up through Steam with
+     * the key from the same form - and a key Steam refuses is reported as
+     * such, not as a bad profile link.
+     */
+    public function test_steam_step_resolves_a_custom_link_and_reports_a_rejected_key(): void
+    {
+        Http::fake([
+            'api.steampowered.com/*' => Http::sequence()
+                ->push(['response' => ['success' => 1, 'steamid' => '76561198000000077']])
+                ->push('Forbidden', 403),
+        ]);
+
+        $this->postJson('/api/install/steam', [
+            'api_key' => 'GOODKEY',
+            'owner_steam_id' => 'https://steamcommunity.com/id/anatolia_owner',
+        ])->assertOk();
+
+        $this->assertMatchesRegularExpression('/^OWNER_STEAM_ID=76561198000000077\r?$/m', $this->envContents());
+
+        $this->postJson('/api/install/steam', [
+            'api_key' => 'BADKEY',
+            'owner_steam_id' => 'https://steamcommunity.com/id/anatolia_owner',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('errors.owner_steam_id', 'steam_api_key_rejected');
     }
 
     // There used to be a POST /api/install/modules wizard step here - it no

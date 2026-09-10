@@ -200,7 +200,17 @@
                     await this.post('/api/install/steam', this.steam);
                     this.step = 5;
                 } catch (e) {
-                    this.error = @js(__('i18n::messages.install.generic_error'));
+                    // The owner field is resolved server-side (a profile link,
+                    // or a custom /id/ link looked up through Steam with the
+                    // key above), so each way that can fail says which field
+                    // to fix rather than a generic try again.
+                    const messages = {
+                        invalid_steam_id: @js(__('i18n::messages.install.owner_profile_invalid')),
+                        owner_vanity_not_found: @js(__('i18n::messages.install.owner_vanity_not_found')),
+                        steam_api_key_rejected: @js(__('i18n::messages.install.steam_api_key_rejected')),
+                        steam_unreachable: @js(__('i18n::messages.install.steam_unreachable')),
+                    };
+                    this.error = messages[e.data?.errors?.owner_steam_id] ?? @js(__('i18n::messages.install.generic_error'));
                 } finally {
                     this.loading = false;
                 }
@@ -448,10 +458,27 @@
 
                 {{-- Two fields: Steam OpenID 2.0 has no client id or secret,
                      and the callback is derived from APP_URL. See the note in
-                     config/services.php. --}}
-                <div class="mt-4 space-y-3">
-                    <input type="text" x-model="steam.api_key" placeholder="{{ __('i18n::messages.install.steam_api_key') }}" class="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
-                    <input type="text" x-model="steam.owner_steam_id" placeholder="{{ __('i18n::messages.install.owner_steam_id') }}" class="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
+                     config/services.php. Neither value is something an owner
+                     has to hand, so each links to where it actually comes from;
+                     the owner field takes a profile link (what their address
+                     bar shows) - see SteamOwnerResolver. --}}
+                <div class="mt-4 space-y-4">
+                    <div>
+                        <label for="steam_api_key" class="block text-sm font-medium text-ink-muted">{{ __('i18n::messages.install.steam_api_key') }}</label>
+                        <input id="steam_api_key" type="text" x-model="steam.api_key" autocomplete="off" spellcheck="false" class="mt-1 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
+                        <p class="mt-1.5 text-xs text-ink-faint">
+                            {{ __('i18n::messages.install.steam_api_key_help', ['domain' => request()->getHost()]) }}
+                            <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener noreferrer" class="font-medium text-brand-strong hover:underline">steamcommunity.com/dev/apikey</a>
+                        </p>
+                    </div>
+                    <div>
+                        <label for="owner_profile" class="block text-sm font-medium text-ink-muted">{{ __('i18n::messages.install.owner_profile_link') }}</label>
+                        <input id="owner_profile" type="text" x-model="steam.owner_steam_id" placeholder="{{ __('i18n::messages.install.owner_profile_placeholder') }}" autocomplete="off" spellcheck="false" class="mt-1 w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">
+                        <p class="mt-1.5 text-xs text-ink-faint">
+                            {{ __('i18n::messages.install.owner_profile_help') }}
+                            <a href="https://steamcommunity.com/my/profile" target="_blank" rel="noopener noreferrer" class="font-medium text-brand-strong hover:underline">steamcommunity.com/my/profile</a>
+                        </p>
+                    </div>
                 </div>
 
                 <div class="mt-6 flex gap-3">

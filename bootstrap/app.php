@@ -56,6 +56,17 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        // Nothing below has anything to work on before the install wizard
+        // has run: every task reads the panel's database, and there is none
+        // until the wizard's database step creates its tables. A cron line
+        // that is already in place - install.sh writes one, and a box that
+        // hosted a panel before may have its own - would otherwise fire
+        // these every few minutes and log a failure each time until setup
+        // finishes.
+        if (! config('app.installed')) {
+            return;
+        }
+
         // Whether a module is on is asked at due-time, not here, and via
         // ModuleRegistry rather than config(). Two reasons: config() only
         // knows the .env value, so a module switched off at runtime from

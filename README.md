@@ -61,7 +61,9 @@ connection per plugin database) · Vite.
 
 You also need **Steam Web API credentials** (a key from
 [steamcommunity.com/dev/apikey](https://steamcommunity.com/dev/apikey)) and
-the **SteamID64 of the panel owner** — the wizard asks for both.
+the **panel owner's Steam profile link** (the address of their Steam
+profile page — `/id/<name>` or `/profiles/<id>` both work) — the wizard asks
+for both, and links to where each one comes from.
 
 ## Installation
 
@@ -92,7 +94,7 @@ install without SSL.)
 
 That's steps 1–4 below, done. It ends by printing the URL to the install
 wizard (step 5) — your CS2 plugins' database, your Steam API key and the
-owner's SteamID64 are asked there, never on the command line.
+owner's Steam profile link are asked there, never on the command line.
 
 Every answer can also be passed up front, which an unattended run has to do
 because a machine with no terminal has nobody to ask:
@@ -237,8 +239,10 @@ finishes. The wizard walks through:
    connections (the panel's and the four plugins') point there.
 3. **RCON** — optional: one password for the servers the admin plugin has
    registered, or set them per server later.
-4. **Steam & owner** — Steam Web API key and the owner's SteamID64. The
-   owner always has full access, independent of the plugin's flags.
+4. **Steam & owner** — Steam Web API key and the owner's Steam profile
+   link (a raw SteamID works too). A custom `/id/<name>` link is looked up
+   through Steam with that key, which also confirms the key works. The owner
+   always has full access, independent of the plugin's flags.
 5. **Done** — `INSTALLED=true` is written, sessions and cache move to the
    database, and `/install` starts returning 404.
 
@@ -259,11 +263,15 @@ php artisan view:cache
 Set `APP_DEBUG=false` in `.env`. Re-run the three cache commands after any
 `.env` or config change — a cached config ignores later edits.
 
-If you enabled the **Stats** or **Health** modules, add Laravel's scheduler
-to cron so they actually collect data:
+Laravel's scheduler drives the health checks, RCON verification, the server
+activity chart and Steam profile warming. `install.sh` sets it up for you as
+`/etc/cron.d/s2panel`. On a manual install add it **as the web server's user,
+never root** — a root run creates `storage/` files (the log first) that
+php-fpm then cannot write, and every request that needs to log an error fails:
 
 ```bash
-* * * * * cd /var/www/S2_Panel && php artisan schedule:run >> /dev/null 2>&1
+# /etc/cron.d/s2panel
+* * * * * www-data cd /var/www/S2_Panel && php artisan schedule:run >> /dev/null 2>&1
 ```
 
 The **Webhook** module dispatches Discord deliveries onto the queue, so it

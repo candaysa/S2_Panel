@@ -55,7 +55,10 @@ return [
     'steam' => [
         'client_id' => null,
         'client_secret' => env('STEAM_API_KEY'),
-        'redirect' => env('STEAM_CALLBACK_URL', rtrim((string) env('APP_URL'), '/').'/api/auth/callback'),
+        // ?: rather than env()'s default: an empty STEAM_CALLBACK_URL= line is
+        // "set" as far as env() is concerned and would otherwise send Steam an
+        // empty return_to instead of falling back to APP_URL.
+        'redirect' => env('STEAM_CALLBACK_URL') ?: rtrim((string) env('APP_URL'), '/').'/api/auth/callback',
         'api_key' => env('STEAM_API_KEY'),
     ],
 

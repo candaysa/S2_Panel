@@ -8,13 +8,13 @@ use App\Modules\Install\App\Services\DependencyProbe;
 use App\Modules\Install\App\Services\EnvWriter;
 use App\Modules\Install\App\Services\InstallFinaliser;
 use App\Modules\Install\App\Services\PanelDatabase;
+use App\Modules\Install\App\Services\SteamOwnerResolver;
 use App\Modules\Rcon\App\Models\RconSetting;
 use App\Modules\Server\App\Models\AdminServer;
 use App\Modules\Settings\App\Services\SettingService;
 use App\Support\Api;
 use App\Support\PanelBackup;
 use App\Support\PanelBackupException;
-use App\Support\SteamId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
@@ -94,6 +94,7 @@ class InstallController
         private readonly DependencyProbe $dependencies,
         private readonly PanelDatabase $panelDatabase,
         private readonly InstallFinaliser $finaliser,
+        private readonly SteamOwnerResolver $ownerResolver,
     ) {
     }
 
@@ -351,17 +352,23 @@ class InstallController
             return Api::error(Api::MSG_VALIDATION_FAILED, $validator->errors()->toArray(), 422);
         }
 
-        $ownerId = trim($request->input('owner_steam_id'));
+        $apiKey = trim((string) $request->input('api_key'));
 
-        if (! SteamId::isValid($ownerId)) {
-            return Api::error(Api::MSG_INVALID_INPUT, ['owner_steam_id' => 'invalid_steam_id'], 422);
+        // owner_steam_id keeps its name for anything scripting this step, but
+        // takes what an owner can actually find: their Steam profile link
+        // (or any SteamID format). Resolved to a SteamID64 here, so .env and
+        // every ownership check downstream keep seeing the same thing.
+        try {
+            $ownerId = $this->ownerResolver->resolve((string) $request->input('owner_steam_id'), $apiKey);
+        } catch (InvalidArgumentException $e) {
+            return Api::error(Api::MSG_INVALID_INPUT, ['owner_steam_id' => $e->getMessage()], 422);
         }
 
         // Two values, because Steam OpenID 2.0 genuinely needs no more.
         // config/services.php derives the Socialite client secret and the
         // callback from these; see the note there.
         (new EnvWriter($this->envPath()))->set([
-            'STEAM_API_KEY' => trim((string) $request->input('api_key')),
+            'STEAM_API_KEY' => $apiKey,
             'OWNER_STEAM_ID' => $ownerId,
             self::STEP_KEY => self::STEP_STEAM,
         ]);
