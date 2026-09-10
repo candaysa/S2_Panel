@@ -18,8 +18,12 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api/update')->middleware(['steam.auth', 'owner.only'])->group(function (): void {
     Route::get('status', [UpdateController::class, 'status'])->name('update.status');
 
-    Route::middleware('throttle:3,10')->group(function (): void {
+    // One limiter shared by all three (Laravel keys throttle:N,M on the user,
+    // not the route): a single update is install + finalise, and a failed one
+    // plus a retry plus a roll-back must not lock the owner out mid-recovery.
+    Route::middleware('throttle:10,10')->group(function (): void {
         Route::post('install', [UpdateController::class, 'install'])->name('update.install');
         Route::post('finalise', [UpdateController::class, 'finalise'])->name('update.finalise');
+        Route::post('rollback', [UpdateController::class, 'rollback'])->name('update.rollback');
     });
 });

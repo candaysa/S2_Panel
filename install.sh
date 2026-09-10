@@ -421,6 +421,10 @@ server {
         fastcgi_pass unix:/run/php/php${PHP_VERSION}-fpm.sock;
         fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
         include fastcgi_params;
+        # Updating from Settings > Updates downloads and unpacks a release in
+        # one request; nginx's 60s default can cut the answer off on a slow
+        # box (the update itself carries on regardless).
+        fastcgi_read_timeout 300;
     }
 
     location ~ /\.(?!well-known).* {

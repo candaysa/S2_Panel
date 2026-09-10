@@ -18,6 +18,8 @@ class UpdaterServiceProvider extends ModuleServiceProvider
 
     protected function bootModule(): void
     {
-        //
+        if ($this->app->runningInConsole()) {
+            $this->commands([\App\Modules\Updater\App\Console\Commands\UpdateRollbackCommand::class]);
+        }
     }
 }

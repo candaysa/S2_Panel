@@ -33,6 +33,9 @@ no separate agent or bridge is required on the game server.
   build either, or run `php artisan make:module Trophy` to scaffold one.
 - **Self-service install wizard**: language, database, RCON and
   Steam/owner setup — no manual SQL, no hand-edited `.env`.
+- **Updates from the panel**: Settings → Updates installs a new release in
+  place, keeping your settings, uploads and plugins, and puts the previous
+  version back by itself if anything fails.
 - 8-language UI (English, Turkish, German, French, Italian, Russian,
   Hungarian, Polish), dark/light theme, and an owner-customizable accent
   color.
@@ -247,49 +250,45 @@ Then open the panel in a browser and follow the [setup wizard](#setup-wizard).
 
 ### Updating from the panel
 
-The panel checks GitHub Releases and offers the owner a one-click update.
-Two rules make that safe, and both are on the release side:
-
-**1. Attach a built bundle, not the source.** GitHub's auto-generated
-source archive has no `vendor/` and no compiled `public/build`, so
-installing it would leave the panel unbootable on any server without
-Composer and Node. The updater therefore ignores the source tarball and
-only installs an asset matching `s2panel-*.tar.gz`. Build it the same way
-you would deploy:
-
-```bash
-composer install --no-dev --optimize-autoloader
-npm ci && npm run build
-tar -czf s2panel-1.2.3.tar.gz \
-    --exclude='./node_modules' --exclude='./.git' --exclude='./.env' \
-    --exclude='./storage/logs/*' --exclude='./storage/framework/cache/data/*' \
-    --exclude='./storage/framework/sessions/*' --exclude='./storage/framework/views/*' .
-```
-
-Attach that file to the release. The updater refuses any bundle missing
-`vendor/`, `public/build/manifest.json`, or whose `composer.json` name does
-not match the running panel.
-
-**2. Bump `version` in `config/panel.php`** in the same commit you tag.
-The panel compares that value against the release tag, so a release tagged
-`v1.2.3` against a config still saying `1.2.2` is what triggers the prompt.
-
-What an update does and does not touch:
+**Settings → Updates** (owner only) checks GitHub Releases for a newer
+version and installs it in place — no SSH. Before a single file changes,
+everything it would overwrite or delete is copied aside; if the install or
+its migrations fail, that copy is put back automatically. Visitors see a
+maintenance page for the minute or so it takes.
 
 | | |
 |---|---|
 | Replaced | application code, `vendor/`, `public/build` |
-| Preserved | `.env`, `storage/` (logs, sessions, uploads) |
-| Database | `migrate --force` only — forward, additive, never a rollback |
-| Rollback | the previous install is kept as `<dir>_pre-update_<timestamp>` |
+| Never touched | `.env`, `storage/`, `public/uploads`, installed plugins — anything a release does not ship |
+| Database | `migrate --force` only — forward, additive |
+| Git checkout | moved to the release's tag, so a later `install.sh` re-run pulls cleanly |
 
-The web server user needs write access to the install directory **and its
-parent** (the swap creates a sibling directory). On a deployment where
-those are root-owned, the panel reports exactly which check failed instead
-of offering a button that cannot work — update manually with the steps
-below in that case.
+The page lists what the server needs before it offers the button: the web
+server's user must be able to write to the install directory (`install.sh`
+sets that up) and there must be about 512 MB of free disk.
 
-Set `PANEL_UPDATE_ENABLED=false` to turn the whole thing off.
+If an update is interrupted — the server restarted half way, say — the page
+offers **Finish update** or **Roll back**. Over SSH, the same roll-back is:
+
+```bash
+sudo -u www-data php artisan panel:update-rollback
+```
+
+Set `PANEL_UPDATE_ENABLED=false` to turn the updater off.
+
+#### Publishing a release
+
+Bump `version` in `config/panel.php`, commit, then push a matching tag:
+
+```bash
+git tag v1.2.3 && git push origin v1.2.3
+```
+
+The [Release workflow](.github/workflows/release.yml) refuses a tag that
+does not match `config/panel.php`, builds the bundle with `vendor/` and the
+compiled assets, and attaches it as `s2panel-1.2.3.tar.gz`. The updater only
+installs that asset — never GitHub's source archive, which has neither —
+and checks it against the SHA-256 digest GitHub publishes for it.
 
 ### Upgrading manually
 

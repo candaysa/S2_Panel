@@ -23,6 +23,7 @@
         ['logs', __('i18n::messages.nav.audit'), route('audit.page'), false],
         ['modules', __('i18n::messages.nav.modules'), route('modules.page'), true],
         ['webhooks', __('i18n::messages.nav.webhooks'), route('webhooks.page'), true],
+        ['updates', __('i18n::messages.settings.tab_updates'), route('settings.updates.page'), true],
     ];
 
     $isOwner = \App\Support\Access::isOwner();

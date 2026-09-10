@@ -20,21 +20,22 @@ return [
     | Updates
     |--------------------------------------------------------------------------
     |
-    | The panel checks GitHub Releases for a newer version and can install it
-    | in place. Two things make that safe to automate:
+    | The panel checks GitHub Releases for a newer version and the owner can
+    | install it from Settings > Updates. What makes that safe to automate:
     |
     | 1. It only ever installs a release ASSET whose name matches
     |    "asset_pattern" - never GitHub's auto-generated source tarball. The
     |    source archive has no vendor/ and no compiled public/build, so
     |    installing it would leave the panel unbootable on any server without
-    |    Composer and Node (which is most of them). Build the bundle in CI and
-    |    attach it to the release.
+    |    Composer and Node (which is most of them). .github/workflows/
+    |    release.yml builds that asset whenever a vX.Y.Z tag is pushed.
     |
-    | 2. The current install is kept as a sibling directory and restored
-    |    automatically if the new one fails its post-install health check.
+    | 2. Files are replaced in place, but only after every file that will be
+    |    overwritten or deleted has been copied aside - a failed install or a
+    |    failed migration puts all of it back (see UpdateInstaller).
     |
     | Updates never drop or rewrite data: migrations run forward only, and
-    | .env plus storage/ are carried across untouched.
+    | .env, storage/, uploads and installed plugins are never touched.
     |
     */
 
@@ -59,6 +60,19 @@ return [
         // Refuse anything larger than this, so a mistagged asset cannot fill
         // the disk. Megabytes.
         'max_asset_mb' => 150,
+
+        // What a bundle may expand to, and how many entries it may hold -
+        // checked while inflating, before anything is extracted.
+        'max_expanded_mb' => 600,
+        'max_entries' => 20000,
+
+        // Show the maintenance page while files are replaced. Only ever off
+        // in tests, which must not put the app they run in into maintenance.
+        'maintenance' => true,
+
+        // The install being updated. Empty means this checkout - it exists
+        // so tests can point the updater at a throwaway directory.
+        'root' => env('PANEL_UPDATE_ROOT'),
     ],
 
     /*

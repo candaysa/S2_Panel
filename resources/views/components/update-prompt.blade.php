@@ -6,6 +6,11 @@
     says "later" should not be asked again on every navigation, but a NEW
     release must still get through, which is why the dismissal key carries
     the version.
+
+    A notice only: installing happens on Settings > Updates, the one place
+    that shows what the server can and cannot do, drives install + finalise,
+    and can roll back. This used to install from here as well, and reported
+    "Updated" even when the finalise step (the migrations) had failed.
 --}}
 <div
     x-data="updatePrompt()"
@@ -51,45 +56,16 @@
             </a>
         </div>
 
-        {{-- Why the install button is unavailable, when it is. Naming the
-             failing check is the difference between "it's broken" and a
-             problem the owner can actually fix. --}}
-        <div x-show="!canInstall" x-cloak class="mx-5 mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-            <p class="text-xs font-medium text-amber-400">{{ __('i18n::messages.update.cannot_install') }}</p>
-            <ul class="mt-1.5 space-y-1">
-                <template x-for="c in failedChecks" :key="c.key">
-                    <li class="text-xs text-amber-400/90">
-                        <span x-text="checkLabel(c.key)"></span>
-                        <span x-show="c.detail" class="font-mono opacity-70" x-text="' — ' + c.detail"></span>
-                    </li>
-                </template>
-                <li x-show="release.reason === 'no_installable_asset'" class="text-xs text-amber-400/90">
-                    {{ __('i18n::messages.update.no_asset') }}
-                </li>
-            </ul>
-        </div>
-
-        <p x-show="error" x-cloak class="mx-5 mb-4 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400" x-text="error"></p>
-
-        <div x-show="stage === 'done'" x-cloak class="mx-5 mb-4 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-400">
-            {{ __('i18n::messages.update.done') }}
-        </div>
-
         <div class="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-surface-raised/40 p-4">
-            <button type="button" @click="dismiss()" :disabled="busy"
-                    class="rounded-lg px-3 py-2 text-sm text-ink-muted transition-colors hover:text-ink disabled:opacity-50">
-                <span x-text="stage === 'done' ? @js(__('i18n::messages.common.close')) : @js(__('i18n::messages.update.later'))"></span>
+            <button type="button" @click="dismiss()"
+                    class="rounded-lg px-3 py-2 text-sm text-ink-muted transition-colors hover:text-ink">
+                {{ __('i18n::messages.update.later') }}
             </button>
-            <button
-                type="button"
-                x-show="canInstall && stage !== 'done'"
-                @click="install()"
-                :disabled="busy"
-                class="inline-flex items-center gap-2 rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
-                <x-icon name="refresh" class="size-4" ::class="busy && 'animate-spin'" />
-                <span x-text="busyLabel()"></span>
-            </button>
+            <a href="{{ route('settings.updates.page') }}"
+               class="inline-flex items-center gap-2 rounded-lg bg-brand-strong px-4 py-2 text-sm font-medium text-canvas transition-opacity hover:opacity-90">
+                <x-icon name="upload" class="size-4" />
+                {{ __('i18n::messages.update.view_update') }}
+            </a>
         </div>
     </div>
 </div>
@@ -98,23 +74,18 @@
     <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
         window.updatePrompt = () => ({
             open: false,
-            busy: false,
-            stage: 'idle',
-            error: '',
-            canInstall: false,
             release: { current: '', latest: '', notes: '', html_url: '', reason: null },
-            preflight: { ready: false, checks: [] },
-            labels: @js(__('i18n::messages.update')),
 
             async init() {
+                // No point announcing an update on the page that installs it.
+                if (window.location.pathname === '/settings/updates') return;
+
                 try {
                     const res = await fetch('/api/update/status', { headers: { Accept: 'application/json' } });
                     // 401/403 simply means this viewer is not the owner.
                     if (!res.ok) return;
                     const body = await res.json();
                     this.release = body.data.release;
-                    this.preflight = body.data.preflight;
-                    this.canInstall = body.data.can_install;
 
                     if (!this.release.available) return;
                     if (localStorage.getItem('update.dismissed') === this.release.latest) return;
@@ -125,61 +96,9 @@
                 }
             },
 
-            get failedChecks() {
-                return (this.preflight.checks ?? []).filter((c) => !c.ok);
-            },
-
-            checkLabel(key) {
-                return this.labels['check_' + key] ?? key;
-            },
-
             shortNotes() {
                 const n = this.release.notes ?? '';
                 return n.length > 600 ? n.slice(0, 600) + '…' : n;
-            },
-
-            busyLabel() {
-                if (this.stage === 'installing') return this.labels.installing;
-                if (this.stage === 'finalising') return this.labels.finalising;
-                return this.labels.install_now;
-            },
-
-            csrf() {
-                return document.querySelector('meta[name=csrf-token]').content;
-            },
-
-            async install() {
-                this.busy = true;
-                this.error = '';
-                this.stage = 'installing';
-                try {
-                    const res = await fetch('/api/update/install', {
-                        method: 'POST',
-                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                    });
-                    const body = await res.json().catch(() => ({}));
-                    if (!res.ok) {
-                        this.error = (body.errors?.reason?.[0]) ?? body.message ?? this.labels.failed;
-                        this.stage = 'idle';
-                        return;
-                    }
-
-                    // The swap is done; migrations have to run against the new
-                    // code, which only exists from the next request onward.
-                    this.stage = 'finalising';
-                    await fetch('/api/update/finalise', {
-                        method: 'POST',
-                        headers: { Accept: 'application/json', 'X-CSRF-TOKEN': this.csrf() },
-                    }).catch(() => {});
-
-                    this.stage = 'done';
-                    setTimeout(() => window.location.reload(), 1800);
-                } catch (e) {
-                    this.error = this.labels.failed;
-                    this.stage = 'idle';
-                } finally {
-                    this.busy = false;
-                }
             },
 
             dismiss() {

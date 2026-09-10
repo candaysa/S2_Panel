@@ -48,6 +48,7 @@ class PageScriptsTest extends TestCase
         '/settings',
         '/settings/design',
         '/settings/servers',
+        '/settings/updates',
     ];
 
     public function test_page_alpine_attributes_are_not_cut_short(): void

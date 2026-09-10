@@ -12,11 +12,16 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Owner-only update endpoints.
+ * Owner-only update endpoints, driven from Settings > Updates.
  *
- * status  - what version is running, what is available, and whether this
- *           server is even able to install it
- * install - download and swap, then finalise on the next request
+ * status   - what is running, what is available, whether this server can
+ *            install it, and any update left half done
+ * install  - download and apply in place (panel goes into maintenance)
+ * finalise - migrate and come back up, in a fresh request (see there)
+ * rollback - put the previous release back after an interrupted update
+ *
+ * install/finalise/rollback stay reachable while the panel is in
+ * maintenance mode - see bootstrap/app.php.
  */
 class UpdateController extends Controller
 {
@@ -35,11 +40,14 @@ class UpdateController extends Controller
             'release' => $release,
             'can_install' => $release['available'] && $release['asset_url'] !== null && $preflight['ready'],
             'preflight' => $preflight,
+            'pending' => $this->installer->pending(),
         ]);
     }
 
     public function install(Request $request): JsonResponse
     {
+        // Always a fresh lookup, and always the server's own idea of what to
+        // download - nothing about the bundle comes from the request.
         $release = $this->checker->check(true);
 
         if (! $release['available']) {
@@ -51,7 +59,12 @@ class UpdateController extends Controller
         }
 
         try {
-            $result = $this->installer->install($release['asset_url'], (string) $release['latest']);
+            $result = $this->installer->install(
+                $release['asset_url'],
+                (string) $release['latest'],
+                $release['tag'],
+                $release['asset_digest'],
+            );
         } catch (RuntimeException $e) {
             // The message carries the specific failure so the owner is not
             // left guessing which check or step went wrong.
@@ -66,18 +79,33 @@ class UpdateController extends Controller
     /**
      * Run migrations and clear caches against the freshly installed code.
      *
-     * A separate request on purpose: the process that performed the swap is
+     * A separate request on purpose: the process that copied the files is
      * still running the old classes, so migrating from there would run the
-     * previous release's migrations.
+     * new release's migrations on the previous release's framework.
      */
     public function finalise(): JsonResponse
     {
         try {
-            $this->installer->finalise();
+            $result = $this->installer->finalise();
         } catch (Throwable $e) {
             return Api::error('finalise_failed', ['reason' => [$e->getMessage()]], 500);
         }
 
-        return Api::success(['version' => config('panel.version')], ['finalised' => true]);
+        return Api::success($result, ['finalised' => true]);
+    }
+
+    public function rollback(): JsonResponse
+    {
+        try {
+            $rolledBack = $this->installer->rollBack();
+        } catch (RuntimeException $e) {
+            return Api::error('rollback_failed', ['reason' => [$e->getMessage()]], 409);
+        }
+
+        if (! $rolledBack) {
+            return Api::error('nothing_to_roll_back', [], 409);
+        }
+
+        return Api::success(['version' => config('panel.version')], ['rolled_back' => true]);
     }
 }

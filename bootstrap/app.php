@@ -43,6 +43,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Web group keeps Laravel's defaults, plus the locale resolver and
         // the security layer, plus the install lock (redirects to /install
         // while not installed).
+        // An update from Settings > Updates puts the panel into maintenance
+        // mode while it replaces files, and the same page then has to call
+        // finalise (or roll back) to bring it out again - so those, and the
+        // page itself, stay reachable. Everything is still owner-only
+        // behind steam.auth; this only lifts the maintenance 503.
+        $middleware->preventRequestsDuringMaintenance(except: ['api/update/*', 'settings/updates']);
+
         $middleware->appendToGroup('web', [
             \App\Http\Middleware\SetLocale::class,
             \App\Http\Middleware\SecurityHeaders::class,

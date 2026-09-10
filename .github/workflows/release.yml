@@ -85,13 +85,18 @@ jobs:
           set -euo pipefail
           rm -rf /tmp/bundle
           mkdir -p /tmp/bundle
+          # The bundle is exactly the tagged checkout plus build output
+          # (vendor/, public/build). Nothing tracked is left out: the panel's
+          # updater deletes files the running release shipped but the new
+          # one lacks, and then points the server's git checkout at this
+          # tag - a tracked path missing from the bundle (tests/ used to be)
+          # would be deleted there and leave that checkout dirty. storage/
+          # and .env are the only exclusions; the updater never touches
+          # either on the server.
           rsync -a \
             --exclude='.git/' \
-            --exclude='.github/' \
             --exclude='node_modules/' \
-            --exclude='tests/' \
-            --exclude='.env' \
-            --exclude='.env.*' \
+            --exclude='/.env' \
             --exclude='storage/' \
             --exclude='database/database.sqlite' \
             --exclude='.phpunit.cache/' \
@@ -99,8 +104,8 @@ jobs:
             ./ /tmp/bundle/
 
       - name: Reject a bundle containing symlinks
-        # UpdateInstaller's own archive check (assertSafeArchive) refuses any
-        # symlink entry when the release is installed - failing here instead
+        # UpdateInstaller's own tar reader (untar) refuses any symlink or
+        # hard-link entry when the release is installed - failing here instead
         # catches a bad bundle at build time rather than on every panel that
         # tries to update with it.
         run: |

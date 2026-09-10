@@ -167,5 +167,6 @@ Route::middleware('steam.auth')->group(function (): void {
         Route::view('/settings/design', 'settings.design')->name('settings.design.page');
         Route::view('/settings/tickets', 'settings.tickets')->name('settings.tickets.page');
         Route::view('/settings/servers', 'settings.servers')->name('settings.servers.page');
+        Route::view('/settings/updates', 'settings.updates')->name('settings.updates.page');
     });
 });

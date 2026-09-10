@@ -37,12 +37,14 @@ class UpdateChecker
             'available' => false,
             'current' => $this->currentVersion(),
             'latest' => null,
+            'tag' => null,
             'name' => null,
             'notes' => null,
             'published_at' => null,
             'asset_url' => null,
             'asset_name' => null,
             'asset_size' => null,
+            'asset_digest' => null,
             'html_url' => null,
             'reason' => null,
         ];
@@ -76,6 +78,9 @@ class UpdateChecker
         return array_merge($base, [
             'available' => version_compare($latest, $this->normalize($this->currentVersion()), '>'),
             'latest' => $latest,
+            // The literal tag, "v" and all - the installer moves the server's
+            // git checkout to it once the update is in.
+            'tag' => (string) $release['tag_name'],
             'name' => $release['name'] ?? null,
             'notes' => $release['body'] ?? null,
             'published_at' => $release['published_at'] ?? null,
@@ -83,6 +88,9 @@ class UpdateChecker
             'asset_url' => $asset['browser_download_url'] ?? null,
             'asset_name' => $asset['name'] ?? null,
             'asset_size' => isset($asset['size']) ? (int) $asset['size'] : null,
+            // "sha256:<hex>" - GitHub computes it for every release asset;
+            // the installer refuses a download that does not match.
+            'asset_digest' => isset($asset['digest']) ? (string) $asset['digest'] : null,
             // A release with no matching bundle can be announced but not
             // installed - the UI needs to say which, rather than offering a
             // button that would break the panel.
@@ -112,6 +120,13 @@ class UpdateChecker
             }
 
             $response = $request->get("https://api.github.com/repos/{$repo}/releases/latest");
+
+            // 404 is GitHub's answer for "this repository has no release
+            // yet" - a real, cacheable state the Updates page should state
+            // plainly, not the "could not reach GitHub" that null reports.
+            if ($response->status() === 404) {
+                return [];
+            }
 
             if (! $response->successful()) {
                 return null;
