@@ -4,6 +4,7 @@ namespace App\Modules\Settings\App\Services;
 
 use App\Modules\Settings\App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
+use Throwable;
 
 /**
  * Settings accessor with a short-lived cache (same pattern as Support\Flags).
@@ -19,11 +20,30 @@ class SettingService
     {
         $cacheKey = $this->cacheKey($key);
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($key) {
-            $row = Setting::query()->where('key', $key)->first();
+        try {
+            $stored = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($key) {
+                $row = Setting::query()->where('key', $key)->first();
 
-            return $row?->value;
-        }) ?? $default ?? config("settings.defaults.{$key}");
+                return $row?->value;
+            });
+        } catch (Throwable $e) {
+            // Until the install wizard's database step there is no panel
+            // database to read at all - install.sh no longer creates one,
+            // the wizard is where it gets chosen. The wizard's own pages
+            // still ask for site_name, favicon, brand_color and
+            // default_locale, so before install they get the defaults.
+            //
+            // Once installed, the same failure is a real outage and is
+            // rethrown: quietly serving defaults there would turn "the
+            // database is down" into "every setting silently reset".
+            if (config('app.installed')) {
+                throw $e;
+            }
+
+            $stored = null;
+        }
+
+        return $stored ?? $default ?? config("settings.defaults.{$key}");
     }
 
     /**

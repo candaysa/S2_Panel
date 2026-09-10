@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Applies the active locale to the whole request lifecycle.
@@ -20,10 +21,19 @@ class SetLocale
     {
         $locale = $request->session()->get('locale');
 
-        // The settings table may not exist yet (fresh install). Falling
-        // back to the config default must never raise a 500.
-        if ($locale === null && Schema::hasTable('settings')) {
-            $locale = app(SettingService::class)->get('default_locale');
+        // Before install there may be no settings table - or, since the
+        // panel's database is only chosen in the wizard now, no reachable
+        // database at all, and hasTable() is itself a query. Either way the
+        // config default has to stand in; a language lookup must never be
+        // the reason the installer itself cannot load.
+        if ($locale === null) {
+            try {
+                if (Schema::hasTable('settings')) {
+                    $locale = app(SettingService::class)->get('default_locale');
+                }
+            } catch (Throwable) {
+                $locale = null;
+            }
         }
 
         if ($locale === null) {

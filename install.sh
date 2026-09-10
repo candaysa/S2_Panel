@@ -4,15 +4,17 @@
 #
 # Takes a bare Ubuntu server to "open https://<domain>/install and finish
 # the wizard": checks/installs every OS-level dependency (PHP 8.3 + required
-# extensions, Composer, Node 20+, MySQL, nginx, certbot), pulls the panel's
-# own code, builds it, makes sure the panel has a database to migrate into
-# (a step the in-app installer deliberately does NOT do - see
-# app/Modules/Install - it only tests a connection someone already typed
-# in), points nginx at public/, and requests a Let's Encrypt certificate.
-# Everything else - Steam API key, each Swiftly plugin's database
-# connection, the owner's SteamID, which modules are on - stays the in-app
-# wizard's job; this script only gets far enough for that wizard to be
-# reachable at all.
+# extensions, Composer, Node 20+, nginx, certbot), pulls the panel's own
+# code, builds it, points nginx at public/, and requests a Let's Encrypt
+# certificate.
+#
+# It creates no database. The panel keeps its tables in the database your
+# CS2 plugins already use - you type that one into the wizard, and the
+# wizard creates the panel's tables there. Until then the panel runs its
+# sessions and cache on files, which is what lets the wizard load on a
+# server where the panel has no database yet. Everything else - Steam API
+# key, the owner's SteamID, which modules are on - is the wizard's too; this
+# script only gets far enough for that wizard to be reachable at all.
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh | sudo bash
@@ -30,24 +32,13 @@
 #   --dir    PATH    install directory (default: /var/www/s2panel)
 #   --repo   URL     git remote to clone from
 #   --branch NAME    branch to check out (default: main)
-#   --db-name NAME   database the panel keeps its own tables in (default:
-#                    s2_panel). It does not have to be a new one - name a
-#                    database you already have, the same one your CS2
-#                    plugins use included, and it is reused as it is: the
-#                    script only ever runs CREATE DATABASE IF NOT EXISTS,
-#                    and the migrations add the panel's own tables next to
-#                    whatever is already in there.
-#   --db-user NAME   MySQL account the panel connects as (default:
-#                    s2panel). Created if missing, and its password is
-#                    always (re)set to a freshly generated one - so point
-#                    this at a panel-only account, never at a login your
-#                    plugins already use.
 #   --skip-ssl       leave the vhost on plain HTTP (no certbot run)
 #   --yes, -y        non-interactive: never prompt, accept the defaults
 #
 # Safe to re-run: every step checks what's already there before changing
-# anything (installed packages, an existing .env, an existing database) -
-# a failed or interrupted run can just be started again.
+# anything (installed packages, an existing checkout, an existing .env) - a
+# failed or interrupted run can just be started again, and a re-run over an
+# installed panel updates it without touching its database or sessions.
 
 set -euo pipefail
 
@@ -58,11 +49,6 @@ BRANCH="main"
 INSTALL_DIR="/var/www/s2panel"
 DOMAIN=""
 EMAIL=""
-# Only a default: --db-name may name a database that already exists (even
-# the one the CS2 plugins use) - it is created if missing and otherwise
-# reused untouched. See the Options block above.
-DB_NAME="s2_panel"
-DB_USER="s2panel"
 SKIP_SSL=0
 ASSUME_YES=0
 PHP_VERSION="8.3"
@@ -133,12 +119,16 @@ while [ $# -gt 0 ]; do
         --dir) INSTALL_DIR="$2"; shift 2 ;;
         --repo) REPO_URL="$2"; shift 2 ;;
         --branch) BRANCH="$2"; shift 2 ;;
-        --db-name) DB_NAME="$2"; shift 2 ;;
-        --db-user) DB_USER="$2"; shift 2 ;;
+        # Gone, not ignored: anyone still passing them expects a database to
+        # be made, and silently not making one would surface much later as
+        # a wizard asking for something they thought the script had done.
+        --db-name|--db-user)
+            die "$1 is no longer used - the script creates no database; the install wizard asks for your CS2 plugins' database and puts the panel's tables there"
+            ;;
         --skip-ssl) SKIP_SSL=1; shift ;;
         --yes|-y) ASSUME_YES=1; shift ;;
         --help|-h)
-            sed -n '2,50p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) die "unknown option: $1 (see --help)" ;;
@@ -197,15 +187,13 @@ if [ "$SKIP_SSL" -eq 0 ] && [ -z "$EMAIL" ]; then
     SKIP_SSL=1
 fi
 
-DB_PASS="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 32)"
-
 step "About to set up S2 Panel"
 cat <<SUMMARY
   domain       : $DOMAIN
   install dir  : $INSTALL_DIR
   repo/branch  : $REPO_URL @ $BRANCH
-  panel DB     : $DB_NAME (created if missing, reused as-is if it already
-                 exists; user: $DB_USER, password generated)
+  database     : none created here - the install wizard asks for your CS2
+                 plugins' database and creates the panel's tables in it
   SSL          : $([ "$SKIP_SSL" -eq 1 ] && echo "skipped" || echo "Let's Encrypt via certbot ($EMAIL)")
 SUMMARY
 
@@ -282,20 +270,10 @@ else
     ok "Node.js already present ($(node -v))"
 fi
 
-step "Installing MySQL"
-MYSQL_LOCAL=0
-if command -v mysql >/dev/null 2>&1 && systemctl is-active --quiet mysql 2>/dev/null; then
-    ok "MySQL already running locally - reusing it"
-    MYSQL_LOCAL=1
-elif systemctl is-active --quiet mariadb 2>/dev/null; then
-    ok "MariaDB already running locally - reusing it"
-    MYSQL_LOCAL=1
-else
-    apt-get install -y -qq mysql-server >/dev/null
-    systemctl enable --now mysql >/dev/null
-    ok "MySQL server installed and started"
-    MYSQL_LOCAL=1
-fi
+# No MySQL server step: the panel does not get a database of its own any
+# more. It lives in the database your CS2 plugins already use, wherever
+# that is - this box or another - and only needs PHP's pdo_mysql (in the
+# PHP step above) to reach it.
 
 step "Installing nginx"
 if ! command -v nginx >/dev/null 2>&1; then
@@ -303,42 +281,6 @@ if ! command -v nginx >/dev/null 2>&1; then
 fi
 systemctl enable --now nginx >/dev/null
 ok "nginx present ($(nginx -v 2>&1))"
-
-# ------------------------------------------------------------ 2. panel database
-#
-# The in-app wizard (app/Modules/Install/App/Http/Controllers/InstallController.php)
-# only tests a database connection already typed into it - making sure that
-# database exists, and that a dedicated user can reach it, is deliberately
-# left out of that controller (it never runs raw DDL against credentials a
-# browser submitted). That's this script's job instead, once, with root
-# MySQL access it already has on the box it just provisioned.
-#
-# The database does not have to be a new, panel-only one: CREATE DATABASE
-# IF NOT EXISTS leaves an existing schema - the CS2 plugins' own included -
-# exactly as it is, and `php artisan migrate` further down only adds the
-# panel's tables (users, sessions, cache, settings, panel_logs, ...), whose
-# names don't collide with any plugin table (admin_*, lvl_base*, vip_*,
-# wp_player_*). Nothing here drops or rewrites anything.
-
-step "Preparing the panel's database"
-run_mysql() {
-    if [ "$MYSQL_LOCAL" -eq 1 ] && mysql -u root -e 'SELECT 1' >/dev/null 2>&1; then
-        mysql -u root "$@"
-    else
-        mysql "$@"
-    fi
-}
-if ! run_mysql -e 'SELECT 1' >/dev/null 2>&1; then
-    die "cannot reach MySQL as root (unix_socket auth failed) - create ${DB_NAME}/${DB_USER} manually and re-run with --skip-ssl once .env is set"
-fi
-run_mysql <<SQL
-CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER IF NOT EXISTS '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';
-ALTER USER '${DB_USER}'@'127.0.0.1' IDENTIFIED BY '${DB_PASS}';
-GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'127.0.0.1';
-FLUSH PRIVILEGES;
-SQL
-ok "database '${DB_NAME}' and user '${DB_USER}' ready"
 
 # ------------------------------------------------------------ 3. the code
 
@@ -383,23 +325,39 @@ fi
 set_env APP_URL "http://$DOMAIN"
 set_env APP_ENV production
 set_env APP_DEBUG false
-set_env DB_CONNECTION panel
-set_env DB_HOST 127.0.0.1
-set_env DB_PORT 3306
-set_env DB_DATABASE "$DB_NAME"
-set_env DB_USERNAME "$DB_USER"
-set_env DB_PASSWORD "$DB_PASS"
-# The Steam/RCON/module wizard writes every other DB_*/STEAM_* value itself
-# once it can reach the panel database above - see InstallController.
+
+# Re-running this over a panel that is already installed is the update path,
+# and that panel has a database, sessions in it, and settings nobody should
+# lose. So the pre-install arrangement below only applies to an install that
+# has not finished its wizard yet.
+ALREADY_INSTALLED=0
+if grep -qE '^INSTALLED=(true|1)$' .env; then
+    ALREADY_INSTALLED=1
+fi
+
+if [ "$ALREADY_INSTALLED" -eq 0 ]; then
+    # No database exists for the panel until the wizard creates its tables
+    # in the one you give it, so until then sessions and cache run on files.
+    # Finishing the wizard moves both to the database.
+    set_env SESSION_DRIVER file
+    set_env CACHE_STORE file
+fi
+# DB_* is deliberately not written here. The wizard's database step is
+# where it gets chosen, and the only place that can prove it works.
 
 if ! grep -q '^APP_KEY=.\+' .env; then
     php artisan key:generate --force --quiet
 fi
 ok ".env ready"
 
-step "Running migrations"
-php artisan migrate --force --no-interaction
-ok "panel tables created"
+if [ "$ALREADY_INSTALLED" -eq 1 ]; then
+    # Updating an installed panel: bring its schema forward. A fresh install
+    # has nothing to migrate into yet - the wizard does that once it has a
+    # database.
+    step "Running migrations"
+    php artisan migrate --force --no-interaction
+    ok "panel tables up to date"
+fi
 
 step "Fixing ownership and permissions"
 chown -R www-data:www-data "$INSTALL_DIR"
@@ -476,13 +434,8 @@ step "Done"
 cat <<DONE
 
   S2 Panel is up. Open ${C_BOLD}${FINAL_URL}/install${C_RESET} to finish setup:
-  language, each Swiftly plugin's database connection, your Steam API key
-  and SteamID64, and which modules to enable.
-
-  Panel database (already in .env, saved here for your records):
-    database : ${DB_NAME}
-    user     : ${DB_USER}
-    password : ${DB_PASS}
+  language, the database your CS2 plugins use (the panel creates its own
+  tables in it), your Steam API key and SteamID64.
 
   Once the wizard is done, consider (see README.md):
     - php artisan config:cache && php artisan route:cache && php artisan view:cache

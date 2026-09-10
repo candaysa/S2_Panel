@@ -2,13 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Modules\I18n\App\Http\Controllers\I18nController;
 use App\Modules\Install\App\Services\ConnectionProbe;
+use App\Modules\Install\App\Services\PanelDatabase;
+use App\Modules\Settings\App\Services\SettingService;
 use App\Support\SteamId;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Mockery\MockInterface;
+use Tests\Support\AssertsAlpineIntegrity;
 use Tests\TestCase;
 
 class InstallTest extends TestCase
 {
+    use AssertsAlpineIntegrity;
     use RefreshDatabase;
 
     private string $envFile;
@@ -79,6 +86,82 @@ class InstallTest extends TestCase
             ->assertSee('Panel Setup');
     }
 
+    /**
+     * The whole wizard is one x-data attribute, so a stray double quote in it
+     * breaks every step while the page still returns 200. PageScriptsTest
+     * sweeps every page of an installed panel and so can never reach this
+     * one; it only exists before install. Checked in every locale, since
+     * what gets rendered into the attribute differs per translation.
+     */
+    public function test_install_page_alpine_survives_every_locale(): void
+    {
+        foreach (I18nController::locales() as $locale) {
+            $html = $this->withSession(['locale' => $locale])->get('/install')->assertOk()->getContent();
+
+            $this->assertAlpineIntact("/install [{$locale}]", $html);
+        }
+    }
+
+    /**
+     * The other way this page breaks, which the rendered check above cannot
+     * see: a translation echoed into a JS string literal as '{{ __(...) }}'.
+     * Blade escapes the apostrophe to &#039;, which keeps the HTML attribute
+     * perfectly intact - and then the HTML parser decodes it back to ' before
+     * Alpine reads the expression, ending the JS string early. So the markup
+     * is clean and the script is broken, in exactly the locales whose text
+     * has an apostrophe (English "application's", French "d'une", Italian
+     * "un'altra"). Verified: a single such literal passes the rendered check
+     * in every locale. @js() emits a literal with the quotes escaped, which
+     * is the only safe way to put a translation there - so the source is
+     * checked for the unsafe form instead.
+     */
+    public function test_install_page_puts_no_translation_in_a_quoted_js_literal(): void
+    {
+        $source = (string) file_get_contents(resource_path('views/install/index.blade.php'));
+
+        $this->assertDoesNotMatchRegularExpression(
+            "/'\\{\\{\\s*__\\(/",
+            $source,
+            "install/index.blade.php echoes a translation inside '...' in its x-data - use @js(__(...)) instead",
+        );
+    }
+
+    /**
+     * The premise of the whole install flow: install.sh creates no database,
+     * so the wizard has to load - and the steps before the database one have
+     * to work - with no database reachable at all. Settings reads (site name,
+     * favicon, brand colour, default locale) and SetLocale's table check are
+     * the pieces that used to assume one.
+     */
+    public function test_wizard_loads_and_takes_the_language_step_with_no_database(): void
+    {
+        $default = config('database.default');
+
+        config([
+            'database.connections.nowhere' => [
+                'driver' => 'mysql',
+                'host' => '127.0.0.1',
+                'port' => 1,
+                'database' => 'nowhere',
+                'username' => 'nobody',
+                'password' => '',
+            ],
+            'database.default' => 'nowhere',
+        ]);
+        DB::purge('nowhere');
+
+        try {
+            $this->get('/install')->assertOk();
+            $this->getJson('/api/install/status')->assertOk();
+            $this->postJson('/api/install/locale', ['locale' => 'tr', 'site_name' => 'X'])->assertOk();
+        } finally {
+            // RefreshDatabase rolls back "the default connection" at teardown
+            // and resolves that name then, not now - leaving it on nowhere
+            // would fail the teardown rather than this test.
+            config(['database.default' => $default]);
+        }
+    }
+
     public function test_locale_requires_a_supported_value(): void
     {
         $this->postJson('/api/install/locale', ['locale' => 'xx'])
@@ -86,14 +169,28 @@ class InstallTest extends TestCase
             ->assertJsonPath('message', 'validation_failed');
     }
 
-    public function test_locale_sets_session_and_default_locale_setting(): void
+    /**
+     * The language step comes before the database step, and on a fresh
+     * install there is no panel database yet - so it cannot write settings.
+     * It holds both values in the session; the database step persists them
+     * the moment it has created the settings table.
+     */
+    public function test_locale_step_holds_its_values_until_the_database_exists(): void
     {
-        $this->postJson('/api/install/locale', ['locale' => 'tr'])
+        $this->postJson('/api/install/locale', ['locale' => 'tr', 'site_name' => 'Anatolia CS'])
             ->assertOk()
             ->assertJsonPath('data.locale', 'tr');
 
         $this->assertSame('tr', session('locale'));
-        $this->assertSame('tr', app(\App\Modules\Settings\App\Services\SettingService::class)->get('default_locale'));
+        $this->assertDatabaseMissing('settings', ['key' => 'default_locale']);
+        $this->assertDatabaseMissing('settings', ['key' => 'site_name']);
+
+        $this->fakeUsableDatabase();
+        $this->postJson('/api/install/database', $this->databasePayload('cs2_plugins'))->assertOk();
+
+        $settings = app(SettingService::class);
+        $this->assertSame('tr', $settings->get('default_locale'));
+        $this->assertSame('Anatolia CS', $settings->get('site_name'));
     }
 
     public function test_database_validates_required_fields(): void
@@ -104,93 +201,108 @@ class InstallTest extends TestCase
     }
 
     /**
-     * The wizard asks for one set of credentials and writes it to every
-     * PLUGIN connection (see InstallController::database() - "the panel
-     * treats all Swiftly plugin data as living in one shared database"),
-     * not five separate connection blocks. This used to submit one payload
-     * per connection under that connection's own name (`panel`, `swiftly`,
-     * ...), which the current single `connection.*` validation rule set
-     * rejects outright as missing required fields.
+     * Probe mocked (no real server) and the table creation mocked (the test
+     * suite's own default connection is sqlite, and the credentials below
+     * point at no real MySQL) - what is under test is what the step decides
+     * and writes, not Laravel's migrator.
+     *
+     * @param  array<int, string>  $foreignMigrations
      */
-    public function test_database_writes_credentials_when_connections_are_reachable(): void
+    private function fakeUsableDatabase(array $foreignMigrations = []): MockInterface
     {
-        // The controller probes the one connection through ConnectionProbe;
-        // in tests the probe is mocked so no real database is ever touched.
         $this->mock(ConnectionProbe::class)
             ->shouldReceive('isHealthy')
             ->andReturn(true);
 
-        $payload = [
-            'connection' => [
-                'host' => '127.0.0.1',
-                'port' => 3306,
-                'database' => 'db_shared',
-                'username' => 'root',
-                'password' => 'secret',
-            ],
-        ];
-
-        $this->postJson('/api/install/database', $payload)
-            ->assertOk()
-            ->assertJsonPath('meta.connections', ['swiftly', 'ranks', 'weaponskins', 'vip']);
-
-        $contents = $this->envContents();
-
-        $this->assertStringContainsString('SWIFTLY_DB_DATABASE=db_shared', $contents);
-        $this->assertStringContainsString('RANKS_DB_DATABASE=db_shared', $contents);
-        $this->assertStringContainsString('WEAPONSKINS_DB_DATABASE=db_shared', $contents);
-        $this->assertStringContainsString('VIP_DB_DATABASE=db_shared', $contents);
+        return $this->mock(PanelDatabase::class, function (MockInterface $mock) use ($foreignMigrations): void {
+            $mock->shouldReceive('foreignMigrations')->andReturn($foreignMigrations);
+            // Allowed unless a test says otherwise - individual tests
+            // override this with once()/never()/andThrow().
+            $mock->shouldReceive('migrate')->byDefault();
+        });
     }
 
     /**
-     * The panel's own connection is NOT the wizard's to rewrite.
-     *
-     * It has to work before this wizard can render at all (session, cache
-     * and queue all ride on it), so it is set by whoever got the panel this
-     * far - install.sh, or step 3 of the manual walkthrough. Writing it here
-     * meant that typing the plugin database on this screen, which is exactly
-     * what it asks for, silently repointed the panel's own tables at it too.
-     * On a long-lived CS2 database that already holds an older install's
-     * `users`/`sessions` that does not even fail loudly: the panel comes up
-     * on a stale, half-migrated schema and the freshly migrated one is
-     * orphaned.
+     * @return array{connection: array<string, mixed>}
      */
-    public function test_database_step_leaves_the_panels_own_connection_alone(): void
+    private function databasePayload(string $database): array
     {
-        $this->mock(ConnectionProbe::class)
-            ->shouldReceive('isHealthy')
-            ->andReturn(true);
-
-        file_put_contents(
-            $this->envFile,
-            "DB_CONNECTION=panel\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_DATABASE=panel_own\nDB_USERNAME=panel_user\nDB_PASSWORD=panel_pass\n",
-        );
-
-        $this->postJson('/api/install/database', [
+        return [
             'connection' => [
                 'host' => '10.0.0.9',
                 'port' => 3307,
-                'database' => 'cs2_plugins',
-                'username' => 'plugin_user',
-                'password' => 'plugin_pass',
+                'database' => $database,
+                'username' => 'cs2_user',
+                'password' => 'cs2_pass',
             ],
-        ])->assertOk();
+        ];
+    }
+
+    /**
+     * One database for everything: the panel's own connection and all four
+     * plugin connections are pointed at what was typed, and the panel's
+     * tables are created there - there is no other database for them.
+     */
+    public function test_database_step_creates_the_panels_tables_in_the_given_database(): void
+    {
+        $this->fakeUsableDatabase()
+            ->shouldReceive('migrate')->once()->with('panel');
+
+        $this->postJson('/api/install/database', $this->databasePayload('cs2_plugins'))
+            ->assertOk()
+            ->assertJsonPath('meta.connections', ['panel', 'swiftly', 'ranks', 'weaponskins', 'vip']);
 
         $contents = $this->envContents();
 
-        // The plugin connections moved...
-        $this->assertStringContainsString('SWIFTLY_DB_DATABASE=cs2_plugins', $contents);
-        $this->assertStringContainsString('SWIFTLY_DB_HOST=10.0.0.9', $contents);
+        // Anchored: SWIFTLY_DB_DATABASE=... ends with the same text, so a
+        // bare substring check would pass even if DB_DATABASE were missing.
+        $this->assertMatchesRegularExpression('/^DB_CONNECTION=panel\r?$/m', $contents);
+        $this->assertMatchesRegularExpression('/^DB_HOST=10\.0\.0\.9\r?$/m', $contents);
+        $this->assertMatchesRegularExpression('/^DB_PORT=3307\r?$/m', $contents);
+        $this->assertMatchesRegularExpression('/^DB_DATABASE=cs2_plugins\r?$/m', $contents);
+        $this->assertMatchesRegularExpression('/^DB_USERNAME=cs2_user\r?$/m', $contents);
 
-        // ...and the panel's own did not.
-        $this->assertStringContainsString('DB_DATABASE=panel_own', $contents);
-        $this->assertStringContainsString('DB_HOST=127.0.0.1', $contents);
-        $this->assertStringContainsString('DB_PORT=3306', $contents);
-        $this->assertStringContainsString('DB_USERNAME=panel_user', $contents);
-        $this->assertStringContainsString('DB_PASSWORD=panel_pass', $contents);
-        // Anchored to the line start: SWIFTLY_DB_DATABASE=cs2_plugins ends
-        // with this same text, so a plain substring check could never pass.
-        $this->assertDoesNotMatchRegularExpression('/^DB_DATABASE=cs2_plugins/m', $contents);
+        foreach (['SWIFTLY', 'RANKS', 'WEAPONSKINS', 'VIP'] as $plugin) {
+            $this->assertMatchesRegularExpression("/^{$plugin}_DB_DATABASE=cs2_plugins\r?$/m", $contents);
+        }
+    }
+
+    /**
+     * A database another web app has already migrated into - an older panel,
+     * as found on a real install - is refused before anything is created or
+     * written, and the operator is told which migrations are in the way.
+     */
+    public function test_database_step_refuses_a_database_holding_another_apps_migrations(): void
+    {
+        $this->fakeUsableDatabase(['2024_05_04_142211_create_all_tables', '2014_10_12_000000_create_users_table'])
+            ->shouldNotReceive('migrate');
+
+        $this->postJson('/api/install/database', $this->databasePayload('cs2_plugins'))
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'database_in_use_by_another_app')
+            ->assertJsonPath('errors.migrations.0', '2024_05_04_142211_create_all_tables');
+
+        $this->assertSame('', $this->envContents());
+    }
+
+    /**
+     * Tables are created before anything is written to .env, so a failure -
+     * a missing CREATE privilege, a clashing table name - leaves the wizard
+     * exactly where it was and shows the database's own reason.
+     */
+    public function test_a_failed_migration_leaves_env_untouched_and_reports_why(): void
+    {
+        $this->fakeUsableDatabase()
+            ->shouldReceive('migrate')
+            ->andThrow(new \RuntimeException("SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'users' already exists"));
+
+        $this->postJson('/api/install/database', $this->databasePayload('cs2_plugins'))
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'panel_migration_failed')
+            ->assertJsonFragment(['reason' => ["SQLSTATE[42S01]: Base table or view already exists: 1050 Table 'users' already exists"]]);
+
+        $this->assertSame('', $this->envContents());
+        $this->assertDatabaseMissing('settings', ['key' => 'admin_plugin']);
     }
 
     public function test_steam_requires_valid_owner_steam_id(): void
@@ -246,6 +358,41 @@ class InstallTest extends TestCase
             ->assertJsonPath('data.installed', true);
 
         $this->assertStringContainsString('INSTALLED=true', $this->envContents());
+    }
+
+    /**
+     * A fresh install runs its sessions and cache on files, because there is
+     * no panel database until the wizard's database step. Finishing moves
+     * both onto the database, which is what an installed panel runs on - a
+     * root cron `schedule:run` writing file cache the web user cannot then
+     * overwrite is the classic way the file setup goes wrong later.
+     */
+    public function test_complete_moves_file_sessions_and_cache_to_the_database(): void
+    {
+        config(['session.driver' => 'file', 'cache.default' => 'file']);
+
+        $this->postJson('/api/install/complete')->assertOk();
+
+        $contents = $this->envContents();
+        $this->assertMatchesRegularExpression('/^SESSION_DRIVER=database\r?$/m', $contents);
+        $this->assertMatchesRegularExpression('/^CACHE_STORE=database\r?$/m', $contents);
+    }
+
+    /**
+     * Only the pre-install file default is promoted - anything else was
+     * chosen on purpose. (array rather than redis here: the test request
+     * itself runs on whatever driver this sets, and redis would need a
+     * server.)
+     */
+    public function test_complete_leaves_a_non_file_driver_alone(): void
+    {
+        config(['session.driver' => 'array', 'cache.default' => 'array']);
+
+        $this->postJson('/api/install/complete')->assertOk();
+
+        $contents = $this->envContents();
+        $this->assertStringNotContainsString('SESSION_DRIVER', $contents);
+        $this->assertStringNotContainsString('CACHE_STORE', $contents);
     }
 
     /**

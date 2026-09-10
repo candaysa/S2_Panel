@@ -111,7 +111,7 @@
                     await this.post('/api/install/locale', { locale: this.locale, site_name: this.siteName });
                     window.location.reload();
                 } catch (e) {
-                    this.error = '{{ __('i18n::messages.install.generic_error') }}';
+                    this.error = @js(__('i18n::messages.install.generic_error'));
                     this.loading = false;
                 }
             },
@@ -128,7 +128,7 @@
                     await this.post('/api/install/locale', { locale: this.locale, site_name: this.siteName });
                     this.step = 2;
                 } catch (e) {
-                    this.error = '{{ __('i18n::messages.install.generic_error') }}';
+                    this.error = @js(__('i18n::messages.install.generic_error'));
                 } finally {
                     this.loading = false;
                 }
@@ -146,11 +146,20 @@
                     await this.loadRconServers();
                     this.step = 3;
                 } catch (e) {
-                    // A single connection is submitted now, so naming it back
-                    // adds nothing - report the failure on its own.
-                    this.error = e.data?.message === 'database_connection_failed'
-                        ? '{{ __('i18n::messages.install.db_connection_failed') }}'
-                        : '{{ __('i18n::messages.install.generic_error') }}';
+                    // This step now also creates the panel's tables in that
+                    // database, so it can fail two new ways besides a bad
+                    // password - and both need their detail shown, since the
+                    // fix depends on it (which table clashed, which app's
+                    // migrations are in the way, which privilege is missing).
+                    const code = e.data?.message;
+                    const messages = {
+                        database_connection_failed: @js(__('i18n::messages.install.db_connection_failed')),
+                        database_in_use_by_another_app: @js(__('i18n::messages.install.db_foreign_app')),
+                        panel_migration_failed: @js(__('i18n::messages.install.db_migration_failed')),
+                    };
+                    const detail = (e.data?.errors?.reason ?? e.data?.errors?.migrations ?? []).slice(0, 3).join(', ');
+                    this.error = (messages[code] ?? @js(__('i18n::messages.install.generic_error')))
+                        + (detail && code !== 'database_connection_failed' ? ' (' + detail + ')' : '');
                 } finally {
                     this.loading = false;
                 }
@@ -178,7 +187,7 @@
                     await this.post('/api/install/rcon', this.rcon);
                     this.step = 4;
                 } catch (e) {
-                    this.error = '{{ __('i18n::messages.install.generic_error') }}';
+                    this.error = @js(__('i18n::messages.install.generic_error'));
                 } finally {
                     this.loading = false;
                 }
@@ -191,7 +200,7 @@
                     await this.post('/api/install/steam', this.steam);
                     this.step = 5;
                 } catch (e) {
-                    this.error = '{{ __('i18n::messages.install.generic_error') }}';
+                    this.error = @js(__('i18n::messages.install.generic_error'));
                 } finally {
                     this.loading = false;
                 }
@@ -204,7 +213,7 @@
                     await this.post('/api/install/complete', {});
                     window.location.href = '/dashboard';
                 } catch (e) {
-                    this.error = '{{ __('i18n::messages.install.generic_error') }}';
+                    this.error = @js(__('i18n::messages.install.generic_error'));
                     this.loading = false;
                 }
             },

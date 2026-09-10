@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Modules\Install\App\Services\ConnectionProbe;
 use App\Modules\Install\App\Services\EnvWriter;
+use App\Modules\Install\App\Services\InstallFinaliser;
 use App\Modules\Settings\App\Services\SettingService;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\UploadedFile;
@@ -127,10 +128,18 @@ class PanelBackup
 
             Artisan::call('migrate', ['--force' => true]);
 
+            // After migrate, not inside writeEnv() where it used to be: on a
+            // fresh install there is no panel database until this restore
+            // points at one, so the settings table does not exist before the
+            // line above. It still lands before importData() on purpose -
+            // that replaces the settings table wholesale, so a locale the
+            // backup's own settings carry wins over this manifest default.
+            $this->settings->set('default_locale', (string) ($manifest['locale'] ?? 'en'));
+
             [$restoredTables, $secretsCleared] = $this->importData($extractTo);
             $skippedUploads = $this->restoreUploads($extractTo);
 
-            (new EnvWriter($envPath))->set(['INSTALLED' => true]);
+            app(InstallFinaliser::class)->markInstalled($envPath);
 
             return [
                 'restored_tables' => $restoredTables,
@@ -237,9 +246,6 @@ class PanelBackup
                 'engine' => null,
             ]);
         }
-
-        $locale = (string) ($manifest['locale'] ?? 'en');
-        $this->settings->set('default_locale', $locale);
     }
 
     /**

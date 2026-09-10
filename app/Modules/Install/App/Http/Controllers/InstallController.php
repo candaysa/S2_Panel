@@ -6,6 +6,8 @@ use App\Modules\I18n\App\Http\Controllers\I18nController;
 use App\Modules\Install\App\Services\ConnectionProbe;
 use App\Modules\Install\App\Services\DependencyProbe;
 use App\Modules\Install\App\Services\EnvWriter;
+use App\Modules\Install\App\Services\InstallFinaliser;
+use App\Modules\Install\App\Services\PanelDatabase;
 use App\Modules\Rcon\App\Models\RconSetting;
 use App\Modules\Server\App\Models\AdminServer;
 use App\Modules\Settings\App\Services\SettingService;
@@ -35,25 +37,19 @@ use Throwable;
 class InstallController
 {
     /**
-     * The plugin connections this step configures.
+     * Every connection the database step points at the one database it is
+     * given - the panel's own included.
      *
-     * "panel" is deliberately NOT here. The panel's own connection has to
-     * work before this wizard can render at all - session, cache and queue
-     * all use it - so it is already set by whoever got the panel this far
-     * (install.sh, or step 3 of the manual walkthrough). Writing it here
-     * again meant that typing the plugin database - which is exactly what
-     * this screen asks for - silently repointed the panel's own tables at
-     * it too. When that database happens to contain an older install's
-     * users/sessions, as a long-lived CS2 database well might, the panel
-     * does not even fail loudly: it comes up on a stale, half-migrated
-     * schema and strands the one the installer just migrated.
-     *
-     * Pointing both at one database is still perfectly supported - that is
-     * a choice made once, when the panel's own DB_* is set (install.sh
-     * --db-name, or by hand). It is just not something this screen should
-     * decide on the operator's behalf.
+     * The panel lives in the database the CS2 plugins already use: a CS2
+     * server has exactly one, and it is the thing an operator actually
+     * knows. So nothing before this step creates a database or any panel
+     * table (install.sh leaves the panel running on file sessions and cache
+     * so this wizard can render with no database at all), and this step is
+     * where the panel's tables get created - in that database, right after
+     * the credentials prove they work. See database() for the guards that
+     * makes safe on a database which already has a history.
      */
-    private const CONNECTIONS = ['swiftly', 'ranks', 'weaponskins', 'vip'];
+    private const CONNECTIONS = ['panel', 'swiftly', 'ranks', 'weaponskins', 'vip'];
 
     /**
      * Scratch connection name used only to validate submitted credentials.
@@ -70,6 +66,9 @@ class InstallController
      * server state because the thing it describes, .env, is server state.
      */
     private const STEP_KEY = 'INSTALL_STEP';
+
+    /** Where the language step parks the site name until a database exists. */
+    private const SITE_NAME_SESSION_KEY = 'install.site_name';
 
     private const STEP_LOCALE = 1;
 
@@ -93,6 +92,8 @@ class InstallController
     public function __construct(
         private readonly ConnectionProbe $probe,
         private readonly DependencyProbe $dependencies,
+        private readonly PanelDatabase $panelDatabase,
+        private readonly InstallFinaliser $finaliser,
     ) {
     }
 
@@ -142,14 +143,18 @@ class InstallController
         }
 
         $locale = (string) $request->input('locale');
-
-        $request->session()->put('locale', $locale);
-        app(SettingService::class)->set('default_locale', $locale);
-
         $siteName = trim((string) $request->input('site_name', ''));
 
-        if ($siteName !== '') {
-            app(SettingService::class)->set('site_name', $siteName);
+        // This step comes before the database one, so on a fresh install
+        // there is no settings table to write to yet. Both values wait in
+        // the session and database() persists them right after it creates
+        // the panel's tables. Going back to this screen later - with the
+        // database already set up - writes them straight through instead.
+        $request->session()->put('locale', $locale);
+        $request->session()->put(self::SITE_NAME_SESSION_KEY, $siteName);
+
+        if ((int) env(self::STEP_KEY, 0) >= self::STEP_DATABASE) {
+            $this->persistLocaleStep($request);
         }
 
         // Recorded like every other step. Without this a refresh right after
@@ -211,18 +216,49 @@ class InstallController
         // runs every plugin.
         $integrations = $this->dependencies->inspect(self::PROBE_CONNECTION, $adminPlugin);
 
-        app(SettingService::class)->set('admin_plugin', $adminPlugin);
+        // A database with another web app's migrations in it is refused
+        // before a single table is created - see PanelDatabase for why
+        // migrating over one cannot end well either way.
+        try {
+            $foreign = $this->panelDatabase->foreignMigrations(self::PROBE_CONNECTION);
+        } catch (Throwable $e) {
+            // The credentials just worked, so a failure here is about what
+            // is in the database (or what this user may read of it) - the
+            // same kind of problem as a failed migration, with the same need
+            // to show the database's own words.
+            return Api::error('panel_migration_failed', ['reason' => [mb_substr($e->getMessage(), 0, 400)]], 422);
+        }
 
-        // Only .env is written, and only the plugin connections (see
-        // CONNECTIONS). The live connections are deliberately left alone
-        // too: repointing one mid-request would send the rest of this
-        // request - including the session write that closes it - somewhere
-        // it has not been proven to work. The new values are picked up on
-        // the next request, which is when they are first needed.
+        if ($foreign !== []) {
+            return Api::error('database_in_use_by_another_app', ['migrations' => array_slice($foreign, 0, 10)], 422);
+        }
+
+        // Create the panel's tables there now, before anything is written to
+        // .env: if this fails, the wizard is still exactly where it was and a
+        // retry starts clean. That means pointing this request's own "panel"
+        // connection at the new database first - safe during install, where
+        // sessions and cache are on files and nothing else in this request
+        // is using it.
+        $previousPanel = config('database.connections.panel');
+        $this->overrideConnection('panel', $data);
+        DB::purge('panel');
+
+        try {
+            $this->panelDatabase->migrate('panel');
+        } catch (Throwable $e) {
+            config()->set('database.connections.panel', $previousPanel);
+            DB::purge('panel');
+
+            return Api::error('panel_migration_failed', ['reason' => [mb_substr($e->getMessage(), 0, 400)]], 422);
+        }
+
+        app(SettingService::class)->set('admin_plugin', $adminPlugin);
+        $this->persistLocaleStep($request);
+
         $values = [];
 
         foreach (self::CONNECTIONS as $connection) {
-            $prefix = strtoupper($connection).'_DB_';
+            $prefix = $connection === 'panel' ? 'DB_' : strtoupper($connection).'_DB_';
 
             $values[$prefix.'HOST'] = $data['host'];
             $values[$prefix.'PORT'] = $data['port'];
@@ -231,6 +267,7 @@ class InstallController
             $values[$prefix.'PASSWORD'] = $data['password'] ?? '';
         }
 
+        $values['DB_CONNECTION'] = 'panel';
         $values[self::STEP_KEY] = self::STEP_DATABASE;
         (new EnvWriter($this->envPath()))->set($values);
 
@@ -341,7 +378,7 @@ class InstallController
      */
     public function complete(): JsonResponse
     {
-        (new EnvWriter($this->envPath()))->set(['INSTALLED' => true]);
+        $this->finaliser->markInstalled($this->envPath());
 
         $this->retireInstaller();
 
@@ -448,6 +485,29 @@ class InstallController
         DB::purge(self::PROBE_CONNECTION);
 
         return $healthy;
+    }
+
+    /**
+     * Write what the language step collected into the settings table.
+     *
+     * Only possible once the database step has created that table - which
+     * is why the language step keeps both values in the session on a fresh
+     * install and this runs from database() instead.
+     */
+    private function persistLocaleStep(Request $request): void
+    {
+        $settings = app(SettingService::class);
+        $locale = $request->session()->get('locale');
+
+        if (is_string($locale) && $locale !== '') {
+            $settings->set('default_locale', $locale);
+        }
+
+        $siteName = trim((string) $request->session()->get(self::SITE_NAME_SESSION_KEY, ''));
+
+        if ($siteName !== '') {
+            $settings->set('site_name', $siteName);
+        }
     }
 
     private function overrideConnection(string $connection, array $data): void

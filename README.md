@@ -56,7 +56,7 @@ connection per plugin database) · Vite.
 | PHP | 8.3 | with `pdo_mysql`, `mbstring`, `openssl`, `zip`, `fileinfo`, `curl` |
 | Composer | 2.x | |
 | Node.js | 20+ | build-time only — not needed on the production server if you upload `public/build` |
-| MySQL / MariaDB | 8.0 / 10.6 | a database for the panel's own tables (a new one, or one you already have), plus read/write access to each Swiftly plugin database |
+| MySQL / MariaDB | 8.0 / 10.6 | the database your CS2 plugins already use - the panel creates its own tables in it; the user needs read/write plus `CREATE` on it |
 | Web server | Apache or nginx | document root must point at `public/` |
 
 You also need **Steam Web API credentials** (a key from
@@ -69,14 +69,17 @@ the **SteamID64 of the panel owner** — the wizard asks for both.
 
 One script takes a bare Ubuntu server the rest of the way to "open the
 panel in a browser": it checks for PHP 8.3 (+ every required extension),
-Composer, Node 20+, MySQL and nginx and installs whichever are missing,
-pulls this repo, runs `composer`/`npm`, **makes sure the panel has a
-database to migrate into** (`CREATE DATABASE IF NOT EXISTS` — pass
-`--db-name` to reuse a database you already have, including the one your
-plugins write to), writes just enough of `.env` to boot, runs the
-migrations, points nginx at `public/`, and requests a Let's Encrypt
-certificate. Safe to re-run — every step checks what's already there before
-changing anything.
+Composer, Node 20+ and nginx and installs whichever are missing, pulls this
+repo, runs `composer`/`npm`, writes just enough of `.env` to boot, points
+nginx at `public/`, and requests a Let's Encrypt certificate. Safe to re-run
+— every step checks what's already there before changing anything, and a
+re-run over an installed panel updates it.
+
+**It creates no database.** The panel keeps its tables in the database your
+CS2 plugins already use: you enter that one in the install wizard, and the
+wizard creates the panel's tables there. Until then the panel runs its
+sessions and cache on files, which is what lets the wizard load with no
+database at all.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh | sudo bash
@@ -87,10 +90,9 @@ steps, shows you what it is about to do, and waits for you to confirm — so
 there is nothing to look up before running it. (Leave the email blank to
 install without SSL.)
 
-That's steps 1–5 below, done. It ends by printing the URL to the install
-wizard (step 6) — the four Swiftly plugin database connections, your Steam
-API key, and the owner's SteamID64 are still asked there, never on the
-command line.
+That's steps 1–4 below, done. It ends by printing the URL to the install
+wizard (step 5) — your CS2 plugins' database, your Steam API key and the
+owner's SteamID64 are asked there, never on the command line.
 
 Every answer can also be passed up front, which an unattended run has to do
 because a machine with no terminal has nobody to ask:
@@ -100,8 +102,8 @@ curl -fsSL https://raw.githubusercontent.com/candaysa/S2_Panel/main/install.sh \
   | sudo bash -s -- --domain panel.example.com --email you@example.com --yes
 ```
 
-See `./install.sh --help` for the rest (custom install directory, branch, DB
-name/user, `--skip-ssl`).
+See `./install.sh --help` for the rest (custom install directory, branch,
+`--skip-ssl`).
 
 Not on Ubuntu, or want to see/control every step yourself? Expand the manual
 walkthrough below — it's exactly what the script automates.
@@ -122,29 +124,24 @@ npm run build
 For a development checkout use `composer install` (keep dev dependencies)
 and `npm run dev` instead of `npm run build`.
 
-### 2. Pick a database for the panel
+### 2. The database: nothing to create
 
-The panel needs one MySQL/MariaDB database to keep its own tables in. It
-does **not** have to be a new, panel-only one — any database you can
-already reach works, including the very same database the CS2 plugins
-write to. The panel's tables (`users`, `sessions`, `cache`, `jobs`,
-`settings`, `panel_logs`, `reports`, `appeals`, `cheat_scans`, …) share no
-name with the plugin tables (`admin_admins`, `admin_groups`, `admin_log`,
-`lvl_base*`, `vip_users`, `vip_servers`, `wp_player_*`), so they sit next
-to them without touching them.
+The panel lives in the database your CS2 plugins already use (Swiftly
+admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore) — there is no
+separate panel database to create. The install wizard asks for it and
+creates the panel's own tables in it (`users`, `sessions`, `cache`, `jobs`,
+`settings`, `panel_logs`, `reports`, `appeals`, `cheat_scans`, …). None of
+those names is used by a plugin (`admin_*`, `lvl_base*`, `vip_*`,
+`wp_player_*`), so they sit next to the plugin tables without touching them.
 
-If you'd rather give the panel a database of its own, create one:
+Two things to check first:
 
-```sql
-CREATE DATABASE s2_panel CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-Either way, nothing needs creating for the plugins: their databases
-(Swiftly admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore) already
-exist — the panel only reads and writes their tables. Laravel keeps the
-panel connection and the four plugin connections as separate config
-entries, so several of them pointing at the same physical database is
-perfectly fine.
+- the MySQL user needs `CREATE` on that database, not just read/write — the
+  wizard reports the database's own error if it cannot create a table;
+- the database must not still hold **another web panel's** tables (a Laravel
+  `migrations` table listing migrations that are not this panel's — an older
+  panel, typically). The wizard refuses such a database rather than
+  migrating over it, and names the migrations that are in the way.
 
 ### 3. Create the environment file
 
@@ -153,39 +150,23 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Edit `.env` and set two things:
+Set `APP_URL` in `.env`:
 
 ```
 APP_URL=https://panel.example.com
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=s2_panel
-DB_USERNAME=s2_panel
-DB_PASSWORD=…
 ```
 
-`APP_URL` must match the address the panel is actually served from — Steam
-OpenID redirects back to it, so a wrong value breaks login.
+It must match the address the panel is actually served from — Steam OpenID
+redirects back to it, so a wrong value breaks login.
 
-The `DB_*` values are needed **before** the wizard, not after: sessions,
-cache and queue all use the `database` driver, so the panel cannot render a
-single page — including `/install` — until it can reach its own database.
-The wizard asks for these credentials again on its Database step; that is
-where they get written permanently, along with the four plugin connections.
+Leave everything else alone. `DB_*` is written by the wizard's database
+step, and `STEAM_*` / `OWNER_STEAM_ID` by its Steam step. `.env.example`
+ships with `SESSION_DRIVER=file` and `CACHE_STORE=file` on purpose: there is
+no database for the panel until the wizard creates its tables, and the
+wizard itself has to load first. Finishing the wizard switches both to
+`database`.
 
-Leave `STEAM_*` and `MODULE_*` alone — the wizard writes those for you.
-
-### 4. Create the tables
-
-```bash
-php artisan migrate --force
-```
-
-This creates the panel's own tables (users, sessions, cache, jobs, settings,
-audit log, reports, appeals, cheat scans, …) and nothing else — any table
-already in that database, a plugin's included, is left untouched.
-
-### 5. Point the web server at `public/`
+### 4. Point the web server at `public/`
 
 The document root must be `public/`, never the project root — everything
 above it (including `.env`) would otherwise be downloadable.
@@ -245,30 +226,29 @@ chown -R www-data:www-data storage bootstrap/cache
 
 </details>
 
-### 6. Run the install wizard
+### 5. Run the install wizard
 
 Open the panel in a browser. Any URL redirects to `/install` until setup
 finishes. The wizard walks through:
 
-1. **Language** — the panel's default locale.
-2. **Database** — the panel's own database, plus a connection per plugin
-   database (Swiftly admin, K4-LevelRanks-SwiftlyS2, weapon skins, VIPCore).
-   They may all name the same database if that's how your server is set
-   up. Each one is connection-tested before it is accepted.
-3. **Steam & owner** — Steam Web API key, OpenID credentials, and the
-   owner's SteamID64. The owner always has full access, independent of the
-   plugin's flags.
-4. **Modules** — which built-in features to enable. All of them can be
-   changed later from the Modules tab.
+1. **Language** — the panel's default locale, and its name.
+2. **Database** — the database your CS2 plugins use. The connection is
+   tested, then the panel's own tables are created in it; all five
+   connections (the panel's and the four plugins') point there.
+3. **RCON** — optional: one password for the servers the admin plugin has
+   registered, or set them per server later.
+4. **Steam & owner** — Steam Web API key and the owner's SteamID64. The
+   owner always has full access, independent of the plugin's flags.
+5. **Done** — `INSTALLED=true` is written, sessions and cache move to the
+   database, and `/install` starts returning 404.
 
-The wizard writes to `.env` only — it does not run migrations, which is why
-step 4 exists. When it finishes, `INSTALLED=true` is written and `/install`
-starts returning 404.
+Which modules are on is not part of setup — that is an ongoing decision,
+made from the Modules tab once you have logged in.
 
 > Already have a `backup.zip` from another install? Upload it on the very
 > first screen to skip the wizard entirely — see **Backup & restore**.
 
-### 7. Production hardening (recommended)
+### 6. Production hardening (recommended)
 
 ```bash
 php artisan config:cache
@@ -353,7 +333,9 @@ php artisan config:cache && php artisan route:cache && php artisan view:cache
 
 | Symptom | Cause |
 |---|---|
-| `/install` itself throws a database error | Step 4 was skipped, or `DB_*` is wrong. Sessions, cache and queue all use the `database` driver, so the wizard cannot render before its own tables exist. |
+| `/install` itself throws a database error | `SESSION_DRIVER` / `CACHE_STORE` are set to `database` in `.env` before install. They have to stay `file` until the wizard finishes — it is what creates the database tables they would need. |
+| Database step: "already holds another web application's tables" | The database still has an older panel in it. Remove that panel's tables (the error names its migrations) or use a database only the CS2 plugins write to. |
+| Database step: "could not create its tables" | Usually the MySQL user lacks `CREATE` on that database, or a table with one of the panel's names already exists — the database's own message is shown next to it. |
 | Every URL redirects to `/install` | Setup never completed — `INSTALLED` is not `true` in `.env`. |
 | `/install` returns 404 | Setup already completed. This is deliberate: it stops anyone re-running the wizard and overwriting your credentials. |
 | Steam login returns to a wrong or broken URL | `APP_URL` does not match the address you are browsing, or `STEAM_CALLBACK_URL` is not `<APP_URL>/api/auth/callback`. |
