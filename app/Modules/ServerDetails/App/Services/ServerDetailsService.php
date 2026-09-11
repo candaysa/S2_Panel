@@ -138,7 +138,7 @@ class ServerDetailsService
             return $this->uniqueSteamByName(RankPlayer::query()->whereIn('name', $names)->get(['name', 'steam']));
         } catch (Throwable) {
             // One name in the batch can abort the whole IN (...) query -
-            // confirmed live: a 4-byte-UTF8 display name (mathematical
+            // e.g. a 4-byte-UTF8 display name (mathematical
             // bold letters) against lvl_base's own column collation threw
             // "Illegal mix of collations for operation 'in'" and silently
             // blocked every other name in the same player list, not just

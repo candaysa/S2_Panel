@@ -63,9 +63,9 @@ class SteamOwnerResolverTest extends TestCase
             ]),
         ]);
 
-        $this->assertSame('76561198000000077', $this->resolve('https://steamcommunity.com/id/anatolia_owner/', 'THE_KEY'));
+        $this->assertSame('76561198000000077', $this->resolve('https://steamcommunity.com/id/panel_owner/', 'THE_KEY'));
 
-        Http::assertSent(fn ($request) => $request['vanityurl'] === 'anatolia_owner' && $request['key'] === 'THE_KEY');
+        Http::assertSent(fn ($request) => $request['vanityurl'] === 'panel_owner' && $request['key'] === 'THE_KEY');
     }
 
     public function test_an_unknown_custom_link_is_reported_as_such(): void
@@ -80,14 +80,14 @@ class SteamOwnerResolverTest extends TestCase
     {
         Http::fake(['api.steampowered.com/*' => Http::response('Forbidden', 403)]);
 
-        $this->assertFailsWith('steam_api_key_rejected', 'https://steamcommunity.com/id/anatolia_owner');
+        $this->assertFailsWith('steam_api_key_rejected', 'https://steamcommunity.com/id/panel_owner');
     }
 
     public function test_steam_being_unreachable_is_reported_separately(): void
     {
         Http::fake(fn () => throw new ConnectionException('timed out'));
 
-        $this->assertFailsWith('steam_unreachable', 'https://steamcommunity.com/id/anatolia_owner');
+        $this->assertFailsWith('steam_unreachable', 'https://steamcommunity.com/id/panel_owner');
     }
 
     public function test_anything_else_is_not_a_profile(): void

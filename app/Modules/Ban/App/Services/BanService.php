@@ -139,8 +139,7 @@ class BanService
             // the punishment - for one issued from RCON/console against a
             // player with no cached persona name, it stores the SteamID
             // itself as a placeholder rather than leaving the column empty
-            // (confirmed live: 130/587 bans on this install, every one
-            // admin_name="Konsol"). The player's own profile page already
+            // - common for console-issued bans. The player's own profile page already
             // shows their real name via a live lookup; this is the same
             // fallback, applied here too rather than only there.
             if ($profile !== null && $this->looksLikeSteamId((string) ($data['target_name'] ?? ''), $row->steamid)) {

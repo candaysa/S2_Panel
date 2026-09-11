@@ -9,10 +9,8 @@ use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
- * SteamProfiles::many() is on the request path of Bans, Admins and Ranks -
- * a live install measured 300-2500ms of Steam's own response time for any
- * id not already cached, which is why those three pages were reported slow
- * to open. The fix here is caching an id Steam has nothing for, same as one
+ * SteamProfiles::many() is on the request path of Bans, Admins and Ranks,
+ * and Steam can take 300-2500ms to answer for an id not already cached. The fix here is caching an id Steam has nothing for, same as one
  * it does - previously that id was never written to cache at all, so it
  * repeated the full live round trip on every single call, forever.
  */

@@ -7,8 +7,7 @@ use Tests\TestCase;
 /**
  * The Steam login callback has to follow APP_URL. A fresh install copied
  * .env.example's STEAM_CALLBACK_URL=http://localhost:8000/... verbatim and
- * every Steam login on the live panel was sent back to the visitor's own
- * machine; the fix removes that line and makes an empty value fall back to
+ * every Steam login was sent back to the visitor's own machine; the fix removes that line and makes an empty value fall back to
  * APP_URL too, since env()'s default only applies to a variable that is
  * not set at all.
  */

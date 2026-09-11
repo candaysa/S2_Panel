@@ -20,11 +20,10 @@ use Throwable;
  * That cost is real and was the confirmed reason those three pages felt
  * slow to open: BanService::decorate(), AdminController::index() and
  * RankService::leaderboard() each call SteamProfiles::many() synchronously
- * on the request path, and measured against the live install, an id
- * SteamProfiles has not cached in the last 12h (see
- * SteamProfiles::CACHE_HOURS) costs 300-2500ms of Steam's own response
- * time - nothing on this panel's side is slow, Steam's API simply is not
- * fast from here. Scheduled hourly (bootstrap/app.php), comfortably inside
+ * on the request path, and an id SteamProfiles has not cached in the last
+ * 12h (see SteamProfiles::CACHE_HOURS) can cost 300-2500ms of Steam's own
+ * response time - nothing on the panel's side is slow, Steam's API simply
+ * is not fast. Scheduled hourly (bootstrap/app.php), comfortably inside
  * that 12h window, so a page almost never lands on a genuinely cold id.
  *
  * Deliberately its own command rather than a page-load side effect: warming

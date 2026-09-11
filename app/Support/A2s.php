@@ -98,9 +98,9 @@ final class A2s
      *
      * One socket per target, all written before anything is read, then
      * stream_select() waits on the whole set together. Cost is therefore one
-     * timeout for the batch instead of one per server: the sequential version
-     * took up to 12 x 2s on this panel's server list, most of it spent on
-     * entries whose stored IP is 0.0.0.0 and can never answer.
+     * timeout for the batch instead of one per server - sequentially, a list
+     * with several dead entries (or ones stored as 0.0.0.0, which can never
+     * answer) costs a full timeout for each of them.
      *
      * Steam replies to an unchallenged A2S_INFO with S2C_CHALLENGE, so this
      * runs two rounds - the second only for the servers that asked for one.

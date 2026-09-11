@@ -81,9 +81,9 @@ final class Flags
         $groups = self::explode($admin->groups);
         $flags = self::explode($admin->flags);
 
-        // An admin's own `flags` column is frequently empty by design - this
-        // live install assigns every real admin permissions purely through a
-        // group (Owner/Admin/Alt_Admin/...), never per-row. Reading only the
+        // An admin's own `flags` column is frequently empty by design - many
+        // servers assign admin permissions purely through a group
+        // (Owner/Admin/...), never per-row. Reading only the
         // row's own column left every group-only admin with zero effective
         // flags, silently failing every flag:admin.xxx gate in the panel
         // (RCON, Admins, Groups, Cheat Check, Audit) for anyone but the

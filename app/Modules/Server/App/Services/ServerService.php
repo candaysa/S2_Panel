@@ -20,9 +20,9 @@ use InvalidArgumentException;
  *
  * Two things keep that from costing the page a visible stall: every server
  * in a listing is probed in one parallel batch (A2s::infoMany) rather than
- * one after another, and the result is cached briefly. Sequentially probing
- * this panel's 12 servers took up to 24s, since five of them carry a stored
- * IP of 0.0.0.0 and always burn the full timeout.
+ * one after another, and the result is cached briefly. Probed one by one,
+ * every dead server - or one stored as 0.0.0.0 by a misconfigured plugin -
+ * adds a full timeout to the page.
  */
 class ServerService
 {

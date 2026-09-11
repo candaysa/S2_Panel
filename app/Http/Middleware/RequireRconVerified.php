@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Which server, and why, is owner-only detail: Bans in particular is open
  * to any signed-in player (see its Routes/api.php), and a plain player has
- * no way to act on "server 95.13.23.102:27021 has no rcon password" - it
+ * no way to act on "server <ip>:<port> has no rcon password" - it
  * would just be internal infrastructure handed to whoever happens to open
  * the page while it is broken. Everyone else gets told the section is
  * unavailable, nothing more.

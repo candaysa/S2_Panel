@@ -33,7 +33,7 @@ class DashboardTest extends TestCase
     public function test_top_players_includes_a_steam64_for_the_profile_link(): void
     {
         DB::connection('ranks')->table('lvl_base')->insert([
-            'steam' => 'STEAM_0:1:780281982',
+            'steam' => 'STEAM_0:1:123456',
             'name' => 'Top Player',
             'value' => 30000,
             'rank' => 1,
@@ -42,7 +42,7 @@ class DashboardTest extends TestCase
         $response = $this->getJson('/api/dashboard')->assertOk();
 
         $this->assertSame(
-            '76561199520829693',
+            '76561197960512641',
             $response->json('data.ranks.0.steam64'),
         );
     }
@@ -71,7 +71,7 @@ class DashboardTest extends TestCase
     {
         $this->addServer('127.0.0.1', 27015);
         Cache::put('server.live.127.0.0.1:27015', ['v' => [
-            'name' => 'Anatolia #1', 'map' => 'de_dust2', 'players' => 7,
+            'name' => 'Example #1', 'map' => 'de_dust2', 'players' => 7,
             'max_players' => 20, 'bots' => 0, 'app_id' => 730,
         ]], 15);
 
@@ -79,7 +79,7 @@ class DashboardTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.servers.0.pending', false)
             ->assertJsonPath('data.servers.0.online', true)
-            ->assertJsonPath('data.servers.0.live.name', 'Anatolia #1');
+            ->assertJsonPath('data.servers.0.live.name', 'Example #1');
     }
 
     public function test_servers_endpoint_probes_and_resolves_every_pending_row(): void

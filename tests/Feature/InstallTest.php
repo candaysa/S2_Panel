@@ -178,7 +178,7 @@ class InstallTest extends TestCase
      */
     public function test_locale_step_holds_its_values_until_the_database_exists(): void
     {
-        $this->postJson('/api/install/locale', ['locale' => 'tr', 'site_name' => 'Anatolia CS'])
+        $this->postJson('/api/install/locale', ['locale' => 'tr', 'site_name' => 'My Community'])
             ->assertOk()
             ->assertJsonPath('data.locale', 'tr');
 
@@ -191,7 +191,7 @@ class InstallTest extends TestCase
 
         $settings = app(SettingService::class);
         $this->assertSame('tr', $settings->get('default_locale'));
-        $this->assertSame('Anatolia CS', $settings->get('site_name'));
+        $this->assertSame('My Community', $settings->get('site_name'));
     }
 
     public function test_database_validates_required_fields(): void
@@ -371,14 +371,14 @@ class InstallTest extends TestCase
 
         $this->postJson('/api/install/steam', [
             'api_key' => 'GOODKEY',
-            'owner_steam_id' => 'https://steamcommunity.com/id/anatolia_owner',
+            'owner_steam_id' => 'https://steamcommunity.com/id/panel_owner',
         ])->assertOk();
 
         $this->assertMatchesRegularExpression('/^OWNER_STEAM_ID=76561198000000077\r?$/m', $this->envContents());
 
         $this->postJson('/api/install/steam', [
             'api_key' => 'BADKEY',
-            'owner_steam_id' => 'https://steamcommunity.com/id/anatolia_owner',
+            'owner_steam_id' => 'https://steamcommunity.com/id/panel_owner',
         ])
             ->assertStatus(422)
             ->assertJsonPath('errors.owner_steam_id', 'steam_api_key_rejected');
