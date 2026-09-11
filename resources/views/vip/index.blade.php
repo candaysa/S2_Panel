@@ -117,7 +117,7 @@
                 this.load();
             },
         }"
-        x-init="init()"
+       
     >
         <div class="flex flex-wrap items-center justify-between gap-4">
             <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.vip') }}</h1>

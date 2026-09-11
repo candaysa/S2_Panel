@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.ranks.profile')">
-    <div x-data="playerProfile(@js($steam))" x-init="init()">
+    <div x-data="playerProfile(@js($steam))">
         <a href="{{ route('ranks.page') }}" class="inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink">
             <x-icon name="chevron-left" class="size-4" />
             {{ __('i18n::messages.ranks.back_to_ranks') }}

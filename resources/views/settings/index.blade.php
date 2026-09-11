@@ -4,7 +4,7 @@
          single " anywhere inside it - even in a code comment - closes the
          attribute early and dumps the rest of the component onto the page as
          text. That is exactly what happened here. --}}
-    <div x-data="settingsPage()" x-init="init()">
+    <div x-data="settingsPage()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.settings') }}</h1>
 
         <x-settings-tabs current="general" />

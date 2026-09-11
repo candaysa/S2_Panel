@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.modules.title')">
-    <div x-data="modulesPage()" x-init="init()">
+    <div x-data="modulesPage()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.modules.title') }}</h1>
         <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.modules.subtitle') }}</p>
 

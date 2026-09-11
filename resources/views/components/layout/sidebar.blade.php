@@ -125,7 +125,7 @@
     <div class="border-t border-line px-3 py-3 space-y-0.5">
         @if ($isOwner)
             @if ($notificationsEnabled)
-                <div x-data="notificationBell()" x-init="init()" class="relative">
+                <div x-data="notificationBell()" class="relative">
                     <button
                         type="button"
                         @click="open = !open"

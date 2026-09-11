@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.cheat_check')">
-    <div x-data="cheatCheckPage()" x-init="init()">
+    <div x-data="cheatCheckPage()">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.cheat_check') }}</h1>

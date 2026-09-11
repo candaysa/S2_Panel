@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.settings.tab_design')">
-    <div x-data="designPage()" x-init="init()">
+    <div x-data="designPage()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.settings') }}</h1>
 
         <x-settings-tabs current="design" />

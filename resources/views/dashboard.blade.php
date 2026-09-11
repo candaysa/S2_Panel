@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.dashboard')">
-    <div x-data="dashboard()" x-init="init()">
+    <div x-data="dashboard()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.dashboard') }}</h1>
 
         <p x-show="error" x-cloak class="mt-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-400">

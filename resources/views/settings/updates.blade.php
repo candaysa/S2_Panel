@@ -8,7 +8,7 @@
     since that is exactly when it is needed.
 --}}
 <x-layout.app :title="__('i18n::messages.nav.settings')">
-    <div x-data="updatesPage()" x-init="init()">
+    <div x-data="updatesPage()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.settings') }}</h1>
 
         <x-settings-tabs current="updates" />

@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.rcon')">
-    <div x-data="rconPage()" x-init="init()">
+    <div x-data="rconPage()">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.rcon') }}</h1>
             <select x-model="serverId" @change="loadHistory()" class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink focus:border-brand-strong focus:outline-none">

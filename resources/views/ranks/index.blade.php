@@ -8,7 +8,6 @@
 <x-layout.app :title="__('i18n::messages.nav.ranks')">
     <div
         x-data="rankBoard()"
-        x-init="init()"
     >
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>

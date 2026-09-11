@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.tickets')">
-    <div x-data="ticketsPage()" x-init="init()">
+    <div x-data="ticketsPage()">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.tickets') }}</h1>

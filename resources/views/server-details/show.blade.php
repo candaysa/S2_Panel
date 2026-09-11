@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.server_details.title')">
-    <div x-data="serverDetailsPage({{ (int) $serverId }})" x-init="init()">
+    <div x-data="serverDetailsPage({{ (int) $serverId }})">
         <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink">
             <x-icon name="chevron-left" class="size-3.5" />
             {{ __('i18n::messages.nav.dashboard') }}

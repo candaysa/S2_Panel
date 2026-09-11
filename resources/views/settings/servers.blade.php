@@ -2,7 +2,7 @@
     <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.settings') }}</h1>
     <x-settings-tabs current="servers" />
 
-    <div x-data="serverList()" x-init="init()" class="mt-5">
+    <div x-data="serverList()" class="mt-5">
         <div class="flex flex-wrap items-center justify-between gap-4">
             <p class="text-sm text-ink-faint">
                 <span x-text="onlineCount"></span> / <span x-text="servers.length"></span>

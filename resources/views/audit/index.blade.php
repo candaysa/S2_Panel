@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.audit')">
-    <div x-data="auditPage()" x-init="init()">
+    <div x-data="auditPage()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.audit') }}</h1>
 
         <x-settings-tabs current="logs" />

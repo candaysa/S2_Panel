@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.settings')">
-    <div x-data="ticketSettingsPage()" x-init="init()">
+    <div x-data="ticketSettingsPage()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.settings') }}</h1>
 
         <x-settings-tabs current="tickets" />

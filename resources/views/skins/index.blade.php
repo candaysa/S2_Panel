@@ -1,5 +1,5 @@
 <x-layout.app :title="__('i18n::messages.nav.skins')">
-    <div x-data="skinsPage()" x-init="init()">
+    <div x-data="skinsPage()">
         <h1 class="text-2xl font-semibold text-ink">{{ __('i18n::messages.nav.skins') }}</h1>
         <p class="mt-1 text-sm text-ink-muted">{{ __('i18n::messages.skins.subtitle') }}</p>
 

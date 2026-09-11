@@ -64,4 +64,44 @@ class PageScriptsTest extends TestCase
             $this->assertAlpineIntact($uri, $html);
         }
     }
+
+    /**
+     * Alpine calls a component's init() by itself. An x-init="init()" next
+     * to it runs the whole thing a second time - every page fetched its data
+     * twice and the notification bell polled twice as often, which went
+     * unnoticed until the web server's access log showed each API call in
+     * pairs.
+     */
+    public function test_no_component_calls_its_own_init_a_second_time(): void
+    {
+        $offenders = [];
+
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(resource_path('views'), \FilesystemIterator::SKIP_DOTS)) as $file) {
+            if (str_ends_with($file->getFilename(), '.blade.php')
+                && preg_match('/x-init="\s*init\(\)\s*"/', (string) file_get_contents($file->getPathname())) === 1) {
+                $offenders[] = $file->getPathname();
+            }
+        }
+
+        $this->assertSame([], $offenders);
+    }
+
+    public function test_the_update_notice_is_rendered_for_the_owner_only(): void
+    {
+        $this->actingAs(User::factory()->owner()->create())
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertSee('window.updatePrompt', false);
+
+        $this->actingAs(User::factory()->create())
+            ->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('updatePrompt', false);
+
+        auth()->logout();
+
+        $this->get('/dashboard')
+            ->assertOk()
+            ->assertDontSee('updatePrompt', false);
+    }
 }

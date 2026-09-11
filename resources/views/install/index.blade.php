@@ -268,7 +268,6 @@
                 }
             },
         }"
-        x-init="init()"
     >
         <div class="flex flex-col items-center text-center">
             <img src="{{ $siteLogo }}" alt="{{ $siteName }}" class="size-12 object-contain">
