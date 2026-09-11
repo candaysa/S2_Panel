@@ -59,13 +59,13 @@ class DashboardController extends Controller
                 'mutes' => $this->countPair('ban', fn () => AdminMute::query()),
                 'admins' => $this->count('admin', fn (): int => AdminAdmin::query()->count()),
             ],
-            // id/hostname/address were never real columns on admin_servers -
-            // this silently returned an empty list on every load (masked by
-            // section()'s catch-and-hide). hostname is a live A2S field, so
-            // it comes from ServerService, which probes the whole set in one
-            // parallel batch behind a short cache - cheap enough to run for
-            // an anonymous visitor, unlike the old one-probe-per-server path.
-            'servers' => $this->section('server', fn (): array => $this->serversWithLive()),
+            // Only what is already known about each server, never a live
+            // probe: one server that does not answer holds an A2S query for
+            // its whole timeout (2s), and this response carries every other
+            // card on the page too. Rows with nothing cached come back
+            // "pending" and the page fills them in from servers() below -
+            // everything else is on screen by then.
+            'servers' => $this->section('server', fn (): array => $this->serverRows(probe: false)),
             'ranks' => $this->section('rank', fn (): array => $this->topPlayers()),
             // Goes through BanService::list() rather than a second,
             // narrower query straight against AdminBan/AdminMute - a second
@@ -84,14 +84,32 @@ class DashboardController extends Controller
     }
 
     /**
-     * Server rows plus their live A2S state, newest-seen first.
+     * The server card on its own, with every server probed live - the slow
+     * half of the dashboard, fetched by the page after index() has already
+     * drawn everything else.
+     *
+     * Public for the same reason index() is. It probes no more than index()
+     * used to on every load, in one parallel batch behind the same 15s cache.
+     */
+    public function servers(): JsonResponse
+    {
+        return Api::success($this->section('server', fn (): array => $this->serverRows(probe: true)));
+    }
+
+    /**
+     * Server rows with their live A2S state.
+     *
+     * $probe false answers from cache alone (see ServerService::
+     * cachedLiveFor): a server with no recent answer comes back pending,
+     * live null, rather than being waited on.
      *
      * @return array<int, array<string, mixed>>
      */
-    private function serversWithLive(): array
+    private function serverRows(bool $probe): array
     {
         $servers = AdminServer::query()->visible()->orderBy('id')->limit(25)->get();
-        $live = app(ServerService::class)->liveFor($servers);
+        $service = app(ServerService::class);
+        $live = $probe ? $service->liveFor($servers) : $service->cachedLiveFor($servers);
 
         return $servers->map(fn (AdminServer $s): array => [
             'id' => $s->getKey(),
@@ -99,6 +117,7 @@ class DashboardController extends Controller
             'server_port' => $s->server_port,
             'live' => $live[(int) $s->getKey()] ?? null,
             'online' => ($live[(int) $s->getKey()] ?? null) !== null,
+            'pending' => ! array_key_exists((int) $s->getKey(), $live),
         ])->all();
     }
 

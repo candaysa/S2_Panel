@@ -157,18 +157,17 @@ class ServerService
      */
     public function liveFor(iterable $servers): array
     {
+        // Walked twice below - a generator would be empty the second time.
+        $servers = is_array($servers) ? $servers : iterator_to_array($servers, false);
         $results = [];
         $toProbe = [];
+        $known = $this->cachedLiveFor($servers);
 
         foreach ($servers as $server) {
             $id = (int) $server->getKey();
-            $cached = Cache::get($this->liveCacheKey($server));
 
-            // A miss and a cached "offline" are different: the cache stores
-            // ['v' => null] for a server that genuinely did not answer, so a
-            // dead server is not re-probed on every single page load.
-            if (is_array($cached) && array_key_exists('v', $cached)) {
-                $results[$id] = $cached['v'];
+            if (array_key_exists($id, $known)) {
+                $results[$id] = $known[$id];
 
                 continue;
             }
@@ -207,6 +206,34 @@ class ServerService
         }
 
         return $results;
+    }
+
+    /**
+     * Live state for whichever of these servers were probed recently, never
+     * probing anything - so it answers in the time of a cache read, however
+     * slow or dead the servers themselves are. A server missing from the
+     * result has no recent answer; a server present with null answered
+     * "offline" (the timeout) recently, which is a real result, not a miss.
+     *
+     * @param  iterable<AdminServer>  $servers
+     * @return array<int, array<string, mixed>|null> keyed by server id
+     */
+    public function cachedLiveFor(iterable $servers): array
+    {
+        $known = [];
+
+        foreach ($servers as $server) {
+            $cached = Cache::get($this->liveCacheKey($server));
+
+            // A miss and a cached "offline" are different: the cache stores
+            // ['v' => null] for a server that genuinely did not answer, so a
+            // dead server is not re-probed on every single page load.
+            if (is_array($cached) && array_key_exists('v', $cached)) {
+                $known[(int) $server->getKey()] = $cached['v'];
+            }
+        }
+
+        return $known;
     }
 
     /**

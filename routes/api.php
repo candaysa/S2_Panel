@@ -23,3 +23,7 @@ use Illuminate\Support\Facades\Route;
 // DashboardController, which gates its own sensitive sections (ban/mute
 // detail) behind the same flag their module's API requires.
 Route::get('dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard.summary');
+
+// The server card's live state, split off so a slow or dead game server
+// never holds up the rest of the dashboard (see DashboardController).
+Route::get('dashboard/servers', [App\Http\Controllers\DashboardController::class, 'servers'])->name('dashboard.servers');

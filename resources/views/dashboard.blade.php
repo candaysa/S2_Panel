@@ -51,7 +51,13 @@
         {{-- Servers: live cards, not a bare id list --}}
         <div class="mt-6 rounded-xl border border-emerald-500/30 bg-surface">
             <div class="flex items-center justify-between border-b border-line px-5 py-3.5">
-                <h2 class="text-sm font-semibold text-ink">{{ __('i18n::messages.nav.servers') }}</h2>
+                <h2 class="flex items-center gap-2 text-sm font-semibold text-ink">
+                    {{ __('i18n::messages.nav.servers') }}
+                    <span x-show="serversLoading" x-cloak class="inline-flex items-center gap-1.5 text-xs font-normal text-ink-faint">
+                        <x-icon name="refresh" class="size-3.5 animate-spin" />
+                        {{ __('i18n::messages.common.loading') }}
+                    </span>
+                </h2>
                 @if (\App\Support\Access::isOwner())
                     <a href="{{ route('settings.servers.page') }}" class="text-xs text-ink-faint transition-colors hover:text-brand-strong">{{ __('i18n::messages.servers.manage') }}</a>
                 @endif
@@ -64,7 +70,9 @@
             <ul class="divide-y divide-line-soft">
                 <template x-for="server in sortedServers" :key="server.id">
                     <li class="grid grid-cols-[auto_1fr_auto_auto] items-center gap-x-4 px-5 py-3 sm:grid-cols-[auto_minmax(0,1fr)_9rem_auto_auto] lg:grid-cols-[auto_minmax(0,1fr)_10rem_11rem_auto_auto]">
-                        <span class="size-2 shrink-0 rounded-full" :class="server.online ? 'bg-emerald-400' : 'bg-ink-faint/40'"></span>
+                        {{-- Pending: no answer from the game server yet (the live
+                             query runs after the rest of the page has drawn). --}}
+                        <span class="size-2 shrink-0 rounded-full" :class="server.pending ? 'animate-pulse bg-ink-faint/60' : (server.online ? 'bg-emerald-400' : 'bg-ink-faint/40')"></span>
 
                         <a
                             :href="'/servers/' + server.id"
@@ -72,12 +80,12 @@
                             x-text="server.live?.name || (server.server_ip + ':' + server.server_port)"
                         ></a>
 
-                        <p class="hidden truncate text-sm text-ink-muted sm:block" x-text="server.live?.map || '—'"></p>
+                        <p class="hidden truncate text-sm text-ink-muted sm:block" x-text="server.pending ? '…' : (server.live?.map || '—')"></p>
 
                         <p class="hidden truncate font-mono text-xs text-ink-faint lg:block" x-text="server.server_ip + ':' + server.server_port"></p>
 
                         <span class="whitespace-nowrap text-right text-sm tabular-nums" :class="server.online ? 'text-ink-muted' : 'text-ink-faint'"
-                              x-text="server.live ? server.live.players + ' / ' + server.live.max_players : '—'"></span>
+                              x-text="server.live ? server.live.players + ' / ' + server.live.max_players : (server.pending ? '…' : '—')"></span>
 
                         <a x-show="server.online" :href="'steam://connect/' + server.server_ip + ':' + server.server_port"
                            class="justify-self-end rounded-lg bg-brand-soft px-2.5 py-1 text-xs font-medium text-brand-strong transition-opacity hover:opacity-80">
@@ -88,6 +96,10 @@
                     </li>
                 </template>
             </ul>
+
+            <p x-show="loading" class="px-5 py-8 text-center text-sm text-ink-faint">
+                {{ __('i18n::messages.common.loading') }}
+            </p>
 
             <p x-show="!loading && servers.length === 0" x-cloak class="px-5 py-8 text-center text-sm text-ink-faint">
                 {{ __('i18n::messages.common.empty') }}
@@ -251,6 +263,7 @@
         <script @isset($cspNonce) nonce="{{ $cspNonce }}" @endisset>
             window.dashboard = () => ({
                 loading: true,
+                serversLoading: false,
                 error: false,
                 counts: { servers: null, bans: null, mutes: null, admins: null },
                 servers: [],
@@ -280,6 +293,30 @@
                         this.error = true;
                     } finally {
                         this.loading = false;
+                    }
+
+                    if (this.servers.some((s) => s.pending)) {
+                        this.loadServers();
+                    }
+                },
+
+                // The slow half: live A2S state for servers /api/dashboard
+                // had nothing cached for. Everything else is already on
+                // screen while this runs; a dead server only keeps its own
+                // row in the loading state for the query's timeout.
+                async loadServers() {
+                    this.serversLoading = true;
+
+                    try {
+                        const res = await fetch('/api/dashboard/servers', { headers: { Accept: 'application/json' } });
+                        if (!res.ok) throw new Error('request_failed');
+                        this.servers = (await res.json()).data;
+                    } catch (e) {
+                        // Unknown, not loading forever: shown like an
+                        // offline server until the next visit asks again.
+                        this.servers = this.servers.map((s) => ({ ...s, pending: false }));
+                    } finally {
+                        this.serversLoading = false;
                     }
                 },
 
